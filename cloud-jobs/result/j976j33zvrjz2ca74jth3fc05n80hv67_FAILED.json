@@ -1,6 +1,0 @@
-{
-  "recordId": "j976j33zvrjz2ca74jth3fc05n80hv67",
-  "status": "FAILED",
-  "error": "cannot reshape tensor of 0 elements into shape [0, -1, 1, 512] because the unspecified dimension size -1 can be any value and is ambiguous",
-  "error_type": "RuntimeError"
-}
