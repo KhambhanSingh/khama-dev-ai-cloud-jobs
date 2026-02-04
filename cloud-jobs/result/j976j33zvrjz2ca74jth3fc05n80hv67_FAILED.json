@@ -1,5 +1,6 @@
 {
   "recordId": "j976j33zvrjz2ca74jth3fc05n80hv67",
   "status": "FAILED",
-  "error": "Input is in incorrect format. Currently, we only support <class 'PIL.Image.Image'>, <class 'numpy.ndarray'>, <class 'torch.Tensor'>"
+  "error": "CUDA out of memory. Tried to allocate 288.00 MiB. GPU 0 has a total capacity of 14.56 GiB of which 183.81 MiB is free. Including non-PyTorch memory, this process has 14.38 GiB memory in use. Of the allocated memory 13.70 GiB is allocated by PyTorch, and 561.32 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)",
+  "error_type": "OutOfMemoryError"
 }
