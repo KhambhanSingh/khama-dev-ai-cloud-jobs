@@ -1,0 +1,5 @@
+{
+  "recordId": "j976j33zvrjz2ca74jth3fc05n80hv67",
+  "status": "FAILED",
+  "error": "Input is in incorrect format. Currently, we only support <class 'PIL.Image.Image'>, <class 'numpy.ndarray'>, <class 'torch.Tensor'>"
+}
