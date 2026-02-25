@@ -1,0 +1,27 @@
+{
+  "recordId": "j97ct4ph71ydttemakars2texd81th4v",
+  "status": "SUCCESS",
+  "video": "cloud-jobs/videos/j97ct4ph71ydttemakars2texd81th4v.mp4",
+  "audio": "cloud-jobs/audio/j97ct4ph71ydttemakars2texd81th4v.wav",
+  "characters": [
+    "a clever thirsty black cartoon crow with a sharp yellow beak and shiny feathers"
+  ],
+  "characterTypes": [
+    "bird"
+  ],
+  "emotions": [
+    "sad",
+    "excited",
+    "shocked",
+    "thinking",
+    "excited",
+    "happy",
+    "relaxed"
+  ],
+  "scenes": 8,
+  "audioDuration": 28.57,
+  "resolution": "1280x720",
+  "model": "Wan2.1-T2V-1.3B-Diffusers (v5.3.1)",
+  "processingTime": 606.71,
+  "timestamp": "2026-02-25 12:02:25"
+}
