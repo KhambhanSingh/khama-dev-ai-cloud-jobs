@@ -5,6 +5,7 @@ Story Video Generator v4.1 — Wan2.1 WanPipeline (correct class)
 - VAE float32 for better quality, rest bfloat16
 - flow_shift=3.0 for 480P (optimal)
 - enable_model_cpu_offload() for T4 15.6GB
+- FIXED: Removed enable_vae_slicing() (not supported on WanPipeline)
 """
 
 import os, sys, json, time, gc, re, glob, subprocess, shutil
@@ -89,6 +90,17 @@ def clear_gpu():
 WAN_PIPE = None
 
 def get_wan_pipeline():
+    """
+    Load Wan2.1-T2V-1.3B-Diffusers pipeline with optimal memory settings.
+    
+    Memory optimizations:
+    - VAE in float32 (official recommendation for quality)
+    - Text encoder & diffusion model in bfloat16 (memory efficient)
+    - enable_model_cpu_offload() for dynamic memory management on T4
+    
+    FIX (v4.1): Removed enable_vae_slicing() - not supported on WanPipeline
+    (VAE is already managed via vae parameter in from_pretrained)
+    """
     global WAN_PIPE
     if WAN_PIPE is not None:
         return WAN_PIPE
@@ -121,7 +133,7 @@ def get_wan_pipeline():
 
     # CPU offload to fit T4 15.6GB VRAM
     pipe.enable_model_cpu_offload()
-    pipe.enable_vae_slicing()
+    # FIXED v4.1: Removed pipe.enable_vae_slicing() - not supported on WanPipeline
     pipe.set_progress_bar_config(desc="  Generating", ncols=60, leave=False)
 
     WAN_PIPE = pipe
