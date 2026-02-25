@@ -1,48 +1,37 @@
 """
-Story Video Generator v5.3 — Wan2.1 WanPipeline (Device Mismatch FIXED)
+Story Video Generator v5.3.1 — Wan2.1 WanPipeline (Device + Frames FIXED)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CHANGELOG v5.3 — Device Mismatch Fix
+CHANGELOG v5.3.1 — frames output format fix
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-PROBLEM (v5.2):
-  RuntimeError: Expected all tensors to be on the same device,
-  but got mat1 is on cpu, different from other tensors on cuda:0
-  
-  Traceback path:
-    pipeline_wan.py → transformer_wan.py → condition_embedder
-    → time_embedder → linear_1 → F.linear()
+NEW BUG (after v5.3 device fix):
+  ValueError: The truth value of an array with more than one element
+  is ambiguous. Use a.any() or a.all()
+  at: if not frames:
 
-ROOT CAUSE (3 issues working together):
-  1. pipe.text_encoder explicitly moved to CPU after load.
-     diffusers 0.36.0 WanPipeline infers execution device from
-     text_encoder location → decides device = CPU → timestep
-     tensor created on CPU → crashes when it hits transformer on CUDA.
-  2. pre-computed prompt_embeds are on CPU at the time of the call
-     (moved to GPU inside generate_clip, but the pipeline's device
-     inference already ran before the forward pass).
-  3. No explicit device= kwarg passed to pipe(), so diffusers falls
-     back to heuristic device detection which breaks when
-     text_encoder ≠ transformer device.
+ROOT CAUSE:
+  diffusers 0.36+ changed output.frames[0] return type:
+    OLD (≤0.32): list of PIL.Image objects
+    NEW (0.36+): numpy array of shape (T, H, W, 3) uint8
+  The original `if not frames:` crashes on numpy arrays because
+  bool(ndarray) is ambiguous when ndarray has >1 element.
 
-SOLUTION (v5.3):
-  FIX 1 — Monkey-patch pipe._execution_device property to always
-           return "cuda" so the timestep + other internal tensors
-           are created on GPU.
-  FIX 2 — Delete/detach text_encoder from pipeline entirely
-           (set to None) after loading instead of moving to CPU.
-           This prevents device inference from following it to CPU.
-  FIX 3 — Pass generator=torch.Generator("cuda") to pipe() so
-           all random tensors are born on CUDA.
-  FIX 4 — Move prompt_embeds to CUDA inside generate_clip BEFORE
-           calling pipe() (already done in v5.2, kept here).
-  FIX 5 — Keep Conv3d patch from v5.2 (still needed on selective builds).
+SOLUTION (v5.3.1):
+  1. Added normalize_frames() — converts any frames format
+     (numpy array, torch tensor, PIL list) → list of uint8 numpy arrays.
+     Handles: (T,H,W,C) numpy, (T,C,H,W) torch, list[PIL], list[ndarray].
+  2. Fixed check_frames_valid() — uses len() instead of `if not frames`
+  3. Fixed export_frames() — converts normalized frames back to PIL
+     for export_to_video, passes raw numpy to imageio fallback.
+  4. generate_clip() now calls normalize_frames(output.frames[0])
+     before check_frames_valid() and export_frames().
 
-RESULT:
-  ✅ No device mismatch errors
-  ✅ No NotImplementedError (Conv3d patch preserved)
-  ✅ text_encoder memory freed properly
-  ✅ Works on diffusers 0.32.0 – 0.36.x
+INHERITS ALL v5.3 FIXES:
+  ✅ Device mismatch fix (_execution_device forced CUDA)
+  ✅ text_encoder=None (no CPU anchor for device inference)
+  ✅ CUDA generator
+  ✅ Conv3d selective build patch (v5.2)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 
@@ -465,33 +454,88 @@ def build_scene_prompt(characters, scene):
 
 
 # ── frame quality check ───────────────────────────────────────────
+def normalize_frames(frames):
+    """
+    diffusers 0.36+ returns output.frames[0] as a numpy array of shape
+    (T, H, W, 3) with dtype uint8, instead of a list of PIL Images.
+    Normalize to a plain list of numpy uint8 arrays (H, W, 3) so the
+    rest of the code works identically regardless of diffusers version.
+    """
+    if frames is None:
+        return []
+    # numpy array shape (T, H, W, C) — diffusers 0.36+
+    if isinstance(frames, np.ndarray):
+        if frames.ndim == 4:
+            # uint8 [0,255] already
+            if frames.dtype != np.uint8:
+                frames = (frames * 255).clip(0, 255).astype(np.uint8)
+            return [frames[i] for i in range(frames.shape[0])]
+        elif frames.ndim == 3:
+            # single frame
+            if frames.dtype != np.uint8:
+                frames = (frames * 255).clip(0, 255).astype(np.uint8)
+            return [frames]
+    # torch tensor shape (T, C, H, W) or (T, H, W, C)
+    if isinstance(frames, torch.Tensor):
+        frames = frames.cpu().numpy()
+        if frames.ndim == 4 and frames.shape[1] in (1, 3, 4):
+            frames = frames.transpose(0, 2, 3, 1)  # TCHW → THWC
+        if frames.dtype != np.uint8:
+            frames = (frames * 255).clip(0, 255).astype(np.uint8)
+        return [frames[i] for i in range(frames.shape[0])]
+    # list of PIL Images or numpy arrays — original format
+    if isinstance(frames, (list, tuple)):
+        result = []
+        for f in frames:
+            if isinstance(f, Image.Image):
+                result.append(np.array(f))
+            elif isinstance(f, np.ndarray):
+                result.append(f if f.dtype == np.uint8
+                               else (f * 255).clip(0, 255).astype(np.uint8))
+            else:
+                result.append(np.array(f))
+        return result
+    return list(frames)
+
+
 def check_frames_valid(frames):
-    if not frames:
+    """
+    frames: list of numpy arrays (H, W, 3) uint8 — after normalize_frames().
+    """
+    # Safe empty check that works for both lists and arrays
+    if frames is None or (hasattr(frames, '__len__') and len(frames) == 0):
         return False, "No frames returned"
-    idxs   = [0, len(frames) // 2, len(frames) - 1]
+    n = len(frames)
+    idxs   = [0, n // 2, n - 1]
     issues = []
     for i in idxs:
-        arr = np.array(frames[i]).astype(np.float32)
+        arr = frames[i].astype(np.float32)
         if arr.std() < 5.0:
             issues.append(f"F[{i}] std={arr.std():.1f}(grey)")
         elif arr.mean() > 210 or arr.mean() < 15:
             issues.append(f"F[{i}] mean={arr.mean():.1f}(blank)")
     if issues:
         return False, " | ".join(issues)
-    arr = np.array(frames[0]).astype(np.float32)
-    return True, f"OK mean={arr.mean():.1f} std={arr.std():.1f} n={len(frames)}"
+    arr = frames[0].astype(np.float32)
+    return True, f"OK mean={arr.mean():.1f} std={arr.std():.1f} n={n}"
+
 
 def export_frames(frames, path, fps):
+    """
+    frames: list of numpy arrays (H, W, 3) uint8 — after normalize_frames().
+    Tries diffusers export_to_video first (expects PIL list), then imageio.
+    """
     try:
         from diffusers.utils import export_to_video
-        export_to_video(frames, path, fps=fps)
+        pil_frames = [Image.fromarray(f) for f in frames]
+        export_to_video(pil_frames, path, fps=fps)
     except Exception as e:
         print(f"    diffusers export failed ({e}), imageio fallback...")
         import imageio
         w = imageio.get_writer(path, fps=fps, codec='libx264',
                                quality=8, pixelformat='yuv420p')
         for f in frames:
-            w.append_data(np.array(f) if isinstance(f, Image.Image) else f)
+            w.append_data(f)
         w.close()
 
 
@@ -550,7 +594,9 @@ def generate_clip(record_id, clip_idx, pos_embed, neg_embed):
             pos_gpu = neg_gpu = None
             clear_gpu()
 
-            frames = output.frames[0]
+            # Normalize to list of uint8 numpy arrays — handles both
+            # diffusers <=0.32 (list of PIL) and 0.36+ (numpy array)
+            frames = normalize_frames(output.frames[0])
             ok, info = check_frames_valid(frames)
             print(f"    Frames: {info}")
 
@@ -736,7 +782,7 @@ def process_job(job_data):
         "scenes":         len(scenes),
         "audioDuration":  round(audio_duration, 2),
         "resolution":     "1280x720",
-        "model":          "Wan2.1-T2V-1.3B-Diffusers (v5.3)",
+        "model":          "Wan2.1-T2V-1.3B-Diffusers (v5.3.1)",
         "processingTime": round(elapsed, 2),
         "timestamp":      time.strftime("%Y-%m-%d %H:%M:%S"),
     }
@@ -757,4 +803,3 @@ if __name__ == "__main__":
         print(f"Plan : text_encoder→CPU→delete | transformer+VAE→GPU (~3.8GB)")
         print(f"Fix  : _execution_device forced CUDA | text_encoder=None (v5.3)")
         print(f"VRAM : ~3.8GB weights + ~6GB activations ≈ 10GB peak")
-      
