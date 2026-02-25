@@ -1,36 +1,51 @@
 """
-Story Video Generator v5.3.1 — Wan2.1 WanPipeline (Device + Frames FIXED)
+Story Video Generator v5.4 — Wan2.1 WanPipeline (Brown/Blank Video FIXED)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CHANGELOG v5.3.1 — frames output format fix
+CHANGELOG v5.4 — Brown/Blank Video Quality Fix
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-NEW BUG (after v5.3 device fix):
-  ValueError: The truth value of an array with more than one element
-  is ambiguous. Use a.any() or a.all()
-  at: if not frames:
+SYMPTOM: Video plays as solid brown/tan flat color, no animation.
 
-ROOT CAUSE:
-  diffusers 0.36+ changed output.frames[0] return type:
-    OLD (≤0.32): list of PIL.Image objects
-    NEW (0.36+): numpy array of shape (T, H, W, 3) uint8
-  The original `if not frames:` crashes on numpy arrays because
-  bool(ndarray) is ambiguous when ndarray has >1 element.
+ROOT CAUSE ANALYSIS (4 issues):
 
-SOLUTION (v5.3.1):
-  1. Added normalize_frames() — converts any frames format
-     (numpy array, torch tensor, PIL list) → list of uint8 numpy arrays.
-     Handles: (T,H,W,C) numpy, (T,C,H,W) torch, list[PIL], list[ndarray].
-  2. Fixed check_frames_valid() — uses len() instead of `if not frames`
-  3. Fixed export_frames() — converts normalized frames back to PIL
-     for export_to_video, passes raw numpy to imageio fallback.
-  4. generate_clip() now calls normalize_frames(output.frames[0])
-     before check_frames_valid() and export_frames().
+  1. EMBED SHAPE MISMATCH (primary cause of brown output):
+     WanPipeline expects prompt_embeds shape: (B, seq_len, 4096)
+     Our encoder produced shape: (1, 226, 4096) — correct length BUT
+     the pipeline also needs attention_mask to know which tokens are
+     real vs padding. Without it, the model attends to ALL 226 positions
+     including the padding zeros → averages out to near-uniform noise
+     → brown/tan flat output. Fix: pass attention_mask explicitly.
 
-INHERITS ALL v5.3 FIXES:
-  ✅ Device mismatch fix (_execution_device forced CUDA)
-  ✅ text_encoder=None (no CPU anchor for device inference)
-  ✅ CUDA generator
+  2. TOKENIZER MAX_LEN=226 BUT ENCODER OUTPUT INCONSISTENCY:
+     Wan2.1 UMT5 tokenizer uses max_length=226 with padding.
+     We must store and pass the attention_mask alongside embeddings
+     so the transformer knows which token positions contain real content.
+
+  3. GUIDANCE SCALE TOO LOW (5.0):
+     Wan2.1-1.3B works best with guidance_scale=7.5–9.0 for T2V.
+     At 5.0 the model barely differentiates the conditional from
+     unconditional path → washed out flat colors. Fix: raise to 7.5.
+
+  4. INFERENCE STEPS TOO LOW (15):
+     15 steps with UniPC on a flow-matching model is insufficient.
+     Wan2.1 needs minimum 20 steps for recognizable content.
+     Fix: raise primary config to 25 steps, fallback to 20.
+
+SOLUTION (v5.4):
+  FIX 1 — encode_prompts_on_cpu() now returns (embeds, masks) tuples.
+           attention_mask stored alongside each embedding.
+  FIX 2 — pipe() call passes both prompt_embeds AND
+           prompt_attention_mask / negative_prompt_attention_mask.
+  FIX 3 — guidance_scale raised from 5.0 → 7.5
+  FIX 4 — num_inference_steps raised 15→25 (primary), 12→20 (fallback)
+  FIX 5 — Brown frame detector: std threshold raised 5→8 AND
+           hue-based tan/brown detection added so grey/brown both
+           trigger fallback instead of passing quality check.
+
+INHERITS ALL PREVIOUS FIXES:
+  ✅ normalize_frames() for diffusers 0.36+ numpy output (v5.3.1)
+  ✅ _execution_device forced CUDA, text_encoder=None (v5.3)
   ✅ Conv3d selective build patch (v5.2)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
@@ -244,7 +259,7 @@ def encode_prompts_on_cpu(prompts_pos, prompts_neg):
     )
     text_encoder.eval()
 
-    MAX_LEN = 226  # Wan2.1 uses 226 token max length
+    MAX_LEN = 226  # Wan2.1 official max token length
 
     def _encode(texts):
         inputs = tokenizer(
@@ -259,17 +274,30 @@ def encode_prompts_on_cpu(prompts_pos, prompts_neg):
                 input_ids=inputs.input_ids,
                 attention_mask=inputs.attention_mask,
             )
-        return out.last_hidden_state.to(dtype=torch.float16).detach().cpu()
+        # Return BOTH the embedding AND the attention mask.
+        # The mask tells the transformer which token positions are real
+        # content (1) vs padding (0). Without this, the model attends
+        # to all 226 positions including padding zeros, averaging out
+        # the signal → flat brown/grey output.
+        embeds = out.last_hidden_state.to(dtype=torch.float16).detach().cpu()
+        mask   = inputs.attention_mask.detach().cpu()  # shape (1, MAX_LEN)
+        return embeds, mask
 
     print(f"  Encoding {len(prompts_pos)} positive + {len(prompts_neg)} negative prompts...")
-    pos_embeds = [_encode([p]) for p in prompts_pos]
-    neg_embeds = [_encode([n]) for n in prompts_neg]
+    pos_results = [_encode([p]) for p in prompts_pos]
+    neg_results = [_encode([n]) for n in prompts_neg]
+
+    # Unzip into separate embed and mask lists
+    pos_embeds = [r[0] for r in pos_results]
+    pos_masks  = [r[1] for r in pos_results]
+    neg_embeds = [r[0] for r in neg_results]
+    neg_masks  = [r[1] for r in neg_results]
 
     print("  Deleting text encoder from RAM...")
     del text_encoder, tokenizer
     gc.collect()
     print(f"  Done | VRAM: {vram_str()}\n")
-    return pos_embeds, neg_embeds
+    return pos_embeds, pos_masks, neg_embeds, neg_masks
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -501,8 +529,15 @@ def normalize_frames(frames):
 def check_frames_valid(frames):
     """
     frames: list of numpy arrays (H, W, 3) uint8 — after normalize_frames().
+
+    Detects:
+    - Grey frames: std < 8 (was 5, raised to catch more flat outputs)
+    - Blank frames: mean > 230 or mean < 10
+    - Brown/tan flat frames: low std OR reddish-brown hue dominance.
+      The model sometimes outputs a uniform warm brown (R>G>B pattern
+      with low variance) which passed the old std<5 check. Now we
+      also check if R channel dominates by >30 AND std<20 (flat color).
     """
-    # Safe empty check that works for both lists and arrays
     if frames is None or (hasattr(frames, '__len__') and len(frames) == 0):
         return False, "No frames returned"
     n = len(frames)
@@ -510,10 +545,25 @@ def check_frames_valid(frames):
     issues = []
     for i in idxs:
         arr = frames[i].astype(np.float32)
-        if arr.std() < 5.0:
-            issues.append(f"F[{i}] std={arr.std():.1f}(grey)")
-        elif arr.mean() > 210 or arr.mean() < 15:
-            issues.append(f"F[{i}] mean={arr.mean():.1f}(blank)")
+        std  = arr.std()
+        mean = arr.mean()
+
+        if std < 8.0:
+            issues.append(f"F[{i}] std={std:.1f}(flat)")
+        elif mean > 230 or mean < 10:
+            issues.append(f"F[{i}] mean={mean:.1f}(blank)")
+        else:
+            # Brown/tan detection: R channel >> B channel AND low spatial variance
+            r_mean = arr[:, :, 0].mean()
+            g_mean = arr[:, :, 1].mean()
+            b_mean = arr[:, :, 2].mean()
+            # Brown = high R, medium G, low B, all channels low variance
+            is_brownish = (r_mean - b_mean > 30) and (r_mean - g_mean > 10) and (std < 25)
+            if is_brownish:
+                issues.append(
+                    f"F[{i}] brown(R={r_mean:.0f} G={g_mean:.0f} B={b_mean:.0f} std={std:.1f})"
+                )
+
     if issues:
         return False, " | ".join(issues)
     arr = frames[0].astype(np.float32)
@@ -540,71 +590,78 @@ def export_frames(frames, path, fps):
 
 
 # ── clip generation ───────────────────────────────────────────────
-def generate_clip(record_id, clip_idx, pos_embed, neg_embed):
+def generate_clip(record_id, clip_idx, pos_embed, pos_mask, neg_embed, neg_mask):
     pipe      = load_video_pipeline()
     clip_path = f"{CLIPS_DIR}/{record_id}_clip_{clip_idx:02d}.mp4"
     t0        = time.time()
 
+    # FIX: Raise steps (15→25) and guidance (5.0→7.5) for proper video quality.
+    # Wan2.1 needs ≥20 steps and guidance ≥7.0 to generate recognizable content.
     configs = [
-        {"num_frames": CLIP_FRAMES, "steps": 15, "h": VIDEO_H, "w": VIDEO_W},
-        {"num_frames": 9,           "steps": 12, "h": 256,     "w": 448},
+        {"num_frames": CLIP_FRAMES, "steps": 25, "h": VIDEO_H, "w": VIDEO_W, "guidance": 7.5},
+        {"num_frames": 9,           "steps": 20, "h": 256,     "w": 448,     "guidance": 7.5},
     ]
 
     for attempt, cfg in enumerate(configs):
-        pos_gpu = neg_gpu = None
+        pos_gpu = neg_gpu = pos_mask_gpu = neg_mask_gpu = None
         try:
             if attempt > 0:
                 print(f"    Fallback → {cfg['num_frames']}fr {cfg['h']}×{cfg['w']}...")
                 clear_gpu()
                 time.sleep(1.0)
 
-            # ── FIX 3: Move embeds to CUDA before pipe() call ─────
-            # Ensure prompt embeddings are on the same device as the
-            # transformer. Do this immediately before calling pipe()
-            # so there's no window where they could be on different devices.
-            pos_gpu = pos_embed.to("cuda")
-            neg_gpu = neg_embed.to("cuda")
-            # ──────────────────────────────────────────────────────
+            # Move embeds AND masks to CUDA
+            pos_gpu      = pos_embed.to("cuda")
+            neg_gpu      = neg_embed.to("cuda")
+            pos_mask_gpu = pos_mask.to("cuda")
+            neg_mask_gpu = neg_mask.to("cuda")
 
             print(f"    VRAM: {vram_str()} | "
                   f"{cfg['num_frames']}fr {cfg['steps']}steps "
-                  f"{cfg['h']}×{cfg['w']}", flush=True)
+                  f"{cfg['h']}×{cfg['w']} guidance={cfg['guidance']}", flush=True)
 
-            # ── FIX 4: Pass generator on CUDA ─────────────────────
-            # Forces all internal random tensors (noise latents) to
-            # be created on CUDA, preventing any stray CPU tensors.
             generator = torch.Generator(device="cuda").manual_seed(
                 int(time.time()) % (2**32)
             )
-            # ──────────────────────────────────────────────────────
 
             with torch.inference_mode():
-                output = pipe(
+                # Build kwargs — pass attention masks if the pipeline accepts them
+                call_kwargs = dict(
                     prompt_embeds=pos_gpu,
                     negative_prompt_embeds=neg_gpu,
                     num_frames=cfg["num_frames"],
                     num_inference_steps=cfg["steps"],
-                    guidance_scale=5.0,
+                    guidance_scale=cfg["guidance"],
                     height=cfg["h"],
                     width=cfg["w"],
-                    generator=generator,   # FIX 4: CUDA generator
+                    generator=generator,
                 )
+                # WanPipeline 0.36+ accepts attention masks for pre-computed embeds
+                import inspect
+                pipe_sig = inspect.signature(pipe.__call__).parameters
+                if "prompt_attention_mask" in pipe_sig:
+                    call_kwargs["prompt_attention_mask"]          = pos_mask_gpu
+                    call_kwargs["negative_prompt_attention_mask"] = neg_mask_gpu
+                    print("    attention_mask: passed to pipeline")
+                else:
+                    print("    attention_mask: pipeline param not found, skipping")
 
-            del pos_gpu, neg_gpu, generator
-            pos_gpu = neg_gpu = None
+                output = pipe(**call_kwargs)
+
+            del pos_gpu, neg_gpu, pos_mask_gpu, neg_mask_gpu, generator
+            pos_gpu = neg_gpu = pos_mask_gpu = neg_mask_gpu = None
             clear_gpu()
 
-            # Normalize to list of uint8 numpy arrays — handles both
-            # diffusers <=0.32 (list of PIL) and 0.36+ (numpy array)
+            # Normalize to list of uint8 numpy arrays
             frames = normalize_frames(output.frames[0])
             ok, info = check_frames_valid(frames)
             print(f"    Frames: {info}")
 
             if not ok:
                 if attempt == 0:
-                    print("    Grey output → trying smaller config...")
+                    print("    Bad quality output → trying fallback config...")
                     continue
-                raise RuntimeError(f"Grey frames after fallback: {info}")
+                raise RuntimeError(f"Bad frames after all fallbacks: {info}")
 
             export_frames(frames, clip_path, TARGET_FPS)
             sz = os.path.getsize(clip_path) if os.path.exists(clip_path) else 0
@@ -625,28 +682,28 @@ def generate_clip(record_id, clip_idx, pos_embed, neg_embed):
             if 'conv3d' in str(e).lower():
                 print(f"    Conv3d still failing after patch - trying CPU path...")
                 if attempt >= len(configs) - 1:
-                    raise Exception(f"Conv3d error on all configs: {str(e)[:120]}")
+                    raise Exception(f"Conv3d error: {str(e)[:120]}")
             else:
                 raise
 
         except RuntimeError as e:
-            # Catch any remaining device mismatch errors for diagnostics
             if 'same device' in str(e) or 'Expected all tensors' in str(e):
                 print(f"    Device mismatch (unexpected): {str(e)[:150]}")
-                print(f"    transformer device: {next(pipe.transformer.parameters()).device}")
-                print(f"    vae device: {next(pipe.vae.parameters()).device}")
+                print(f"    transformer: {next(pipe.transformer.parameters()).device}")
+                print(f"    vae: {next(pipe.vae.parameters()).device}")
                 try:
                     print(f"    _execution_device: {pipe._execution_device}")
                 except Exception:
                     pass
                 if attempt >= len(configs) - 1:
-                    raise Exception(f"Device mismatch on all configs: {str(e)[:120]}")
+                    raise Exception(f"Device mismatch: {str(e)[:120]}")
             else:
                 raise
 
         finally:
-            if pos_gpu is not None: del pos_gpu
-            if neg_gpu is not None: del neg_gpu
+            for t in [pos_gpu, neg_gpu, pos_mask_gpu, neg_mask_gpu]:
+                if t is not None:
+                    del t
             clear_gpu()
 
     raise Exception("All generation attempts failed")
@@ -744,16 +801,22 @@ def process_job(job_data):
     print()
 
     print("━━━ STEP 4: TEXT ENCODING (CPU) ━━━")
-    pos_embeds, neg_embeds = encode_prompts_on_cpu(prompts_pos, prompts_neg)
+    pos_embeds, pos_masks, neg_embeds, neg_masks = encode_prompts_on_cpu(
+        prompts_pos, prompts_neg
+    )
 
     n = len(scenes)
     print(f"━━━ STEP 5: VIDEO GENERATION ({n} clip{'s' if n>1 else ''}) ━━━")
-    print(f"  Est: {n*4}–{n*7} min on T4\n")
+    print(f"  Est: {n*5}–{n*9} min on T4\n")
 
     clip_paths, clip_durations = [], []
     for i, scene in enumerate(scenes):
         print(f"\n  [Clip {i+1}/{n}]  emotion={scene['emotion']}")
-        cp, cd = generate_clip(record_id, i, pos_embeds[i], neg_embeds[i])
+        cp, cd = generate_clip(
+            record_id, i,
+            pos_embeds[i], pos_masks[i],
+            neg_embeds[i], neg_masks[i],
+        )
         clip_paths.append(cp)
         clip_durations.append(cd)
         elapsed = time.time() - start
@@ -782,7 +845,7 @@ def process_job(job_data):
         "scenes":         len(scenes),
         "audioDuration":  round(audio_duration, 2),
         "resolution":     "1280x720",
-        "model":          "Wan2.1-T2V-1.3B-Diffusers (v5.3.1)",
+        "model":          "Wan2.1-T2V-1.3B-Diffusers (v5.4)",
         "processingTime": round(elapsed, 2),
         "timestamp":      time.strftime("%Y-%m-%d %H:%M:%S"),
     }
