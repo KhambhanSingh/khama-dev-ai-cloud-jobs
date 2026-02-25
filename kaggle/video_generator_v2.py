@@ -297,7 +297,7 @@ def generate_frames(record_id, characters, emotion_timeline, audio_duration):
     
     frames_per_emotion = max(1, total_frames // len(emotion_timeline))
     current_frame = 0
-    image_size = 512  # Standard size for SDXL-Turbo
+    image_size = 768  # Standard size for SDXL-Turbo
     
     prev_image = None
     
@@ -403,6 +403,7 @@ def create_video_from_frames(record_id, audio_path, total_frames, audio_duration
     print(f"   FPS: {fps:.2f}\n")
     
     # FFmpeg command to create video with audio
+    """
     cmd = [
         'ffmpeg', '-y',
         '-framerate', str(fps),
@@ -418,7 +419,36 @@ def create_video_from_frames(record_id, audio_path, total_frames, audio_duration
         '-movflags', '+faststart',  # Enable fast start for web playback
         video_path
     ]
+    """
+    cmd = [
+    'ffmpeg', '-y',
+    '-framerate', str(fps),
+    '-i', f'{FRAMES_DIR}/{record_id}_%04d.png',
+    '-i', audio_path,
     
+    # Video filters: scale to 1280x720 with padding (letterbox)
+    '-vf', 'scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1',
+    
+    '-c:v', 'libx264',
+    '-preset', 'medium',
+    '-crf', '18',           # Better quality
+    '-pix_fmt', 'yuv420p',
+    
+    # Audio: convert mono to stereo
+    '-c:a', 'aac',
+    '-b:a', '192k',
+    '-ac', '2',             # Stereo
+    '-ar', '44100',
+    
+    # ❌ Remove -shortest — yahi main culprit hai 4.5s ka!
+    # Instead loop video to match audio duration
+    '-map', '0:v',
+    '-map', '1:a',
+    '-t', str(audio_duration),   # Force exact audio duration
+    
+    '-movflags', '+faststart',
+    video_path
+]
     # Run FFmpeg
     result = subprocess.run(
         cmd,
