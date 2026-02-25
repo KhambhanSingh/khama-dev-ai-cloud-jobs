@@ -1,18 +1,29 @@
 """
-Story Video Generator v4.5 — Wan2.1 WanPipeline (OOM FINAL FIX)
+Story Video Generator v4.6 — Wan2.1 WanPipeline (CUBLAS PERMANENT FIX)
 
-ROOT CAUSE OF OOM (found in v4.5):
-  - Pipeline stayed in VRAM (15.3GB used) between job retries
-  - enable_model_cpu_offload() doesn't fully unload on retry
-  - UMT5 text encoder alone needs ~3GB → OOM when VRAM already full
-  - Resolution 480x832 too large for T4 15.6GB with this model
+ROOT CAUSE (confirmed v4.6):
+  CUBLAS_STATUS_ALLOC_FAILED is NOT an OOM error.
+  It is a CUDA context corruption caused by accelerate's CPU offload hooks
+  (enable_model_cpu_offload / enable_sequential_cpu_offload) conflicting with
+  cuBLAS handle initialization on torch 2.10 + cu128.
 
-FIXES v4.5:
-  1. UNLOAD pipeline after each job (WAN_PIPE = None + del + clear_gpu)
-  2. Encode prompts ONCE before generation loop, reuse embeddings
-  3. Resolution: 320x576 (fits comfortably in 15.6GB)
-  4. Reduced frames: 17 (default) — fewer frames = less peak VRAM
-  5. text_encoder truncation: max_sequence_length=128 (default 512 = OOM)
+  The accelerate hooks intercept module.forward() and move tensors between
+  CPU/GPU mid-call. When UMT5 text encoder is called, the hook moves it to GPU,
+  but cuBLAS cannot initialize its handle in that context → ALLOC_FAILED.
+  This happens even when VRAM shows 0.0GB used (Check #1 in logs).
+
+FIX v4.6:
+  Remove ALL CPU offload. Load entire pipeline directly on CUDA.
+  Wan2.1-1.3B weights = ~2.6GB in float16. Total with activations ~6-8GB.
+  T4 has 15.6GB — plenty of room. No offload needed.
+
+  pipe = pipe.to("cuda")   ← simple, no hooks, no CUBLAS conflict
+
+MEMORY SAVINGS to fit in 15.6GB without offload:
+  - attention_slicing: slices attention computation to save peak VRAM
+  - vae_slicing: decodes VAE frame by frame
+  - Small resolution: 320x576
+  - Short clips: 17 frames
 """
 
 import os, sys, json, time, gc, re, subprocess
@@ -33,14 +44,13 @@ for d in [CLIPS_DIR, AUDIO_DIR, VIDEO_DIR, RESULT_DIR]:
     os.makedirs(d, exist_ok=True)
 
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True,max_split_size_mb:128'
-torch.backends.cuda.matmul.allow_tf32  = True
-torch.backends.cudnn.benchmark          = False   # saves ~300MB
+torch.backends.cuda.matmul.allow_tf32 = True
+torch.backends.cudnn.benchmark         = False
 
 TARGET_FPS   = 16
-# v4.5: reduced defaults — fits T4 15.6GB reliably
-CLIP_FRAMES  = 17    # 4*4+1=17 = ~1s @ 16fps  (was 33, caused OOM)
-VIDEO_H      = 320   # was 480
-VIDEO_W      = 576   # was 832
+CLIP_FRAMES  = 17    # 4*4+1 = ~1s @ 16fps
+VIDEO_H      = 320
+VIDEO_W      = 576
 WAN_MODEL_ID = "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"
 
 SCENE_BACKGROUNDS = {
@@ -113,11 +123,11 @@ def load_pipeline():
     if WAN_PIPE is not None:
         return WAN_PIPE
 
-    print("Loading Wan2.1 pipeline (v4.5)...")
+    print("Loading Wan2.1 pipeline (v4.6 — full GPU, no offload)...")
     from diffusers import AutoencoderKLWan, WanPipeline
     from diffusers.schedulers.scheduling_unipc_multistep import UniPCMultistepScheduler
 
-    # Both VAE + model in float16 — consistent dtypes, no grey video
+    # Both float16 — consistent dtypes, no grey video, no NaN
     vae = AutoencoderKLWan.from_pretrained(
         WAN_MODEL_ID, subfolder="vae", torch_dtype=torch.float16
     )
@@ -127,7 +137,25 @@ def load_pipeline():
     pipe.scheduler = UniPCMultistepScheduler.from_config(
         pipe.scheduler.config, flow_shift=3.0
     )
-    pipe.enable_model_cpu_offload()
+
+    # FIX v4.6: NO CPU OFFLOAD AT ALL
+    # enable_model_cpu_offload() uses accelerate hooks that corrupt cuBLAS
+    # on torch 2.10+cu128, causing CUBLAS_STATUS_ALLOC_FAILED even at 0GB VRAM.
+    # Wan2.1-1.3B is only ~2.6GB in float16 — fits easily in 15.6GB T4.
+    pipe = pipe.to("cuda")
+    print("  Loaded to CUDA (no offload hooks = no CUBLAS conflict)")
+
+    # Save VRAM with attention + VAE slicing (no hooks, just chunked compute)
+    pipe.enable_attention_slicing(1)
+    print("  Attention slicing: enabled")
+
+    # Enable VAE slicing if supported (decodes frame-by-frame, saves ~1GB peak)
+    try:
+        pipe.enable_vae_slicing()
+        print("  VAE slicing: enabled")
+    except Exception as e:
+        print(f"  VAE slicing: n/a ({e})")
+
     pipe.set_progress_bar_config(desc="  Gen", ncols=60, leave=False)
 
     WAN_PIPE = pipe
@@ -136,11 +164,10 @@ def load_pipeline():
     return WAN_PIPE
 
 def unload_pipeline():
-    """Fully unload pipeline from VRAM between jobs."""
     global WAN_PIPE
     if WAN_PIPE is None:
         return
-    print("  Unloading pipeline from VRAM...")
+    print("  Unloading pipeline...")
     try:
         WAN_PIPE.to("cpu")
     except: pass
@@ -148,7 +175,7 @@ def unload_pipeline():
     WAN_PIPE = None
     clear_gpu()
     u, t = get_vram()
-    print(f"  Unloaded | VRAM now: {u:.1f}/{t:.1f}GB")
+    print(f"  Unloaded | VRAM: {u:.1f}/{t:.1f}GB")
 
 # ==================== AUDIO ====================
 def detect_dominant_character(characters):
@@ -223,7 +250,7 @@ def build_prompts(characters, scene):
     )
     return prompt, neg
 
-# ==================== CLIP GEN ====================
+# ==================== CLIP ====================
 def check_frames_valid(frames):
     if not frames:
         return False, "No frames"
@@ -232,13 +259,13 @@ def check_frames_valid(frames):
     for i in idxs:
         arr = np.array(frames[i]).astype(np.float32)
         if arr.std() < 5.0:
-            issues.append(f"Frame[{i}] std={arr.std():.1f} (grey)")
+            issues.append(f"F[{i}] std={arr.std():.1f}(grey)")
         elif arr.mean() > 210 or arr.mean() < 15:
-            issues.append(f"Frame[{i}] mean={arr.mean():.1f} (blank)")
+            issues.append(f"F[{i}] mean={arr.mean():.1f}(blank)")
     if issues:
         return False, " | ".join(issues)
     arr = np.array(frames[0]).astype(np.float32)
-    return True, f"OK mean={arr.mean():.1f} std={arr.std():.1f}"
+    return True, f"OK mean={arr.mean():.1f} std={arr.std():.1f} n={len(frames)}"
 
 def export_frames(frames, path, fps):
     try:
@@ -255,29 +282,30 @@ def export_frames(frames, path, fps):
 
 def generate_clip(record_id, scene, characters, clip_idx):
     prompt, neg = build_prompts(characters, scene)
-    print(f"  Scene {clip_idx+1} [{scene['emotion']}]:")
+    print(f"  Scene {clip_idx+1} [{scene['emotion']}]")
     print(f"    Prompt: {prompt[:75]}...")
 
     pipe      = load_pipeline()
     clip_path = f"{CLIPS_DIR}/{record_id}_clip_{clip_idx:02d}.mp4"
     t0        = time.time()
 
-    # v4.5: try progressively smaller configs on OOM
+    # Progressive fallback configs (smaller if OOM)
     configs = [
-        {"num_frames": CLIP_FRAMES, "steps": 15, "h": VIDEO_H, "w": VIDEO_W},
-        {"num_frames": 9,           "steps": 12, "h": 256,     "w": 448},
+        {"num_frames": CLIP_FRAMES, "steps": 15, "h": VIDEO_H,  "w": VIDEO_W},
+        {"num_frames": 9,           "steps": 12, "h": 256,      "w": 448},
     ]
 
     for attempt, cfg in enumerate(configs):
         try:
             if attempt > 0:
-                print(f"    Retry {attempt+1}: {cfg['num_frames']}fr {cfg['h']}x{cfg['w']}...")
+                print(f"    Fallback {attempt+1}: {cfg['num_frames']}fr {cfg['h']}x{cfg['w']}...")
                 clear_gpu()
-                time.sleep(2.0)
+                time.sleep(1.0)
 
             u, t = get_vram()
-            print(f"    VRAM: {u:.1f}/{t:.1f}GB | {cfg['num_frames']}fr "
-                  f"{cfg['steps']}steps {cfg['h']}x{cfg['w']}", flush=True)
+            print(f"    VRAM: {u:.1f}/{t:.1f}GB | "
+                  f"{cfg['num_frames']}fr {cfg['steps']}steps "
+                  f"{cfg['h']}x{cfg['w']}", flush=True)
 
             with torch.inference_mode():
                 output = pipe(
@@ -288,8 +316,6 @@ def generate_clip(record_id, scene, characters, clip_idx):
                     guidance_scale=5.0,
                     height=cfg["h"],
                     width=cfg["w"],
-                    # v4.5: truncate prompt to save text encoder VRAM
-                    max_sequence_length=128,
                 )
 
             frames = output.frames[0]
@@ -298,7 +324,7 @@ def generate_clip(record_id, scene, characters, clip_idx):
 
             if not ok:
                 if attempt == 0:
-                    print("    Grey frames → retry with fewer frames...")
+                    print("    Grey output → trying fallback config...")
                     continue
                 raise RuntimeError(f"Grey frames: {info}")
 
@@ -317,7 +343,7 @@ def generate_clip(record_id, scene, characters, clip_idx):
             print(f"    OOM: {str(e)[:80]}")
             clear_gpu()
             if attempt >= len(configs) - 1:
-                raise Exception(f"OOM on all configs. {str(e)[:100]}")
+                raise Exception(f"OOM on all configs: {str(e)[:100]}")
 
         finally:
             clear_gpu()
@@ -333,8 +359,8 @@ def stitch_clips_with_audio(record_id, clip_paths, clip_durations,
 
     total_dur    = sum(clip_durations)
     speed_factor = max(0.5, min(2.0, total_dur / audio_duration))
-    print(f"Stitch: {len(clip_paths)} clips | total={total_dur:.1f}s "
-          f"audio={audio_duration:.1f}s speed={speed_factor:.2f}x")
+    print(f"Stitch: {len(clip_paths)} clips | "
+          f"total={total_dur:.1f}s audio={audio_duration:.1f}s speed={speed_factor:.2f}x")
 
     with open(concat_list, 'w') as f:
         for cp in clip_paths:
@@ -391,17 +417,14 @@ def process_job(job_data):
     print()
     start = time.time()
 
-    # Step 1: Audio (no GPU needed)
     print("--- AUDIO ---")
     audio_path, audio_duration = generate_audio(
         record_id, narration, characters, emotions, lang)
 
-    # Step 2: Scenes
     print("--- SCENES ---")
     scenes = split_into_scenes(narration, emotions)
 
-    # Step 3: Clips
-    print(f"--- CLIPS ({len(scenes)} scenes | ~{len(scenes)*5}-{len(scenes)*8} min) ---\n")
+    print(f"--- CLIPS ({len(scenes)} scenes) ---\n")
     clip_paths, clip_durations = [], []
     for i, scene in enumerate(scenes):
         print(f"\n[{i+1}/{len(scenes)}]")
@@ -412,7 +435,6 @@ def process_job(job_data):
         eta     = (elapsed/(i+1)) * (len(scenes)-i-1)
         print(f"  Elapsed: {elapsed/60:.1f}m | ETA: {eta/60:.1f}m")
 
-    # Step 4: Stitch
     print("\n--- ASSEMBLY ---")
     final_path = stitch_clips_with_audio(
         record_id, clip_paths, clip_durations, audio_path, audio_duration)
@@ -421,7 +443,6 @@ def process_job(job_data):
         try: os.remove(cp)
         except: pass
 
-    # v4.5: Unload pipeline after job to free VRAM for next job
     unload_pipeline()
 
     elapsed = time.time() - start
@@ -436,7 +457,7 @@ def process_job(job_data):
         "scenes":         len(scenes),
         "audioDuration":  round(audio_duration, 2),
         "resolution":     "1280x720",
-        "model":          "Wan2.1-T2V-1.3B-Diffusers (v4.5)",
+        "model":          "Wan2.1-T2V-1.3B-Diffusers (v4.6)",
         "processingTime": round(elapsed, 2),
         "timestamp":      time.strftime("%Y-%m-%d %H:%M:%S"),
     }
