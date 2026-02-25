@@ -1,0 +1,26 @@
+{
+  "recordId": "j974q770kgqas8e7bybztamqe981t64f",
+  "status": "SUCCESS",
+  "video": "cloud-jobs/videos/j974q770kgqas8e7bybztamqe981t64f.mp4",
+  "audio": "cloud-jobs/audio/j974q770kgqas8e7bybztamqe981t64f.wav",
+  "characters": [
+    "a clever black cartoon bird crow with shiny dark feathers and a sharp yellow beak in a lush green garden"
+  ],
+  "characterTypes": [
+    "bird"
+  ],
+  "emotions": [
+    "sad",
+    "excited",
+    "thinking",
+    "running",
+    "relaxed",
+    "proud"
+  ],
+  "scenes": 1,
+  "audioDuration": 3.61,
+  "resolution": "1280x720",
+  "model": "Wan2.1-T2V-1.3B-Diffusers (v5.3.1)",
+  "processingTime": 288.54,
+  "timestamp": "2026-02-25 11:43:43"
+}
