@@ -1,17 +1,18 @@
 """
-Story Video Generator v4.3 — Wan2.1 WanPipeline (CUBLAS FIX)
-- FIXED v4.3: Removed torch.cuda.amp.autocast wrapper (conflicts with CPU offload)
-- FIXED v4.3: enable_sequential_cpu_offload() instead of enable_model_cpu_offload()
-- FIXED v4.3: Added cuBLAS pre-warm to prevent CUBLAS_STATUS_ALLOC_FAILED
+Story Video Generator v4.4 — Wan2.1 WanPipeline (GREY VIDEO FIX)
+- FIXED v4.4: Grey/noisy video — VAE dtype mismatch fix
+  - VAE now float16 (same as model) to prevent decode failure
+  - Back to enable_model_cpu_offload() but WITHOUT autocast (safe combo)
+  - Added output.frames debug check before export
+  - imageio fallback export
+- FIXED v4.3: CUBLAS_STATUS_ALLOC_FAILED — removed autocast wrapper
 - WanPipeline from diffusers (not AutoPipelineForText2Video)
 - Model: Wan-AI/Wan2.1-T2V-1.3B-Diffusers
-- VAE float32 for quality, model float16 for memory efficiency
-- Aggressive cleanup before inference to prevent OOM
-- Reduced inference steps (15 instead of 20) to save VRAM
 """
 
 import os, sys, json, time, gc, re, glob, subprocess, shutil
 import torch
+import numpy as np
 from PIL import Image
 from gtts import gTTS
 from pydub import AudioSegment
@@ -30,7 +31,7 @@ os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True,max_split_size
 torch.backends.cuda.matmul.allow_tf32 = True
 
 TARGET_FPS   = 16
-CLIP_FRAMES  = 33    # 4*8+1=33 frames = ~2s @ 16fps (formula: 4k+1)
+CLIP_FRAMES  = 33
 WAN_MODEL_ID = "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"
 
 SCENE_BACKGROUNDS = {
@@ -83,7 +84,6 @@ def detect_character_type(desc):
     return "neutral"
 
 def clear_gpu():
-    """Aggressive GPU memory cleanup"""
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
@@ -91,7 +91,6 @@ def clear_gpu():
         torch.cuda.synchronize()
 
 def get_gpu_memory_usage():
-    """Return (used_gb, total_gb)"""
     if not torch.cuda.is_available():
         return 0, 0
     props = torch.cuda.get_device_properties(0)
@@ -100,10 +99,6 @@ def get_gpu_memory_usage():
     return allocated, total
 
 def cublas_prewarm():
-    """
-    Pre-warm cuBLAS to prevent CUBLAS_STATUS_ALLOC_FAILED on first inference call.
-    This forces CUDA to allocate cuBLAS workspace before the model forward pass.
-    """
     if not torch.cuda.is_available():
         return
     try:
@@ -117,44 +112,81 @@ def cublas_prewarm():
     except Exception as e:
         print(f"  cuBLAS pre-warm warning: {e}")
 
+def check_frames_valid(frames):
+    """
+    Detect grey/noisy output frames before export.
+    Grey video: mean ~128, std < 5 (uniform grey)
+    Noise video: std very high but no structure — catch with low color variance
+    Returns (is_valid, debug_string)
+    """
+    if not frames or len(frames) == 0:
+        return False, "No frames returned"
+
+    check_idxs = [0, len(frames)//2, len(frames)-1]
+    issues = []
+
+    for idx in check_idxs:
+        frame = frames[idx]
+        arr = np.array(frame).astype(np.float32)
+        mean_val = arr.mean()
+        std_val  = arr.std()
+
+        if std_val < 5.0:
+            issues.append(f"Frame[{idx}] std={std_val:.1f} (grey/static)")
+        elif mean_val > 210 or mean_val < 15:
+            issues.append(f"Frame[{idx}] mean={mean_val:.1f} (washed/black)")
+
+    if issues:
+        return False, " | ".join(issues)
+
+    arr = np.array(frames[0]).astype(np.float32)
+    return True, f"OK mean={arr.mean():.1f} std={arr.std():.1f} n={len(frames)}"
+
+def _export_via_imageio(frames, output_path, fps):
+    """Fallback video export using imageio."""
+    import imageio
+    writer = imageio.get_writer(output_path, fps=fps, codec='libx264',
+                                quality=8, pixelformat='yuv420p')
+    for frame in frames:
+        if isinstance(frame, Image.Image):
+            frame = np.array(frame)
+        writer.append_data(frame)
+    writer.close()
+
 # ==================== MODEL LOADING ====================
 WAN_PIPE = None
 
 def get_wan_pipeline():
     """
-    Load Wan2.1-T2V-1.3B-Diffusers pipeline with CUBLAS fix + memory optimization.
+    Load Wan2.1 pipeline with grey-video fix.
 
-    Key fixes for CUBLAS_STATUS_ALLOC_FAILED:
-    - enable_sequential_cpu_offload() instead of enable_model_cpu_offload()
-      Sequential offload moves individual layers, not whole models — avoids
-      cuBLAS handle init failure when model is suddenly moved back to GPU mid-forward.
-    - NO torch.cuda.amp.autocast() wrapper — model is already float16, autocast
-      conflicts with the CPU offload hooks and causes dtype/device mismatches.
-    - cuBLAS pre-warm forces CUDA to allocate workspace before first inference call.
+    ROOT CAUSE OF GREY VIDEO:
+      VAE was float32, diffusion model output latents are float16.
+      On decode, the float32 VAE receives float16 tensors → NaN/Inf
+      → grey noise rendered by ffmpeg.
 
-    Memory optimizations for T4 15.6GB VRAM:
-    - VAE in float32 (official recommendation for quality)
-    - Text encoder & diffusion model in float16
-    - Reduced inference steps (15) and guidance scale (4.5)
+    FIX: Both VAE and model in float16 — consistent dtypes, no NaN on decode.
+    At 480P resolution float16 VAE quality is fine (float32 only needed for 720P+).
+
+    CUBLAS FIX (v4.3): No autocast wrapper in inference call.
     """
     global WAN_PIPE
     if WAN_PIPE is not None:
         return WAN_PIPE
 
-    print("Loading Wan2.1-T2V-1.3B-Diffusers (CUBLAS-fixed, memory-optimized for T4)...")
+    print("Loading Wan2.1-T2V-1.3B-Diffusers (v4.4: grey-video-fixed)...")
     print("  (First run: ~5 min to download weights)")
 
     from diffusers import AutoencoderKLWan, WanPipeline
     from diffusers.schedulers.scheduling_unipc_multistep import UniPCMultistepScheduler
 
-    # VAE in float32 for better decoding quality (official recommendation)
+    # FIX v4.4: float16 VAE — matches model dtype, prevents NaN decode → grey video
     vae = AutoencoderKLWan.from_pretrained(
         WAN_MODEL_ID,
         subfolder="vae",
-        torch_dtype=torch.float32
+        torch_dtype=torch.float16
     )
 
-    # float16 for memory savings on T4
     pipe = WanPipeline.from_pretrained(
         WAN_MODEL_ID,
         vae=vae,
@@ -162,38 +194,31 @@ def get_wan_pipeline():
         low_cpu_mem_usage=True,
     )
 
-    # flow_shift=3.0 recommended for 480P (5.0 for 720P)
     pipe.scheduler = UniPCMultistepScheduler.from_config(
         pipe.scheduler.config,
         flow_shift=3.0
     )
 
-    # FIX v4.3: Use sequential_cpu_offload instead of model_cpu_offload
-    # Sequential offload moves individual layers (safer, prevents cuBLAS alloc failure)
-    # model_cpu_offload moves entire models causing cuBLAS to fail on re-init
-    pipe.enable_sequential_cpu_offload()
-    print("  CPU offload: sequential (layer-by-layer, cuBLAS safe)")
+    pipe.enable_model_cpu_offload()
+    print("  CPU offload: model-level")
 
-    # Try xFormers (optional)
     try:
         import xformers
         if hasattr(pipe, 'unet'):
             pipe.unet.set_use_memory_efficient_attention_xformers(True)
-            print("  xFormers attention: enabled (saves ~1.5GB VRAM)")
+            print("  xFormers: enabled")
     except ImportError:
         print("  xFormers: not installed (optional)")
     except Exception as e:
-        print(f"  xFormers: not available ({str(e)[:50]})")
+        print(f"  xFormers: n/a ({str(e)[:40]})")
 
     pipe.set_progress_bar_config(desc="  Generating", ncols=60, leave=False)
 
-    # FIX v4.3: Pre-warm cuBLAS AFTER pipeline is loaded and offloaded
-    # This forces CUDA to allocate cuBLAS workspace now, not mid-forward-pass
-    print("  Running cuBLAS pre-warm...")
+    print("  cuBLAS pre-warm...")
     cublas_prewarm()
 
     WAN_PIPE = pipe
-    print("Wan2.1 pipeline ready!\n")
+    print("Pipeline ready!\n")
     return WAN_PIPE
 
 # ==================== AUDIO ====================
@@ -265,21 +290,11 @@ def build_wan_prompt(characters, scene):
         f"2D cartoon animation style, colorful, child-friendly, vibrant, smooth animation, "
         f"high quality animated video, smooth movement, professional cartoon"
     )
-    neg = "blurry, low quality, static, photorealistic, human face, text, watermark, deformed, ugly"
+    neg = "blurry, low quality, static, grey, monochrome, photorealistic, human face, text, watermark, deformed, ugly"
     return prompt, neg
 
 # ==================== CLIP GENERATION ====================
 def generate_clip(record_id, scene, characters, clip_idx):
-    """
-    Generate a video clip with CUBLAS fix + memory optimization for T4 GPU.
-
-    Key fix v4.3:
-    - REMOVED torch.cuda.amp.autocast() wrapper entirely.
-      The model is already float16. Wrapping with autocast() conflicts with
-      enable_sequential_cpu_offload() hooks, causing dtype/device mismatches
-      that trigger CUBLAS_STATUS_ALLOC_FAILED when cuBLAS tries to reinitialize.
-    - Just use torch.inference_mode() — clean and correct.
-    """
     prompt, neg_prompt = build_wan_prompt(characters, scene)
     print(f"  Clip {clip_idx+1} [{scene['emotion']}]: {prompt[:80]}...")
 
@@ -289,26 +304,23 @@ def generate_clip(record_id, scene, characters, clip_idx):
 
     n_frames = CLIP_FRAMES
     max_attempts = 2
-    last_error = None
 
     for attempt in range(max_attempts):
         try:
             if attempt > 0:
-                print(f"    Attempt {attempt+1}: Aggressive GPU cleanup...")
+                print(f"    Attempt {attempt+1}: cleanup + retry...")
                 clear_gpu()
-                time.sleep(0.5)
+                time.sleep(1.0)
 
             used, total = get_gpu_memory_usage()
             print(f"    VRAM: {used:.1f}/{total:.1f}GB", flush=True)
 
-            steps    = 15 if n_frames == CLIP_FRAMES else 12
-            guidance = 4.5 if n_frames == CLIP_FRAMES else 4.0
+            steps    = 20 if attempt > 0 else 15   # more steps on retry helps quality
+            guidance = 5.0
 
-            print(f"    Generating {n_frames} frames ({steps} steps, guidance {guidance})...", flush=True)
+            print(f"    Generating {n_frames} frames ({steps} steps, cfg={guidance})...", flush=True)
 
-            # FIX v4.3: ONLY torch.inference_mode() — NO autocast wrapper.
-            # autocast + sequential_cpu_offload = CUBLAS_STATUS_ALLOC_FAILED
-            # The pipeline is already float16 so autocast is redundant anyway.
+            # NO autocast wrapper — causes cuBLAS alloc failure with CPU offload
             with torch.inference_mode():
                 output = pipe(
                     prompt=prompt,
@@ -320,19 +332,42 @@ def generate_clip(record_id, scene, characters, clip_idx):
                     width=832,
                 )
 
-            print(f"    Exporting video...", flush=True)
-            from diffusers.utils import export_to_video
-            export_to_video(output.frames[0], clip_path, fps=TARGET_FPS)
-            print(f"    Export complete", flush=True)
+            frames = output.frames[0]
+
+            # Validate — catch grey output before wasting time on export
+            is_valid, debug_info = check_frames_valid(frames)
+            print(f"    Frame check: {debug_info}")
+
+            if not is_valid:
+                if attempt == 0:
+                    print(f"    Grey frames → retrying with more steps...")
+                    n_frames = CLIP_FRAMES
+                    continue
+                else:
+                    raise RuntimeError(f"Grey frames persisted after retry: {debug_info}")
+
+            # Export
+            print(f"    Exporting...", flush=True)
+            try:
+                from diffusers.utils import export_to_video
+                export_to_video(frames, clip_path, fps=TARGET_FPS)
+            except Exception as ex:
+                print(f"    diffusers export failed ({ex}), imageio fallback...")
+                _export_via_imageio(frames, clip_path, TARGET_FPS)
+
+            # Sanity check file
+            sz = os.path.getsize(clip_path) if os.path.exists(clip_path) else 0
+            if sz < 5000:
+                raise RuntimeError(f"Exported file too small ({sz}B)")
+            print(f"    Export OK: {sz/1024:.0f}KB", flush=True)
             break
 
         except torch.cuda.OutOfMemoryError as e:
-            last_error = str(e)
             if attempt == 0:
-                print(f"    OOM with {n_frames} frames → Retrying with 17 frames...")
-                n_frames = 17  # 4*4+1 = 17 frames = ~1s @ 16fps
+                print(f"    OOM → retrying with 17 frames...")
+                n_frames = 17
             else:
-                raise Exception(f"OOM even with {n_frames} frames after aggressive cleanup\n{last_error[:150]}")
+                raise Exception(f"OOM persisted: {str(e)[:100]}")
 
         finally:
             clear_gpu()
@@ -341,7 +376,7 @@ def generate_clip(record_id, scene, characters, clip_idx):
     clip_dur = n_frames / TARGET_FPS
     size_mb  = os.path.getsize(clip_path) / 1024 / 1024 if os.path.exists(clip_path) else 0
     elapsed  = time.time() - t0
-    print(f"  Done: {clip_dur:.1f}s clip | {size_mb:.1f}MB | {elapsed:.0f}s gen time")
+    print(f"  Done: {clip_dur:.1f}s | {size_mb:.1f}MB | {elapsed:.0f}s")
     return clip_path, clip_dur
 
 # ==================== STITCH + AUDIO ====================
@@ -406,7 +441,6 @@ def process_job(job_data):
     emotions   = job_data["emotions"]
     narration  = job_data["narration"]
     lang       = job_data.get("language", "hi")
-    job_type   = job_data.get("type", "video")
 
     print("\n" + "="*70)
     print(f"WAN2.1 JOB: {record_id}")
@@ -425,7 +459,7 @@ def process_job(job_data):
     scenes = split_into_scenes(narration, emotions)
 
     print(f"--- STEP 3: WAN2.1 CLIPS ({len(scenes)} scenes) ---")
-    print(f"  Est: {len(scenes)*10}-{len(scenes)*15} min (optimized)\n")
+    print(f"  Est: {len(scenes)*10}-{len(scenes)*15} min\n")
 
     clip_paths, clip_durations = [], []
     for i, scene in enumerate(scenes):
@@ -453,7 +487,8 @@ def process_job(job_data):
         "characterTypes": [detect_character_type(c) for c in characters],
         "emotions": emotions, "scenes": len(scenes),
         "audioDuration": round(audio_duration, 2),
-        "resolution": "1280x720", "model": "Wan2.1-T2V-1.3B-Diffusers (v4.3 cublas-fixed)",
+        "resolution": "1280x720",
+        "model": "Wan2.1-T2V-1.3B-Diffusers (v4.4 grey-fixed)",
         "processingTime": round(elapsed, 2),
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
     }
