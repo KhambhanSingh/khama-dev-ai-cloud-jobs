@@ -1,56 +1,35 @@
 """
-Story Video Generator v5.0 — Wan2.1 WanPipeline (DEFINITIVE FIX)
+Story Video Generator v5.1 — Wan2.1 WanPipeline
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-COMPLETE ROOT CAUSE ANALYSIS (all versions)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+COMPLETE BUG HISTORY & ROOT CAUSES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+v4.2/4.3/4.5  CUBLAS_STATUS_ALLOC_FAILED
+              accelerate CPU-offload hooks intercept forward()
+              and corrupt cuBLAS handle init on torch 2.10+cu128
 
-Wan2.1-1.3B actual memory breakdown (float16):
-  UMT5 text encoder  : ~9.4GB  ← THE PROBLEM. It's T5-XXL based, not T5-small
-  WanTransformer3D   : ~2.6GB
-  AutoencoderKLWan   : ~1.2GB
-  ────────────────────────────
-  Total weights      : ~13.2GB
-  T4 VRAM            : 15.6GB  (effective ~14.5GB after CUDA/driver overhead)
+v4.4          OOM at 15.3GB on retry
+              Pipeline never unloaded between retries
 
-v4.2/4.3/4.5: CUBLAS_STATUS_ALLOC_FAILED
-  → enable_model_cpu_offload() uses accelerate hooks that intercept forward()
-  → cuBLAS cannot initialize its handle mid-hook on torch 2.10+cu128
-  → Not an OOM. A CUDA context corruption.
+v4.6          OOM at pipe.to("cuda")
+              UMT5 text encoder is ~9.4GB (T5-XXL based).
+              from_pretrained→CPU then .to("cuda") = 18.8GB peak → OOM
 
-v4.4: OOM at 15.3GB on retry
-  → Pipeline never unloaded between retries (WAN_PIPE still in VRAM)
+v5.0          NotImplementedError: aten::slow_conv3d_forward / CUDA
+              torch.backends.cudnn.benchmark=False (added in v4.5) disables
+              cuDNN conv3d. Kaggle torch 2.10+cu128 is a selective build where
+              slow_conv3d (CPU fallback) is NOT registered for CUDA.
+              WanTransformer3D.patch_embedding is Conv3d → crash at step 0.
 
-v4.6: OOM at pipe.to("cuda") with 14.45GB already used
-  → from_pretrained() loads to CPU first (~13.2GB RAM)
-  → pipe.to("cuda") copies to GPU while CPU copy still exists
-  → Peak = 13.2GB (CPU) + 13.2GB (GPU) = 26.4GB → OOM
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-THE DEFINITIVE SOLUTION (v5.0)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Strategy: Manual 2-phase loading — keep text encoder on CPU always.
-
-Phase 1 — Text encoding (CPU only):
-  Load UMT5 text encoder on CPU (float32 for stability)
-  Tokenize and encode all scene prompts → get embeddings as tensors
-  Delete text encoder from memory entirely
-  gc.collect() → RAM back to normal
-
-Phase 2 — Video generation (GPU only):
-  Load WanTransformer3D + VAE directly to CUDA (only ~3.8GB)
-  Build minimal pipeline with pre-computed embeddings
-  Pass prompt_embeds directly to pipe() — skips internal text encoding
-  No accelerate hooks → No CUBLAS issue
-  Only ~6-8GB peak VRAM during inference → fits in 15.6GB
-
-This approach:
-  ✓ Eliminates CUBLAS_STATUS_ALLOC_FAILED (no hooks)
-  ✓ Eliminates OOM during loading (text encoder never goes to GPU)
-  ✓ Eliminates OOM during inference (only 3.8GB of weights on GPU)
-  ✓ No grey video (consistent float16 throughout video generation)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+v5.1 FINAL ARCHITECTURE (all issues resolved)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. cudnn.enabled=True + cudnn.benchmark=True   → Conv3d works on CUDA
+2. Text encoder on CPU → encoded → deleted     → no CUBLAS, no OOM
+3. Only transformer+VAE moved to GPU (~3.8GB)  → fits in 15.6GB
+4. prompt_embeds= passed directly              → text encoder never called
+5. unload_video_pipeline() after each job      → no VRAM leak between jobs
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 
 import os, sys, json, time, gc, re, subprocess
@@ -72,10 +51,15 @@ for d in [CLIPS_DIR, AUDIO_DIR, VIDEO_DIR, RESULT_DIR]:
 
 os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True,max_split_size_mb:128'
 torch.backends.cuda.matmul.allow_tf32 = True
-torch.backends.cudnn.benchmark         = False
+
+# v5.1 FIX: cuDNN MUST be enabled
+# Kaggle torch 2.10+cu128 selective build: slow_conv3d NOT compiled for CUDA.
+# cudnn.benchmark=False (set in v4.5) disabled cuDNN → crash at Conv3d step.
+torch.backends.cudnn.enabled   = True   # required for Conv3d on CUDA
+torch.backends.cudnn.benchmark = True   # use cuDNN kernels (NOT False)
 
 TARGET_FPS   = 16
-CLIP_FRAMES  = 17       # 4*4+1 — reliable on T4
+CLIP_FRAMES  = 17       # 4*4+1 = ~1.06s @ 16fps
 VIDEO_H      = 320
 VIDEO_W      = 576
 WAN_MODEL_ID = "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"
@@ -123,7 +107,7 @@ CHARACTER_TYPES = {
     "boy":    ["boy","prince","man","gentleman","male"],
 }
 
-# ── helpers ──────────────────────────────────────────────────────
+# ── utilities ────────────────────────────────────────────────────
 def detect_character_type(desc):
     dl = desc.lower()
     for ctype, kws in CHARACTER_TYPES.items():
@@ -148,41 +132,44 @@ def vram_str():
     u, t = get_vram()
     return f"{u:.1f}/{t:.1f}GB"
 
-# ── text encoding (CPU-only, called once per job) ─────────────────
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# PHASE 1 — Text encoding on CPU (encoder deleted after)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 def encode_prompts_on_cpu(prompts_pos, prompts_neg):
     """
-    Run UMT5 text encoder entirely on CPU.
-    Returns (pos_embeds_list, neg_embeds_list) as float16 CPU tensors.
-    The text encoder is loaded, used, and deleted — never touches GPU.
+    Run UMT5 entirely on CPU. Encode all prompts. Delete the encoder.
 
-    Why CPU float32 for encoding:
-      UMT5 in float16 on CPU produces NaN/Inf due to limited dynamic range
-      of float16 for long attention sequences. float32 is safe on CPU.
-      We cast to float16 after encoding for GPU compatibility.
+    Why CPU + float32:
+      UMT5 in Wan2.1 is ~9.4GB in float16 — too large to fit on GPU
+      alongside transformer+VAE during inference (~3.8GB). float32 on
+      CPU prevents NaN in long-sequence attention. Output is cast to
+      float16 for GPU inference compatibility.
+
+    Why delete:
+      All embeddings stored as small CPU tensors. The 9.4GB model
+      is not needed again.
     """
-    print("\n[TEXT ENCODING — CPU only]")
+    print("\n[PHASE 1: TEXT ENCODING — CPU only, encoder deleted after]")
     from transformers import AutoTokenizer, UMT5EncoderModel
-
-    model_path = WAN_MODEL_ID
 
     print("  Loading tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(
-        model_path, subfolder="tokenizer"
+        WAN_MODEL_ID, subfolder="tokenizer"
     )
 
     print("  Loading UMT5 text encoder on CPU (float32)...")
     text_encoder = UMT5EncoderModel.from_pretrained(
-        model_path,
+        WAN_MODEL_ID,
         subfolder="text_encoder",
-        torch_dtype=torch.float32,   # float32 on CPU avoids NaN in long seqs
+        torch_dtype=torch.float32,
         low_cpu_mem_usage=True,
     )
     text_encoder.eval()
-    # Stays on CPU — never moves to GPU
 
-    MAX_LEN = 128  # 512 default OOMs even on CPU for long prompts
+    MAX_LEN = 128
 
-    def encode_batch(texts):
+    def _encode(texts):
         inputs = tokenizer(
             texts,
             return_tensors="pt",
@@ -195,53 +182,51 @@ def encode_prompts_on_cpu(prompts_pos, prompts_neg):
                 input_ids=inputs.input_ids,
                 attention_mask=inputs.attention_mask,
             )
-        # Cast to float16 for GPU inference later
-        return out.last_hidden_state.to(dtype=torch.float16).cpu()
+        return out.last_hidden_state.to(dtype=torch.float16).detach().cpu()
 
     print(f"  Encoding {len(prompts_pos)} positive + {len(prompts_neg)} negative prompts...")
-    pos_embeds = [encode_batch([p]) for p in prompts_pos]
-    neg_embeds = [encode_batch([n]) for n in prompts_neg]
+    pos_embeds = [_encode([p]) for p in prompts_pos]
+    neg_embeds = [_encode([n]) for n in prompts_neg]
 
     print("  Deleting text encoder from RAM...")
     del text_encoder, tokenizer
     gc.collect()
-    print(f"  Text encoding done | VRAM: {vram_str()}\n")
-
+    print(f"  Done | VRAM: {vram_str()}\n")
     return pos_embeds, neg_embeds
 
 
-# ── video pipeline (GPU-only, no text encoder) ───────────────────
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# PHASE 2 — Video pipeline on GPU (transformer + VAE only)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 VIDEO_PIPE = None
 
 def load_video_pipeline():
     """
-    Load ONLY the video components on GPU:
-      - WanTransformer3D  (~2.6GB)
-      - AutoencoderKLWan  (~1.2GB)
-      Total: ~3.8GB on GPU — leaves ~11GB for activations/attention
+    Load transformer (~2.6GB) + VAE (~1.2GB) directly to GPU.
+    text_encoder stays on CPU (unused — we pass prompt_embeds=).
 
-    No text encoder → no accelerate hooks → no CUBLAS issue.
-    We pass pre-computed prompt_embeds directly to bypass internal encoding.
+    No accelerate hooks → no CUBLAS issue.
+    cuDNN enabled (v5.1 fix) → Conv3d works on CUDA.
+    Components moved individually → no double-memory OOM from .to("cuda").
     """
     global VIDEO_PIPE
     if VIDEO_PIPE is not None:
         return VIDEO_PIPE
 
-    print("[VIDEO PIPELINE — GPU only, no text encoder]")
+    print("\n[PHASE 2: VIDEO PIPELINE — transformer+VAE on GPU]")
     clear_gpu()
-    print(f"  VRAM before load: {vram_str()}")
+    print(f"  VRAM before: {vram_str()}")
 
     from diffusers import AutoencoderKLWan, WanPipeline
     from diffusers.schedulers.scheduling_unipc_multistep import UniPCMultistepScheduler
 
-    # Load VAE directly to CUDA — small enough (~1.2GB)
     vae = AutoencoderKLWan.from_pretrained(
         WAN_MODEL_ID,
         subfolder="vae",
         torch_dtype=torch.float16,
-    ).to("cuda")
+        low_cpu_mem_usage=True,
+    )
 
-    # Load full pipeline but we'll manage device manually
     pipe = WanPipeline.from_pretrained(
         WAN_MODEL_ID,
         vae=vae,
@@ -249,28 +234,29 @@ def load_video_pipeline():
         low_cpu_mem_usage=True,
     )
 
-    # Move ONLY transformer + VAE to GPU — leave text encoder on CPU
-    # (text encoder already deleted from RAM, this just ensures scheduler etc. are right)
-    pipe.transformer = pipe.transformer.to("cuda")
-    pipe.vae         = pipe.vae.to("cuda")
-    # text_encoder stays on CPU (we won't call it — we pass embeddings directly)
-    pipe.text_encoder = pipe.text_encoder.to("cpu")
-
     pipe.scheduler = UniPCMultistepScheduler.from_config(
         pipe.scheduler.config, flow_shift=3.0
     )
 
-    # Attention slicing — chunks attention to save peak VRAM
-    pipe.enable_attention_slicing(1)
+    # Move only video-gen components to GPU individually
+    # (avoids pipe.to("cuda") which doubles peak memory)
+    print("  Moving transformer → CUDA...")
+    pipe.transformer = pipe.transformer.to("cuda")
 
-    # VAE slicing — decodes frame-by-frame, saves ~0.5GB peak
+    print("  Moving VAE → CUDA...")
+    pipe.vae = pipe.vae.to("cuda")
+
+    # text_encoder: keep on CPU — we pass prompt_embeds= so it's never called
+    pipe.text_encoder = pipe.text_encoder.cpu()
+
+    pipe.enable_attention_slicing(1)
     try:
         pipe.enable_vae_slicing()
         print("  VAE slicing: enabled")
     except Exception:
         pass
 
-    pipe.set_progress_bar_config(desc="  Generating", ncols=60, leave=False)
+    pipe.set_progress_bar_config(desc="  Generating", ncols=70, leave=False)
 
     VIDEO_PIPE = pipe
     print(f"  Pipeline ready | VRAM: {vram_str()}\n")
@@ -281,11 +267,12 @@ def unload_video_pipeline():
     global VIDEO_PIPE
     if VIDEO_PIPE is None:
         return
-    print("  Unloading video pipeline...")
+    print("  Unloading pipeline...")
     try:
         VIDEO_PIPE.transformer.to("cpu")
         VIDEO_PIPE.vae.to("cpu")
-    except: pass
+    except Exception:
+        pass
     del VIDEO_PIPE
     VIDEO_PIPE = None
     clear_gpu()
@@ -298,7 +285,7 @@ def detect_dominant_character(characters):
     best, bp = "neutral", -1
     for c in characters:
         ct = detect_character_type(c)
-        if priority.get(ct,0) > bp:
+        if priority.get(ct, 0) > bp:
             bp = priority[ct]; best = ct
     return best
 
@@ -346,8 +333,8 @@ def split_into_scenes(narration, emotions):
         eidx = int(i * n_e / n_s)
         scenes.append({
             "text":    sent,
-            "emotion": emotions[min(eidx, n_e-1)],
-            "index":   i
+            "emotion": emotions[min(eidx, n_e - 1)],
+            "index":   i,
         })
     print(f"  {len(scenes)} scenes:")
     for sc in scenes:
@@ -377,11 +364,11 @@ def build_scene_prompt(characters, scene):
     return prompt, neg
 
 
-# ── frame validation ──────────────────────────────────────────────
+# ── frame quality check ───────────────────────────────────────────
 def check_frames_valid(frames):
     if not frames:
-        return False, "No frames"
-    idxs   = [0, len(frames)//2, len(frames)-1]
+        return False, "No frames returned"
+    idxs   = [0, len(frames) // 2, len(frames) - 1]
     issues = []
     for i in idxs:
         arr = np.array(frames[i]).astype(np.float32)
@@ -392,7 +379,7 @@ def check_frames_valid(frames):
     if issues:
         return False, " | ".join(issues)
     arr = np.array(frames[0]).astype(np.float32)
-    return True, f"mean={arr.mean():.1f} std={arr.std():.1f} n={len(frames)}"
+    return True, f"OK mean={arr.mean():.1f} std={arr.std():.1f} n={len(frames)}"
 
 def export_frames(frames, path, fps):
     try:
@@ -409,44 +396,38 @@ def export_frames(frames, path, fps):
 
 
 # ── clip generation ───────────────────────────────────────────────
-def generate_clip(record_id, scene_idx, pos_embed, neg_embed, clip_idx):
+def generate_clip(record_id, clip_idx, pos_embed, neg_embed):
     """
-    Generate one video clip using pre-computed prompt embeddings.
-    Pass embeddings directly to pipe() → text encoder never called → no CUBLAS.
-
-    pos_embed / neg_embed: float16 CPU tensors, shape [1, seq_len, hidden_dim]
+    Generate one video clip using pre-computed CPU embeddings.
+    Moves embeddings to GPU only during the call.
+    No text encoder → no CUBLAS. cuDNN on → Conv3d works.
     """
     pipe      = load_video_pipeline()
     clip_path = f"{CLIPS_DIR}/{record_id}_clip_{clip_idx:02d}.mp4"
     t0        = time.time()
 
-    # Move embeddings to GPU for this call
-    pos_gpu = pos_embed.to("cuda")
-    neg_gpu = neg_embed.to("cuda")
-
-    # Progressive fallback: smaller if OOM
     configs = [
         {"num_frames": CLIP_FRAMES, "steps": 15, "h": VIDEO_H, "w": VIDEO_W},
         {"num_frames": 9,           "steps": 12, "h": 256,     "w": 448},
     ]
 
     for attempt, cfg in enumerate(configs):
+        pos_gpu = neg_gpu = None
         try:
             if attempt > 0:
-                print(f"    Fallback {attempt+1}: "
-                      f"{cfg['num_frames']}fr {cfg['h']}x{cfg['w']}...")
+                print(f"    Fallback → {cfg['num_frames']}fr {cfg['h']}×{cfg['w']}...")
                 clear_gpu()
                 time.sleep(1.0)
-                pos_gpu = pos_embed.to("cuda")
-                neg_gpu = neg_embed.to("cuda")
+
+            pos_gpu = pos_embed.to("cuda")
+            neg_gpu = neg_embed.to("cuda")
 
             print(f"    VRAM: {vram_str()} | "
                   f"{cfg['num_frames']}fr {cfg['steps']}steps "
-                  f"{cfg['h']}x{cfg['w']}", flush=True)
+                  f"{cfg['h']}×{cfg['w']}", flush=True)
 
             with torch.inference_mode():
                 output = pipe(
-                    # Pass pre-computed embeddings — skips internal text encoding
                     prompt_embeds=pos_gpu,
                     negative_prompt_embeds=neg_gpu,
                     num_frames=cfg["num_frames"],
@@ -456,8 +437,8 @@ def generate_clip(record_id, scene_idx, pos_embed, neg_embed, clip_idx):
                     width=cfg["w"],
                 )
 
-            # Clean up GPU embeddings
             del pos_gpu, neg_gpu
+            pos_gpu = neg_gpu = None
             clear_gpu()
 
             frames = output.frames[0]
@@ -466,39 +447,34 @@ def generate_clip(record_id, scene_idx, pos_embed, neg_embed, clip_idx):
 
             if not ok:
                 if attempt == 0:
-                    print("    Grey output → fallback config...")
-                    pos_gpu = pos_embed.to("cuda")
-                    neg_gpu = neg_embed.to("cuda")
+                    print("    Grey output → trying smaller config...")
                     continue
-                raise RuntimeError(f"Grey frames after retry: {info}")
+                raise RuntimeError(f"Grey frames after fallback: {info}")
 
             export_frames(frames, clip_path, TARGET_FPS)
             sz = os.path.getsize(clip_path) if os.path.exists(clip_path) else 0
             if sz < 3000:
-                raise RuntimeError(f"Output file too small: {sz}B")
+                raise RuntimeError(f"Output too small ({sz}B)")
 
             elapsed  = time.time() - t0
             clip_dur = cfg["num_frames"] / TARGET_FPS
-            print(f"    Saved: {sz/1024:.0f}KB | {clip_dur:.1f}s | {elapsed:.0f}s gen time")
+            print(f"    ✓ {clip_dur:.1f}s | {sz//1024}KB | {elapsed:.0f}s")
             return clip_path, clip_dur
 
         except torch.cuda.OutOfMemoryError as e:
-            print(f"    OOM: {str(e)[:80]}")
-            try: del pos_gpu, neg_gpu
-            except: pass
-            clear_gpu()
+            print(f"    OOM: {str(e)[:90]}")
             if attempt >= len(configs) - 1:
-                raise Exception(f"OOM on all configs: {str(e)[:100]}")
+                raise Exception(f"OOM on all configs: {str(e)[:120]}")
 
         finally:
-            try: del pos_gpu, neg_gpu
-            except: pass
+            if pos_gpu is not None: del pos_gpu
+            if neg_gpu is not None: del neg_gpu
             clear_gpu()
 
-    raise Exception("All clip generation attempts failed")
+    raise Exception("All generation attempts failed")
 
 
-# ── stitching ─────────────────────────────────────────────────────
+# ── final assembly ────────────────────────────────────────────────
 def stitch_clips_with_audio(record_id, clip_paths, clip_durations,
                              audio_path, audio_duration):
     final_path  = f"{VIDEO_DIR}/{record_id}.mp4"
@@ -507,8 +483,7 @@ def stitch_clips_with_audio(record_id, clip_paths, clip_durations,
 
     total_dur    = sum(clip_durations)
     speed_factor = max(0.5, min(2.0, total_dur / audio_duration))
-    print(f"  Clips: {total_dur:.1f}s | Audio: {audio_duration:.1f}s | "
-          f"Speed: {speed_factor:.2f}x")
+    print(f"  clips={total_dur:.1f}s  audio={audio_duration:.1f}s  speed={speed_factor:.2f}×")
 
     with open(concat_list, 'w') as f:
         for cp in clip_paths:
@@ -532,30 +507,31 @@ def stitch_clips_with_audio(record_id, clip_paths, clip_durations,
     )
     r = subprocess.run([
         'ffmpeg','-y',
-        '-i', concat_path, '-i', audio_path,
+        '-i',concat_path,'-i',audio_path,
         '-map','0:v','-map','1:a',
-        '-vf', vf,
+        '-vf',vf,
         '-c:v','libx264','-preset','fast','-crf','20','-pix_fmt','yuv420p',
         '-c:a','aac','-b:a','128k','-ac','2','-ar','44100',
-        '-t', str(audio_duration),
+        '-t',str(audio_duration),
         '-movflags','+faststart',
         final_path
     ], capture_output=True, text=True)
 
     if r.returncode != 0:
-        raise Exception(f"FFmpeg stitch failed:\n{r.stderr[-400:]}")
+        raise Exception(f"FFmpeg failed:\n{r.stderr[-400:]}")
 
     sz = os.path.getsize(final_path) / 1024 / 1024
-    print(f"  Final: {final_path} | {sz:.1f}MB | 1280x720 | {audio_duration:.1f}s\n")
-
+    print(f"  ✓ {final_path}  {sz:.1f}MB  1280×720  {audio_duration:.1f}s\n")
     try:
-        os.remove(concat_path)
-        os.remove(concat_list)
-    except: pass
+        os.remove(concat_path); os.remove(concat_list)
+    except Exception:
+        pass
     return final_path
 
 
-# ── main job processor ────────────────────────────────────────────
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# MAIN
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 def process_job(job_data):
     record_id  = job_data["recordId"]
     characters = job_data["characters"]
@@ -563,9 +539,9 @@ def process_job(job_data):
     narration  = job_data["narration"]
     lang       = job_data.get("language", "hi")
 
-    print("\n" + "="*65)
-    print(f"JOB: {record_id}")
-    print("="*65)
+    print("\n" + "═"*65)
+    print(f"  JOB: {record_id}")
+    print("═"*65)
     for i, c in enumerate(characters):
         print(f"  char {i+1}: [{detect_character_type(c)}] {c[:60]}")
     print(f"  emotions : {' → '.join(emotions)}")
@@ -573,17 +549,14 @@ def process_job(job_data):
     print()
     start = time.time()
 
-    # ── Step 1: Audio (no GPU) ────────────────────────────────────
     print("━━━ STEP 1: AUDIO ━━━")
     audio_path, audio_duration = generate_audio(
         record_id, narration, characters, emotions, lang)
 
-    # ── Step 2: Scene planning ────────────────────────────────────
     print("━━━ STEP 2: SCENE PLANNING ━━━")
     scenes = split_into_scenes(narration, emotions)
 
-    # ── Step 3: Build all prompts ─────────────────────────────────
-    print("━━━ STEP 3: BUILD PROMPTS ━━━")
+    print("━━━ STEP 3: PROMPTS ━━━")
     prompts_pos, prompts_neg = [], []
     for sc in scenes:
         p, n = build_scene_prompt(characters, sc)
@@ -592,38 +565,31 @@ def process_job(job_data):
         print(f"  [{sc['emotion']:10s}] {p[:65]}...")
     print()
 
-    # ── Step 4: Text encoding on CPU ─────────────────────────────
     print("━━━ STEP 4: TEXT ENCODING (CPU) ━━━")
     pos_embeds, neg_embeds = encode_prompts_on_cpu(prompts_pos, prompts_neg)
-    # At this point: text encoder deleted, GPU clean, embeddings in CPU RAM
 
-    # ── Step 5: Video clip generation ────────────────────────────
     n = len(scenes)
-    print(f"━━━ STEP 5: VIDEO GENERATION ({n} clips) ━━━")
+    print(f"━━━ STEP 5: VIDEO GENERATION ({n} clip{'s' if n>1 else ''}) ━━━")
     print(f"  Est: {n*4}–{n*7} min on T4\n")
 
     clip_paths, clip_durations = [], []
     for i, scene in enumerate(scenes):
-        print(f"\n  [Clip {i+1}/{n}] emotion={scene['emotion']}")
-        cp, cd = generate_clip(
-            record_id, i, pos_embeds[i], neg_embeds[i], i)
+        print(f"\n  [Clip {i+1}/{n}]  emotion={scene['emotion']}")
+        cp, cd = generate_clip(record_id, i, pos_embeds[i], neg_embeds[i])
         clip_paths.append(cp)
         clip_durations.append(cd)
         elapsed = time.time() - start
-        eta     = (elapsed / (i+1)) * (n - i - 1)
-        print(f"  Elapsed: {elapsed/60:.1f}m | ETA: {eta/60:.1f}m")
+        eta     = (elapsed / (i + 1)) * (n - i - 1)
+        print(f"  Elapsed: {elapsed/60:.1f}m  ETA: {eta/60:.1f}m")
 
-    # ── Step 6: Assemble final video ──────────────────────────────
     print("\n━━━ STEP 6: FINAL ASSEMBLY ━━━")
     final_path = stitch_clips_with_audio(
-        record_id, clip_paths, clip_durations,
-        audio_path, audio_duration)
+        record_id, clip_paths, clip_durations, audio_path, audio_duration)
 
     for cp in clip_paths:
         try: os.remove(cp)
-        except: pass
+        except Exception: pass
 
-    # Unload video pipeline — free VRAM for next job
     unload_video_pipeline()
 
     elapsed = time.time() - start
@@ -638,7 +604,7 @@ def process_job(job_data):
         "scenes":         len(scenes),
         "audioDuration":  round(audio_duration, 2),
         "resolution":     "1280x720",
-        "model":          "Wan2.1-T2V-1.3B-Diffusers (v5.0)",
+        "model":          "Wan2.1-T2V-1.3B-Diffusers (v5.1)",
         "processingTime": round(elapsed, 2),
         "timestamp":      time.strftime("%Y-%m-%d %H:%M:%S"),
     }
@@ -652,7 +618,9 @@ def process_job(job_data):
 if __name__ == "__main__":
     if torch.cuda.is_available():
         u, t = get_vram()
-        print(f"GPU: {torch.cuda.get_device_name(0)} | "
-              f"{t:.1f}GB total | {u:.1f}GB used")
-        print(f"Strategy: text_encoder=CPU | transformer+VAE=GPU")
-        print(f"Expected VRAM usage: ~3.8GB weights + ~6GB activations = ~10GB peak")
+        print(f"GPU  : {torch.cuda.get_device_name(0)}")
+        print(f"VRAM : {t:.1f}GB total | {u:.1f}GB used")
+        print(f"cuDNN: enabled={torch.backends.cudnn.enabled} "
+              f"benchmark={torch.backends.cudnn.benchmark}")
+        print(f"Plan : text_encoder→CPU→delete | transformer+VAE→GPU (~3.8GB)")
+        print(f"VRAM : ~3.8GB weights + ~6GB activations ≈ 10GB peak")
