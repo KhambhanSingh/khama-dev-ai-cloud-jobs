@@ -13,7 +13,7 @@ from PIL import Image, ImageFilter
 from gtts import gTTS
 from pydub import AudioSegment
 from pydub.effects import speedup
-from diffusers import DiffusionPipeline, AutoPipelineForImage2Image
+from diffusers import AutoPipelineForText2Image, AutoPipelineForImage2Image
 
 # ==================== DIRECTORIES ====================
 BASE_DIR   = "cloud-jobs"
@@ -85,25 +85,29 @@ def clear_gpu():
         torch.cuda.synchronize()
 
 # ==================== MODEL LOADING ====================
-MODEL = None
+# Two pipelines sharing weights — no extra VRAM cost
+MODEL_T2I = None   # text → image  (master frame)
+MODEL_I2I = None   # image → image (scene variations)
 
-def get_model():
-    global MODEL
-    if MODEL is None:
-        print("🔧 Loading SDXL-Turbo model...")
-        pipe = DiffusionPipeline.from_pretrained(
+def get_models():
+    global MODEL_T2I, MODEL_I2I
+    if MODEL_T2I is None:
+        print("🔧 Loading SDXL-Turbo text2img...")
+        MODEL_T2I = AutoPipelineForText2Image.from_pretrained(
             "stabilityai/sdxl-turbo",
             torch_dtype=torch.float16,
             variant="fp16",
             use_safetensors=True
         ).to("cuda")
-        pipe.enable_attention_slicing()
-        pipe.enable_vae_slicing()
-        pipe.enable_vae_tiling()
-        pipe.set_progress_bar_config(disable=True)
-        MODEL = pipe
-        print("✅ Model loaded!\n")
-    return MODEL
+        MODEL_T2I.enable_attention_slicing()
+        MODEL_T2I.enable_vae_slicing()
+        MODEL_T2I.enable_vae_tiling()
+        MODEL_T2I.set_progress_bar_config(disable=True)
+        print("🔧 Loading img2img pipeline (shared weights)...")
+        MODEL_I2I = AutoPipelineForImage2Image.from_pipe(MODEL_T2I)
+        MODEL_I2I.set_progress_bar_config(disable=True)
+        print("✅ Both pipelines ready!\n")
+    return MODEL_T2I, MODEL_I2I
 
 # ==================== AUDIO ====================
 def detect_dominant_character(characters):
@@ -221,20 +225,22 @@ def build_scene_prompt(characters, emotion, scene_text, master_prompt):
     return prompt
 
 # ==================== IMAGE GENERATION ====================
-def generate_master_image(record_id, characters):
+def generate_master_image(record_id, characters, pipe_t2i=None):
     """Generate ONE master character image — used as base for ALL scenes"""
     print("🎨 Generating master character image...")
-    pipe = get_model()
+    if pipe_t2i is None:
+        pipe_t2i, _ = get_models()
     master_prompt = build_master_prompt(characters)
 
     print(f"   Prompt: {master_prompt[:100]}...")
 
     with torch.inference_mode():
-        result = pipe(
+        result = pipe_t2i(
             prompt=master_prompt,
+            negative_prompt="blurry, low quality, deformed, ugly, multiple characters, bad anatomy",
             height=768,
             width=768,
-            num_inference_steps=4,   # More steps for better master image
+            num_inference_steps=4,
             guidance_scale=0.0
         )
     master_img = result.images[0]
@@ -318,18 +324,18 @@ def generate_frames(record_id, characters, scenes, audio_duration):
     print(f"   Hold frames/scene: {hold_frames_per_scene} ({hold_frames_per_scene/TARGET_FPS:.1f}s)")
     print(f"   Transition frames: {TRANSITION_FRAMES} per transition\n")
 
-    pipe = get_model()
+    pipe_t2i, pipe_i2i = get_models()
     master_prompt = build_master_prompt(characters)
 
     # Step 1: Generate master image
-    master_img, master_path = generate_master_image(record_id, characters)
+    master_img, master_path = generate_master_image(record_id, characters, pipe_t2i)
 
     # Step 2: Generate one image per scene
     print("🖼️  Generating scene images...")
     scene_images = []
     for i, scene in enumerate(scenes):
         print(f"   Scene {i+1}/{n_scenes}: [{scene['emotion']}] {scene['text'][:50]}...")
-        scene_img = generate_scene_image(pipe, master_img, characters, scene, master_prompt)
+        scene_img = generate_scene_image(pipe_i2i, master_img, characters, scene, master_prompt)
         # Scale to YouTube dimensions immediately
         scene_img_yt = scale_to_youtube(scene_img)
         scene_images.append(scene_img_yt)
