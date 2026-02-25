@@ -49,7 +49,7 @@ import glob
 # ==================== CONFIGURATION ====================
 
 # Directories
-BASE_DIR = "video_output"
+BASE_DIR = "cloud-jobs"
 QUEUE_DIR = f"{BASE_DIR}/queue"
 FRAMES_DIR = f"{BASE_DIR}/frames"
 AUDIO_DIR = f"{BASE_DIR}/audio"
