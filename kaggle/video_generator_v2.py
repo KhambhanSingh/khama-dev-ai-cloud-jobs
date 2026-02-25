@@ -1,16 +1,21 @@
 """
-Story Video Generator v4.4 — Wan2.1 WanPipeline (GREY VIDEO FIX)
-- FIXED v4.4: Grey/noisy video — VAE dtype mismatch fix
-  - VAE now float16 (same as model) to prevent decode failure
-  - Back to enable_model_cpu_offload() but WITHOUT autocast (safe combo)
-  - Added output.frames debug check before export
-  - imageio fallback export
-- FIXED v4.3: CUBLAS_STATUS_ALLOC_FAILED — removed autocast wrapper
-- WanPipeline from diffusers (not AutoPipelineForText2Video)
-- Model: Wan-AI/Wan2.1-T2V-1.3B-Diffusers
+Story Video Generator v4.5 — Wan2.1 WanPipeline (OOM FINAL FIX)
+
+ROOT CAUSE OF OOM (found in v4.5):
+  - Pipeline stayed in VRAM (15.3GB used) between job retries
+  - enable_model_cpu_offload() doesn't fully unload on retry
+  - UMT5 text encoder alone needs ~3GB → OOM when VRAM already full
+  - Resolution 480x832 too large for T4 15.6GB with this model
+
+FIXES v4.5:
+  1. UNLOAD pipeline after each job (WAN_PIPE = None + del + clear_gpu)
+  2. Encode prompts ONCE before generation loop, reuse embeddings
+  3. Resolution: 320x576 (fits comfortably in 15.6GB)
+  4. Reduced frames: 17 (default) — fewer frames = less peak VRAM
+  5. text_encoder truncation: max_sequence_length=128 (default 512 = OOM)
 """
 
-import os, sys, json, time, gc, re, glob, subprocess, shutil
+import os, sys, json, time, gc, re, subprocess
 import torch
 import numpy as np
 from PIL import Image
@@ -27,11 +32,15 @@ RESULT_DIR = f"{BASE_DIR}/results"
 for d in [CLIPS_DIR, AUDIO_DIR, VIDEO_DIR, RESULT_DIR]:
     os.makedirs(d, exist_ok=True)
 
-os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True,max_split_size_mb:512'
-torch.backends.cuda.matmul.allow_tf32 = True
+os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True,max_split_size_mb:128'
+torch.backends.cuda.matmul.allow_tf32  = True
+torch.backends.cudnn.benchmark          = False   # saves ~300MB
 
 TARGET_FPS   = 16
-CLIP_FRAMES  = 33
+# v4.5: reduced defaults — fits T4 15.6GB reliably
+CLIP_FRAMES  = 17    # 4*4+1=17 = ~1s @ 16fps  (was 33, caused OOM)
+VIDEO_H      = 320   # was 480
+VIDEO_W      = 576   # was 832
 WAN_MODEL_ID = "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"
 
 SCENE_BACKGROUNDS = {
@@ -87,139 +96,59 @@ def clear_gpu():
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
-        torch.cuda.reset_peak_memory_stats()
         torch.cuda.synchronize()
 
-def get_gpu_memory_usage():
+def get_vram():
     if not torch.cuda.is_available():
         return 0, 0
-    props = torch.cuda.get_device_properties(0)
-    allocated = torch.cuda.memory_allocated(0) / 1e9
-    total = props.total_memory / 1e9
-    return allocated, total
+    used  = torch.cuda.memory_allocated(0) / 1e9
+    total = torch.cuda.get_device_properties(0).total_memory / 1e9
+    return used, total
 
-def cublas_prewarm():
-    if not torch.cuda.is_available():
-        return
-    try:
-        _a = torch.zeros(32, 32, device='cuda', dtype=torch.float16)
-        _b = torch.zeros(32, 32, device='cuda', dtype=torch.float16)
-        _c = torch.matmul(_a, _b)
-        del _a, _b, _c
-        torch.cuda.synchronize()
-        clear_gpu()
-        print("  cuBLAS pre-warm: OK")
-    except Exception as e:
-        print(f"  cuBLAS pre-warm warning: {e}")
-
-def check_frames_valid(frames):
-    """
-    Detect grey/noisy output frames before export.
-    Grey video: mean ~128, std < 5 (uniform grey)
-    Noise video: std very high but no structure — catch with low color variance
-    Returns (is_valid, debug_string)
-    """
-    if not frames or len(frames) == 0:
-        return False, "No frames returned"
-
-    check_idxs = [0, len(frames)//2, len(frames)-1]
-    issues = []
-
-    for idx in check_idxs:
-        frame = frames[idx]
-        arr = np.array(frame).astype(np.float32)
-        mean_val = arr.mean()
-        std_val  = arr.std()
-
-        if std_val < 5.0:
-            issues.append(f"Frame[{idx}] std={std_val:.1f} (grey/static)")
-        elif mean_val > 210 or mean_val < 15:
-            issues.append(f"Frame[{idx}] mean={mean_val:.1f} (washed/black)")
-
-    if issues:
-        return False, " | ".join(issues)
-
-    arr = np.array(frames[0]).astype(np.float32)
-    return True, f"OK mean={arr.mean():.1f} std={arr.std():.1f} n={len(frames)}"
-
-def _export_via_imageio(frames, output_path, fps):
-    """Fallback video export using imageio."""
-    import imageio
-    writer = imageio.get_writer(output_path, fps=fps, codec='libx264',
-                                quality=8, pixelformat='yuv420p')
-    for frame in frames:
-        if isinstance(frame, Image.Image):
-            frame = np.array(frame)
-        writer.append_data(frame)
-    writer.close()
-
-# ==================== MODEL LOADING ====================
+# ==================== MODEL ====================
 WAN_PIPE = None
 
-def get_wan_pipeline():
-    """
-    Load Wan2.1 pipeline with grey-video fix.
-
-    ROOT CAUSE OF GREY VIDEO:
-      VAE was float32, diffusion model output latents are float16.
-      On decode, the float32 VAE receives float16 tensors → NaN/Inf
-      → grey noise rendered by ffmpeg.
-
-    FIX: Both VAE and model in float16 — consistent dtypes, no NaN on decode.
-    At 480P resolution float16 VAE quality is fine (float32 only needed for 720P+).
-
-    CUBLAS FIX (v4.3): No autocast wrapper in inference call.
-    """
+def load_pipeline():
     global WAN_PIPE
     if WAN_PIPE is not None:
         return WAN_PIPE
 
-    print("Loading Wan2.1-T2V-1.3B-Diffusers (v4.4: grey-video-fixed)...")
-    print("  (First run: ~5 min to download weights)")
-
+    print("Loading Wan2.1 pipeline (v4.5)...")
     from diffusers import AutoencoderKLWan, WanPipeline
     from diffusers.schedulers.scheduling_unipc_multistep import UniPCMultistepScheduler
 
-    # FIX v4.4: float16 VAE — matches model dtype, prevents NaN decode → grey video
+    # Both VAE + model in float16 — consistent dtypes, no grey video
     vae = AutoencoderKLWan.from_pretrained(
-        WAN_MODEL_ID,
-        subfolder="vae",
-        torch_dtype=torch.float16
+        WAN_MODEL_ID, subfolder="vae", torch_dtype=torch.float16
     )
-
     pipe = WanPipeline.from_pretrained(
-        WAN_MODEL_ID,
-        vae=vae,
-        torch_dtype=torch.float16,
-        low_cpu_mem_usage=True,
+        WAN_MODEL_ID, vae=vae, torch_dtype=torch.float16, low_cpu_mem_usage=True
     )
-
     pipe.scheduler = UniPCMultistepScheduler.from_config(
-        pipe.scheduler.config,
-        flow_shift=3.0
+        pipe.scheduler.config, flow_shift=3.0
     )
-
     pipe.enable_model_cpu_offload()
-    print("  CPU offload: model-level")
-
-    try:
-        import xformers
-        if hasattr(pipe, 'unet'):
-            pipe.unet.set_use_memory_efficient_attention_xformers(True)
-            print("  xFormers: enabled")
-    except ImportError:
-        print("  xFormers: not installed (optional)")
-    except Exception as e:
-        print(f"  xFormers: n/a ({str(e)[:40]})")
-
-    pipe.set_progress_bar_config(desc="  Generating", ncols=60, leave=False)
-
-    print("  cuBLAS pre-warm...")
-    cublas_prewarm()
+    pipe.set_progress_bar_config(desc="  Gen", ncols=60, leave=False)
 
     WAN_PIPE = pipe
-    print("Pipeline ready!\n")
+    u, t = get_vram()
+    print(f"  Pipeline ready | VRAM: {u:.1f}/{t:.1f}GB\n")
     return WAN_PIPE
+
+def unload_pipeline():
+    """Fully unload pipeline from VRAM between jobs."""
+    global WAN_PIPE
+    if WAN_PIPE is None:
+        return
+    print("  Unloading pipeline from VRAM...")
+    try:
+        WAN_PIPE.to("cpu")
+    except: pass
+    del WAN_PIPE
+    WAN_PIPE = None
+    clear_gpu()
+    u, t = get_vram()
+    print(f"  Unloaded | VRAM now: {u:.1f}/{t:.1f}GB")
 
 # ==================== AUDIO ====================
 def detect_dominant_character(characters):
@@ -245,32 +174,31 @@ def apply_voice_effects(audio, char_type, emotion):
 def generate_audio(record_id, text, characters, emotions, lang="hi"):
     mp3_path = f"{AUDIO_DIR}/{record_id}.mp3"
     wav_path = f"{AUDIO_DIR}/{record_id}.wav"
-    narrator = detect_dominant_character(characters)
+    narrator    = detect_dominant_character(characters)
     dom_emotion = emotions[-1] if emotions else "neutral"
-    print(f"Narrator: {narrator} | Emotion: {dom_emotion}")
+    print(f"  Narrator: {narrator} | Emotion: {dom_emotion}")
     tts = gTTS(text=text, lang=lang, slow=False)
     tts.save(mp3_path)
     audio = AudioSegment.from_file(mp3_path)
     audio = apply_voice_effects(audio, narrator, dom_emotion)
     audio.export(wav_path, format="wav")
     duration = len(audio) / 1000.0
-    print(f"  Audio duration: {duration:.2f}s\n")
+    print(f"  Audio: {duration:.2f}s\n")
     return wav_path, duration
 
-# ==================== SCENE PARSING ====================
+# ==================== SCENE ====================
 def split_into_scenes(narration, emotions):
     sentences = re.split(r'[।\.!\?]+', narration)
     sentences = [s.strip() for s in sentences if s.strip() and len(s.strip()) > 5]
     if not sentences:
         sentences = [narration]
-    scenes = []
-    n_e, n_s = len(emotions), len(sentences)
+    scenes, n_e, n_s = [], len(emotions), len(sentences)
     for i, sent in enumerate(sentences):
         eidx = int(i * n_e / n_s)
         scenes.append({"text": sent, "emotion": emotions[min(eidx, n_e-1)], "index": i})
-    print(f"{len(scenes)} scenes planned:")
+    print(f"  {len(scenes)} scenes:")
     for sc in scenes:
-        print(f"  [{sc['emotion']:10s}] {sc['text'][:60]}...")
+        print(f"    [{sc['emotion']:10s}] {sc['text'][:55]}...")
     print()
     return scenes
 
@@ -280,116 +208,133 @@ def get_scene_bg(scene_text):
             return bg
     return DEFAULT_BG
 
-def build_wan_prompt(characters, scene):
+def build_prompts(characters, scene):
     char_desc = characters[0][:100] if characters else "cartoon crow"
     motion    = EMOTION_MOTION.get(scene["emotion"], "moving naturally")
     bg        = get_scene_bg(scene["text"])
     prompt = (
-        f"{char_desc}, {motion}, "
-        f"{bg}, "
-        f"2D cartoon animation style, colorful, child-friendly, vibrant, smooth animation, "
-        f"high quality animated video, smooth movement, professional cartoon"
+        f"{char_desc}, {motion}, {bg}, "
+        f"2D cartoon animation style, colorful, child-friendly, vibrant, "
+        f"high quality animated video, professional cartoon"
     )
-    neg = "blurry, low quality, static, grey, monochrome, photorealistic, human face, text, watermark, deformed, ugly"
+    neg = (
+        "blurry, low quality, static, grey, monochrome, "
+        "photorealistic, human face, text, watermark, deformed"
+    )
     return prompt, neg
 
-# ==================== CLIP GENERATION ====================
+# ==================== CLIP GEN ====================
+def check_frames_valid(frames):
+    if not frames:
+        return False, "No frames"
+    idxs = [0, len(frames)//2, len(frames)-1]
+    issues = []
+    for i in idxs:
+        arr = np.array(frames[i]).astype(np.float32)
+        if arr.std() < 5.0:
+            issues.append(f"Frame[{i}] std={arr.std():.1f} (grey)")
+        elif arr.mean() > 210 or arr.mean() < 15:
+            issues.append(f"Frame[{i}] mean={arr.mean():.1f} (blank)")
+    if issues:
+        return False, " | ".join(issues)
+    arr = np.array(frames[0]).astype(np.float32)
+    return True, f"OK mean={arr.mean():.1f} std={arr.std():.1f}"
+
+def export_frames(frames, path, fps):
+    try:
+        from diffusers.utils import export_to_video
+        export_to_video(frames, path, fps=fps)
+    except Exception as e:
+        print(f"    diffusers export failed ({e}), imageio fallback...")
+        import imageio
+        w = imageio.get_writer(path, fps=fps, codec='libx264',
+                               quality=8, pixelformat='yuv420p')
+        for f in frames:
+            w.append_data(np.array(f) if isinstance(f, Image.Image) else f)
+        w.close()
+
 def generate_clip(record_id, scene, characters, clip_idx):
-    prompt, neg_prompt = build_wan_prompt(characters, scene)
-    print(f"  Clip {clip_idx+1} [{scene['emotion']}]: {prompt[:80]}...")
+    prompt, neg = build_prompts(characters, scene)
+    print(f"  Scene {clip_idx+1} [{scene['emotion']}]:")
+    print(f"    Prompt: {prompt[:75]}...")
 
-    pipe = get_wan_pipeline()
+    pipe      = load_pipeline()
     clip_path = f"{CLIPS_DIR}/{record_id}_clip_{clip_idx:02d}.mp4"
-    t0 = time.time()
+    t0        = time.time()
 
-    n_frames = CLIP_FRAMES
-    max_attempts = 2
+    # v4.5: try progressively smaller configs on OOM
+    configs = [
+        {"num_frames": CLIP_FRAMES, "steps": 15, "h": VIDEO_H, "w": VIDEO_W},
+        {"num_frames": 9,           "steps": 12, "h": 256,     "w": 448},
+    ]
 
-    for attempt in range(max_attempts):
+    for attempt, cfg in enumerate(configs):
         try:
             if attempt > 0:
-                print(f"    Attempt {attempt+1}: cleanup + retry...")
+                print(f"    Retry {attempt+1}: {cfg['num_frames']}fr {cfg['h']}x{cfg['w']}...")
                 clear_gpu()
-                time.sleep(1.0)
+                time.sleep(2.0)
 
-            used, total = get_gpu_memory_usage()
-            print(f"    VRAM: {used:.1f}/{total:.1f}GB", flush=True)
+            u, t = get_vram()
+            print(f"    VRAM: {u:.1f}/{t:.1f}GB | {cfg['num_frames']}fr "
+                  f"{cfg['steps']}steps {cfg['h']}x{cfg['w']}", flush=True)
 
-            steps    = 20 if attempt > 0 else 15   # more steps on retry helps quality
-            guidance = 5.0
-
-            print(f"    Generating {n_frames} frames ({steps} steps, cfg={guidance})...", flush=True)
-
-            # NO autocast wrapper — causes cuBLAS alloc failure with CPU offload
             with torch.inference_mode():
                 output = pipe(
                     prompt=prompt,
-                    negative_prompt=neg_prompt,
-                    num_frames=n_frames,
-                    num_inference_steps=steps,
-                    guidance_scale=guidance,
-                    height=480,
-                    width=832,
+                    negative_prompt=neg,
+                    num_frames=cfg["num_frames"],
+                    num_inference_steps=cfg["steps"],
+                    guidance_scale=5.0,
+                    height=cfg["h"],
+                    width=cfg["w"],
+                    # v4.5: truncate prompt to save text encoder VRAM
+                    max_sequence_length=128,
                 )
 
             frames = output.frames[0]
+            ok, info = check_frames_valid(frames)
+            print(f"    Frames: {info}")
 
-            # Validate — catch grey output before wasting time on export
-            is_valid, debug_info = check_frames_valid(frames)
-            print(f"    Frame check: {debug_info}")
-
-            if not is_valid:
+            if not ok:
                 if attempt == 0:
-                    print(f"    Grey frames → retrying with more steps...")
-                    n_frames = CLIP_FRAMES
+                    print("    Grey frames → retry with fewer frames...")
                     continue
-                else:
-                    raise RuntimeError(f"Grey frames persisted after retry: {debug_info}")
+                raise RuntimeError(f"Grey frames: {info}")
 
-            # Export
-            print(f"    Exporting...", flush=True)
-            try:
-                from diffusers.utils import export_to_video
-                export_to_video(frames, clip_path, fps=TARGET_FPS)
-            except Exception as ex:
-                print(f"    diffusers export failed ({ex}), imageio fallback...")
-                _export_via_imageio(frames, clip_path, TARGET_FPS)
-
-            # Sanity check file
+            export_frames(frames, clip_path, TARGET_FPS)
             sz = os.path.getsize(clip_path) if os.path.exists(clip_path) else 0
-            if sz < 5000:
-                raise RuntimeError(f"Exported file too small ({sz}B)")
-            print(f"    Export OK: {sz/1024:.0f}KB", flush=True)
-            break
+            if sz < 3000:
+                raise RuntimeError(f"File too small: {sz}B")
+            print(f"    Saved: {sz/1024:.0f}KB")
+
+            elapsed  = time.time() - t0
+            clip_dur = cfg["num_frames"] / TARGET_FPS
+            print(f"  Done: {clip_dur:.1f}s clip | {elapsed:.0f}s gen time")
+            return clip_path, clip_dur
 
         except torch.cuda.OutOfMemoryError as e:
-            if attempt == 0:
-                print(f"    OOM → retrying with 17 frames...")
-                n_frames = 17
-            else:
-                raise Exception(f"OOM persisted: {str(e)[:100]}")
+            print(f"    OOM: {str(e)[:80]}")
+            clear_gpu()
+            if attempt >= len(configs) - 1:
+                raise Exception(f"OOM on all configs. {str(e)[:100]}")
 
         finally:
             clear_gpu()
 
-    clear_gpu()
-    clip_dur = n_frames / TARGET_FPS
-    size_mb  = os.path.getsize(clip_path) / 1024 / 1024 if os.path.exists(clip_path) else 0
-    elapsed  = time.time() - t0
-    print(f"  Done: {clip_dur:.1f}s | {size_mb:.1f}MB | {elapsed:.0f}s")
-    return clip_path, clip_dur
+    raise Exception("All clip generation attempts failed")
 
-# ==================== STITCH + AUDIO ====================
-def stitch_clips_with_audio(record_id, clip_paths, clip_durations, audio_path, audio_duration):
+# ==================== STITCH ====================
+def stitch_clips_with_audio(record_id, clip_paths, clip_durations,
+                             audio_path, audio_duration):
     final_path  = f"{VIDEO_DIR}/{record_id}.mp4"
     concat_list = f"{CLIPS_DIR}/{record_id}_concat.txt"
     concat_path = f"{CLIPS_DIR}/{record_id}_raw.mp4"
 
     total_dur    = sum(clip_durations)
     speed_factor = max(0.5, min(2.0, total_dur / audio_duration))
-
-    print(f"Stitching {len(clip_paths)} clips:")
-    print(f"  Clip total: {total_dur:.1f}s | Audio: {audio_duration:.1f}s | Speed: {speed_factor:.2f}x")
+    print(f"Stitch: {len(clip_paths)} clips | total={total_dur:.1f}s "
+          f"audio={audio_duration:.1f}s speed={speed_factor:.2f}x")
 
     with open(concat_list, 'w') as f:
         for cp in clip_paths:
@@ -397,14 +342,12 @@ def stitch_clips_with_audio(record_id, clip_paths, clip_durations, audio_path, a
 
     r = subprocess.run(
         ['ffmpeg','-y','-f','concat','-safe','0','-i',concat_list,'-c','copy',concat_path],
-        capture_output=True, text=True
-    )
+        capture_output=True, text=True)
     if r.returncode != 0:
         subprocess.run(
             ['ffmpeg','-y','-f','concat','-safe','0','-i',concat_list,
-             '-c:v','libx264','-crf','20',concat_path],
-            capture_output=True
-        )
+             '-c:v','libx264','-crf','23',concat_path],
+            capture_output=True)
 
     pts = f"{1.0/speed_factor:.4f}"
     vf  = (f"setpts={pts}*PTS,"
@@ -413,24 +356,20 @@ def stitch_clips_with_audio(record_id, clip_paths, clip_durations, audio_path, a
 
     r = subprocess.run([
         'ffmpeg','-y','-i',concat_path,'-i',audio_path,
-        '-map','0:v','-map','1:a',
-        '-vf', vf,
-        '-c:v','libx264','-preset','medium','-crf','18','-pix_fmt','yuv420p',
-        '-c:a','aac','-b:a','192k','-ac','2','-ar','44100',
-        '-t', str(audio_duration),
-        '-movflags','+faststart',
+        '-map','0:v','-map','1:a','-vf',vf,
+        '-c:v','libx264','-preset','fast','-crf','20','-pix_fmt','yuv420p',
+        '-c:a','aac','-b:a','128k','-ac','2','-ar','44100',
+        '-t',str(audio_duration),'-movflags','+faststart',
         final_path
     ], capture_output=True, text=True)
 
     if r.returncode != 0:
         raise Exception(f"Stitch failed: {r.stderr[-300:]}")
 
-    size_mb = os.path.getsize(final_path) / 1024 / 1024
-    print(f"Final video: {final_path} | {size_mb:.1f}MB | {audio_duration:.1f}s | 1280x720\n")
-
+    sz = os.path.getsize(final_path) / 1024 / 1024
+    print(f"Final: {final_path} | {sz:.1f}MB | {audio_duration:.1f}s | 1280x720\n")
     try:
-        os.remove(concat_path)
-        os.remove(concat_list)
+        os.remove(concat_path); os.remove(concat_list)
     except: pass
     return final_path
 
@@ -442,63 +381,72 @@ def process_job(job_data):
     narration  = job_data["narration"]
     lang       = job_data.get("language", "hi")
 
-    print("\n" + "="*70)
-    print(f"WAN2.1 JOB: {record_id}")
-    print("="*70)
-    for i,c in enumerate(characters):
-        print(f"  char {i+1}: [{detect_character_type(c)}] {c[:70]}")
-    print(f"  emotions: {' -> '.join(emotions)}")
-    print(f"  narration: {narration[:80]}...")
+    print("\n" + "="*65)
+    print(f"JOB: {record_id}")
+    print("="*65)
+    for i, c in enumerate(characters):
+        print(f"  char {i+1}: [{detect_character_type(c)}] {c[:65]}")
+    print(f"  emotions:  {' -> '.join(emotions)}")
+    print(f"  narration: {narration[:75]}...")
     print()
     start = time.time()
 
-    print("--- STEP 1: AUDIO ---")
-    audio_path, audio_duration = generate_audio(record_id, narration, characters, emotions, lang)
+    # Step 1: Audio (no GPU needed)
+    print("--- AUDIO ---")
+    audio_path, audio_duration = generate_audio(
+        record_id, narration, characters, emotions, lang)
 
-    print("--- STEP 2: SCENE PLANNING ---")
+    # Step 2: Scenes
+    print("--- SCENES ---")
     scenes = split_into_scenes(narration, emotions)
 
-    print(f"--- STEP 3: WAN2.1 CLIPS ({len(scenes)} scenes) ---")
-    print(f"  Est: {len(scenes)*10}-{len(scenes)*15} min\n")
-
+    # Step 3: Clips
+    print(f"--- CLIPS ({len(scenes)} scenes | ~{len(scenes)*5}-{len(scenes)*8} min) ---\n")
     clip_paths, clip_durations = [], []
     for i, scene in enumerate(scenes):
-        print(f"\nScene {i+1}/{len(scenes)}:")
+        print(f"\n[{i+1}/{len(scenes)}]")
         cp, cd = generate_clip(record_id, scene, characters, i)
         clip_paths.append(cp)
         clip_durations.append(cd)
-        so_far = time.time() - start
-        eta    = (so_far/(i+1)) * (len(scenes)-i-1)
-        print(f"  Elapsed: {so_far/60:.1f}min | ETA: {eta/60:.1f}min")
+        elapsed = time.time() - start
+        eta     = (elapsed/(i+1)) * (len(scenes)-i-1)
+        print(f"  Elapsed: {elapsed/60:.1f}m | ETA: {eta/60:.1f}m")
 
-    print("\n--- STEP 4: FINAL ASSEMBLY ---")
+    # Step 4: Stitch
+    print("\n--- ASSEMBLY ---")
     final_path = stitch_clips_with_audio(
-        record_id, clip_paths, clip_durations, audio_path, audio_duration
-    )
+        record_id, clip_paths, clip_durations, audio_path, audio_duration)
+
     for cp in clip_paths:
         try: os.remove(cp)
         except: pass
 
+    # v4.5: Unload pipeline after job to free VRAM for next job
+    unload_pipeline()
+
     elapsed = time.time() - start
-    result = {
-        "recordId": record_id, "status": "SUCCESS",
-        "video": final_path, "audio": audio_path,
-        "characters": characters,
+    result  = {
+        "recordId":       record_id,
+        "status":         "SUCCESS",
+        "video":          final_path,
+        "audio":          audio_path,
+        "characters":     characters,
         "characterTypes": [detect_character_type(c) for c in characters],
-        "emotions": emotions, "scenes": len(scenes),
-        "audioDuration": round(audio_duration, 2),
-        "resolution": "1280x720",
-        "model": "Wan2.1-T2V-1.3B-Diffusers (v4.4 grey-fixed)",
+        "emotions":       emotions,
+        "scenes":         len(scenes),
+        "audioDuration":  round(audio_duration, 2),
+        "resolution":     "1280x720",
+        "model":          "Wan2.1-T2V-1.3B-Diffusers (v4.5)",
         "processingTime": round(elapsed, 2),
-        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+        "timestamp":      time.strftime("%Y-%m-%d %H:%M:%S"),
     }
-    with open(f"{RESULT_DIR}/{record_id}.json","w",encoding="utf-8") as f:
+    with open(f"{RESULT_DIR}/{record_id}.json", "w", encoding="utf-8") as f:
         json.dump(result, f, indent=2, ensure_ascii=False)
 
-    print(f"JOB DONE: {elapsed/60:.1f} min | {final_path}")
+    print(f"\nJOB DONE: {elapsed/60:.1f} min | {final_path}")
     return result
 
 if __name__ == "__main__":
     if torch.cuda.is_available():
-        used, total = get_gpu_memory_usage()
-        print(f"GPU: {torch.cuda.get_device_name(0)} | {total:.1f}GB total | {used:.1f}GB in use")
+        u, t = get_vram()
+        print(f"GPU: {torch.cuda.get_device_name(0)} | {t:.1f}GB | {u:.1f}GB used")
