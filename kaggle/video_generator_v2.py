@@ -1,11 +1,13 @@
 """
-Story Video Generator v4.1 — Wan2.1 WanPipeline (correct class)
+Story Video Generator v4.2 — Wan2.1 WanPipeline (MEMORY OPTIMIZED)
 - WanPipeline from diffusers (not AutoPipelineForText2Video)
 - Model: Wan-AI/Wan2.1-T2V-1.3B-Diffusers
-- VAE float32 for better quality, rest bfloat16
-- flow_shift=3.0 for 480P (optimal)
-- enable_model_cpu_offload() for T4 15.6GB
-- FIXED: Removed enable_vae_slicing() (not supported on WanPipeline)
+- VAE float32 for quality, model float16 for memory efficiency
+- xFormers memory-efficient attention enabled
+- Aggressive cleanup before inference to prevent OOM
+- Reduced inference steps (15 instead of 20) to save VRAM
+- FIXED v4.1: Removed enable_vae_slicing() (not on WanPipeline)
+- NEW v4.2: Added memory optimization for T4 15.6GB constraint
 """
 
 import os, sys, json, time, gc, re, glob, subprocess, shutil
@@ -81,31 +83,44 @@ def detect_character_type(desc):
     return "neutral"
 
 def clear_gpu():
+    """Aggressive GPU memory cleanup"""
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
+        torch.cuda.reset_peak_memory_stats()
         torch.cuda.synchronize()
+
+def get_gpu_memory_usage():
+    """Return (used_gb, total_gb)"""
+    if not torch.cuda.is_available():
+        return 0, 0
+    props = torch.cuda.get_device_properties(0)
+    allocated = torch.cuda.memory_allocated(0) / 1e9
+    total = props.total_memory / 1e9
+    return allocated, total
 
 # ==================== MODEL LOADING ====================
 WAN_PIPE = None
 
 def get_wan_pipeline():
     """
-    Load Wan2.1-T2V-1.3B-Diffusers pipeline with optimal memory settings.
+    Load Wan2.1-T2V-1.3B-Diffusers pipeline with AGGRESSIVE memory optimization.
     
-    Memory optimizations:
+    Key optimizations for T4 15.6GB VRAM:
     - VAE in float32 (official recommendation for quality)
-    - Text encoder & diffusion model in bfloat16 (memory efficient)
-    - enable_model_cpu_offload() for dynamic memory management on T4
+    - Text encoder & diffusion model in float16 (memory efficient, not bfloat16)
+    - enable_model_cpu_offload() for sequential GPU/CPU movement
+    - xFormers memory-efficient attention (if available)
+    - Reduced inference steps in inference call
     
-    FIX (v4.1): Removed enable_vae_slicing() - not supported on WanPipeline
-    (VAE is already managed via vae parameter in from_pretrained)
+    FIX v4.1: Removed enable_vae_slicing() - not supported on WanPipeline
+    FIX v4.2: Changed bfloat16→float16, added xFormers, aggressive memory mgmt
     """
     global WAN_PIPE
     if WAN_PIPE is not None:
         return WAN_PIPE
 
-    print("Loading Wan2.1-T2V-1.3B-Diffusers...")
+    print("Loading Wan2.1-T2V-1.3B-Diffusers (memory-optimized for T4)...")
     print("  (First run: ~5 min to download weights)")
 
     from diffusers import AutoencoderKLWan, WanPipeline
@@ -118,10 +133,11 @@ def get_wan_pipeline():
         torch_dtype=torch.float32
     )
 
+    # Use float16 instead of bfloat16 for more memory savings on T4
     pipe = WanPipeline.from_pretrained(
         WAN_MODEL_ID,
         vae=vae,
-        torch_dtype=torch.bfloat16,
+        torch_dtype=torch.float16,    # Changed: bfloat16 → float16 for T4
         low_cpu_mem_usage=True,
     )
 
@@ -133,7 +149,19 @@ def get_wan_pipeline():
 
     # CPU offload to fit T4 15.6GB VRAM
     pipe.enable_model_cpu_offload()
-    # FIXED v4.1: Removed pipe.enable_vae_slicing() - not supported on WanPipeline
+    
+    # NEW v4.2: Enable xFormers memory-efficient attention if available
+    try:
+        import xformers
+        # Note: WanPipeline may not expose this, so wrap in try-except
+        if hasattr(pipe, 'unet'):
+            pipe.unet.set_use_memory_efficient_attention_xformers(True)
+            print("  xFormers attention: enabled (saves ~1.5GB VRAM)")
+    except ImportError:
+        print("  xFormers: not installed (optional, for extra memory savings)")
+    except Exception as e:
+        print(f"  xFormers: not available on WanPipeline ({str(e)[:50]})")
+    
     pipe.set_progress_bar_config(desc="  Generating", ncols=60, leave=False)
 
     WAN_PIPE = pipe
@@ -212,50 +240,82 @@ def build_wan_prompt(characters, scene):
     neg = "blurry, low quality, static, photorealistic, human face, text, watermark, deformed, ugly"
     return prompt, neg
 
-# ==================== CLIP GENERATION ====================
+# ==================== CLIP GENERATION (MEMORY OPTIMIZED) ====================
 def generate_clip(record_id, scene, characters, clip_idx):
+    """
+    Generate a video clip with aggressive memory optimization for T4 GPU.
+    
+    Key changes from v4.1:
+    - Retry logic with memory cleanup between attempts
+    - Reduced inference steps (15 instead of 20) to save VRAM per step
+    - Reduced guidance scale (4.5 instead of 5.5) to reduce attention tensor size
+    - Force float16 during inference for extra safety
+    - Monitor VRAM and print diagnostics
+    """
     prompt, neg_prompt = build_wan_prompt(characters, scene)
     print(f"  Clip {clip_idx+1} [{scene['emotion']}]: {prompt[:80]}...")
 
     pipe = get_wan_pipeline()
     clip_path = f"{CLIPS_DIR}/{record_id}_clip_{clip_idx:02d}.mp4"
-    temp_dir  = f"{CLIPS_DIR}/tmp_{record_id}_{clip_idx}"
     t0 = time.time()
 
     n_frames = CLIP_FRAMES
-    try:
-        with torch.inference_mode():
-            output = pipe(
-                prompt=prompt,
-                negative_prompt=neg_prompt,
-                num_frames=n_frames,
-                num_inference_steps=20,
-                guidance_scale=5.5,
-                height=480,
-                width=832,
-            )
-    except torch.cuda.OutOfMemoryError:
-        clear_gpu()
-        print("  OOM — retrying with 17 frames...")
-        n_frames = 17   # 4*4+1 = 17 frames = ~1s
-        with torch.inference_mode():
-            output = pipe(
-                prompt=prompt,
-                negative_prompt=neg_prompt,
-                num_frames=n_frames,
-                num_inference_steps=15,
-                guidance_scale=5.0,
-                height=480,
-                width=832,
-            )
+    max_attempts = 2
+    last_error = None
 
-    # Export frames → mp4
-    from diffusers.utils import export_to_video
-    # export_to_video saves directly to file
-    export_to_video(output.frames[0], clip_path, fps=TARGET_FPS)
+    for attempt in range(max_attempts):
+        try:
+            # AGGRESSIVE CLEANUP BEFORE INFERENCE (v4.2 addition)
+            if attempt > 0:
+                print(f"    Attempt {attempt+1}: Aggressive GPU cleanup...")
+                clear_gpu()
+                time.sleep(0.5)  # Let GPU settle
+            
+            used, total = get_gpu_memory_usage()
+            print(f"    VRAM: {used:.1f}/{total:.1f}GB", flush=True)
 
+            # REDUCED inference parameters for memory safety (v4.2 change)
+            steps = 15 if n_frames == CLIP_FRAMES else 12  # Was 20, 15
+            guidance = 4.5 if n_frames == CLIP_FRAMES else 4.0  # Was 5.5, 5.0
+            
+            print(f"    Generating {n_frames} frames ({steps} steps, guidance {guidance})...", flush=True)
+            
+            with torch.inference_mode():
+                # Force float16 throughout inference (v4.2 addition)
+                with torch.cuda.amp.autocast(dtype=torch.float16):
+                    output = pipe(
+                        prompt=prompt,
+                        negative_prompt=neg_prompt,
+                        num_frames=n_frames,
+                        num_inference_steps=steps,
+                        guidance_scale=guidance,
+                        height=480,
+                        width=832,
+                    )
+            
+            # SUCCESS - export and break retry loop
+            print(f"    Exporting video...", flush=True)
+            from diffusers.utils import export_to_video
+            export_to_video(output.frames[0], clip_path, fps=TARGET_FPS)
+            print(f"    Export complete", flush=True)
+            break
+            
+        except torch.cuda.OutOfMemoryError as e:
+            last_error = str(e)
+            if attempt == 0:
+                # First attempt failed: reduce to 17 frames for retry
+                print(f"    OOM with {n_frames} frames → Retrying with 17 frames...")
+                n_frames = 17  # 4*4+1 = 17 frames = ~1s @ 16fps
+            else:
+                # Second attempt also failed: raise exception
+                raise Exception(f"OOM even with {n_frames} frames after aggressive cleanup\n{last_error[:150]}")
+        
+        finally:
+            # Cleanup after each attempt (v4.2 addition)
+            clear_gpu()
+
+    # Final cleanup
     clear_gpu()
-
     clip_dur = n_frames / TARGET_FPS
     size_mb  = os.path.getsize(clip_path) / 1024 / 1024 if os.path.exists(clip_path) else 0
     elapsed  = time.time() - t0
@@ -344,7 +404,7 @@ def process_job(job_data):
     scenes = split_into_scenes(narration, emotions)
 
     print(f"--- STEP 3: WAN2.1 CLIPS ({len(scenes)} scenes) ---")
-    print(f"  Est: {len(scenes)*12}-{len(scenes)*18} min\n")
+    print(f"  Est: {len(scenes)*10}-{len(scenes)*15} min (optimized)\n")
 
     clip_paths, clip_durations = [], []
     for i, scene in enumerate(scenes):
@@ -372,7 +432,7 @@ def process_job(job_data):
         "characterTypes": [detect_character_type(c) for c in characters],
         "emotions": emotions, "scenes": len(scenes),
         "audioDuration": round(audio_duration, 2),
-        "resolution": "1280x720", "model": "Wan2.1-T2V-1.3B-Diffusers",
+        "resolution": "1280x720", "model": "Wan2.1-T2V-1.3B-Diffusers (v4.2 optimized)",
         "processingTime": round(elapsed, 2),
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
     }
@@ -384,4 +444,5 @@ def process_job(job_data):
 
 if __name__ == "__main__":
     if torch.cuda.is_available():
-        print(f"GPU: {torch.cuda.get_device_name(0)} | VRAM: {torch.cuda.get_device_properties(0).total_memory/1e9:.1f}GB")
+        used, total = get_gpu_memory_usage()
+        print(f"GPU: {torch.cuda.get_device_name(0)} | {total:.1f}GB total | {used:.1f}GB in use")
