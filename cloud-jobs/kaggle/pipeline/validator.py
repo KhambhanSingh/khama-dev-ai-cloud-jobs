@@ -52,3 +52,34 @@ def validate_video(path, min_bytes=5000):
         raise FileNotFoundError(f"video missing: {path}")
     if os.path.getsize(path) < min_bytes:
         raise ValueError(f"video too small: {path}")
+
+
+def _norm_name(value):
+    return str(value or "").strip().casefold()
+
+
+def validate_characters(characters, beats):
+    """Ensure job has script-derived characters and beat references are valid."""
+    if not characters or not isinstance(characters, list):
+        raise ValueError("characters missing or empty — run script extraction")
+
+    registry_by_name = {}
+    registry_by_id = {}
+    for c in characters:
+        name = _norm_name(c.get("name"))
+        cid = str(c.get("id") or "").strip().casefold()
+        if name:
+            registry_by_name[name] = c
+        if cid:
+            registry_by_id[cid] = c
+        if not str(c.get("referencePrompt") or "").strip():
+            raise ValueError(f"character missing referencePrompt: {c.get('name')}")
+
+    for i, beat in enumerate(beats or []):
+        names = beat.get("characters") or []
+        if not names:
+            raise ValueError(f"beat {i} has no characters assigned")
+        for n in names:
+            key = _norm_name(n)
+            if key not in registry_by_name:
+                raise ValueError(f"beat {i} unknown character: {n}")
