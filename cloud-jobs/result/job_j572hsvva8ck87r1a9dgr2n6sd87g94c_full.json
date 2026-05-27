@@ -1,0 +1,5 @@
+{
+  "status": "FAILED",
+  "recordId": "j572hsvva8ck87r1a9dgr2n6sd87g94c",
+  "error": "Failed to import diffusers.pipelines.stable_diffusion_xl.pipeline_stable_diffusion_xl because of the following error (look up to see its traceback):\nFailed to import transformers.models.clip.image_processing_clip because of the following error (look up to see its traceback):\noperator torchvision::nms does not exist"
+}
