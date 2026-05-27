@@ -17,6 +17,19 @@ BRANCH = os.environ.get("GIT_BRANCH", "main").strip() or "main"
 WORKER_PATH = "cloud-jobs/kaggle/git_queue_processor.py"
 
 
+def normalize_github_repo(repo):
+    """owner/repo only; strip mistaken owner/repo/cloud-jobs (not repo names ending in cloud-jobs)."""
+    parts = [p for p in repo.strip().strip("/").split("/") if p]
+    while len(parts) > 2 and parts[-1] == "cloud-jobs":
+        parts.pop()
+    if len(parts) != 2:
+        raise ValueError(
+            "NEXT_GITHUB_REPO must be owner/repo "
+            f'(e.g. "User/khama-dev-ai-cloud-jobs"), got: {repo!r}'
+        )
+    return f"{parts[0]}/{parts[1]}"
+
+
 def load_secrets():
     try:
         from kaggle_secrets import UserSecretsClient
@@ -32,7 +45,12 @@ def load_secrets():
     if not token or not repo:
         print("GITHUB_TOKEN and NEXT_GITHUB_REPO must be set in Kaggle secrets.")
         sys.exit(1)
-    return token, repo.strip()
+    try:
+        repo = normalize_github_repo(repo)
+    except ValueError as e:
+        print(f"Invalid NEXT_GITHUB_REPO: {e}")
+        sys.exit(1)
+    return token, repo
 
 
 def _init_and_fetch(auth):
