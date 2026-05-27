@@ -1,5 +1,0 @@
-{
-  "status": "FAILED",
-  "recordId": "j57amzy5ar3ska3zknx3jprc8s87hbzr",
-  "error": "Command '['ffmpeg', '-y', '-f', 'concat', '-safe', '0', '-i', 'cloud-jobs/work/j57amzy5ar3ska3zknx3jprc8s87hbzr/clips/concat_list.txt', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', 'cloud-jobs/work/j57amzy5ar3ska3zknx3jprc8s87hbzr/clips/j57amzy5ar3ska3zknx3jprc8s87hbzr_video_only.mp4']' returned non-zero exit status 1."
-}
