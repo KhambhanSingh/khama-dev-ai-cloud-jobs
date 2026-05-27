@@ -116,6 +116,71 @@ def install_workers_from_repo():
         sys.path.insert(0, runtime)
     return installed > 0
 
+# ==================== DEPENDENCIES (before video_generator import) ====================
+PINNED_PIP_PACKAGES = [
+    "huggingface-hub==0.24.0",
+    "transformers==4.44.2",
+    "diffusers==0.30.3",
+    "accelerate==0.33.0",
+]
+
+def _pip_extra_args():
+    if sys.version_info >= (3, 11):
+        return ["--break-system-packages"]
+    return []
+
+def _hf_version_ok_subprocess():
+    script = (
+        "from packaging.version import Version\n"
+        "import huggingface_hub\n"
+        "v = huggingface_hub.__version__\n"
+        "print('OK' if Version(v) < Version('1.0') else 'BAD:' + v)\n"
+    )
+    r = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+    )
+    return r.returncode == 0 and (r.stdout or "").strip().startswith("OK")
+
+def _purge_import_caches():
+    roots = (
+        "huggingface_hub", "transformers", "diffusers", "accelerate",
+        "video_generator_v2",
+    )
+    for name in list(sys.modules):
+        if name.split(".")[0] in roots:
+            del sys.modules[name]
+
+def ensure_deps_before_import():
+    """Pin ML stack in a fresh subprocess before importing video_generator_v2."""
+    if _hf_version_ok_subprocess():
+        return True
+
+    print("\n📦 Installing pinned packages (before worker import)...")
+    failed = False
+    for pkg in PINNED_PIP_PACKAGES:
+        cmd = [
+            sys.executable, "-m", "pip", "install", "-q", pkg,
+            "--force-reinstall", *_pip_extra_args(),
+        ]
+        print(f"   📦 {pkg}...")
+        r = subprocess.run(cmd, capture_output=True, text=True)
+        if r.returncode != 0:
+            failed = True
+            print(f"   ❌ {(r.stderr or r.stdout or '')[-500:]}")
+
+    if failed or not _hf_version_ok_subprocess():
+        print(
+            "\n❌ Pinned packages not active. Kernel → Restart & Clear Output, "
+            "then run: python cloud-jobs/kaggle/git_queue_processor.py once"
+        )
+        return False
+
+    print("✅ Pinned packages OK in subprocess.\n")
+    _purge_import_caches()
+    return True
+
 # ==================== GIT HELPERS ====================
 def _run(cmd, check=True):
     return subprocess.run(cmd, capture_output=True, text=True, check=check)
@@ -257,7 +322,12 @@ def backup_locally(result):
         print(f"⚠️  Backup: {e}")
 
 # ==================== MAIN LOOP ====================
+_vg_import_ok = False
+
 def process_queue_once():
+    global _vg_import_ok
+    _vg_import_ok = False
+
     git_pull()
     install_workers_from_repo()
 
@@ -265,8 +335,13 @@ def process_queue_once():
     if runtime not in sys.path:
         sys.path.insert(0, runtime)
 
+    if not ensure_deps_before_import():
+        print("❌ No jobs processed — fix dependencies first.\n")
+        return
+
     try:
         import video_generator_v2 as vg
+        _vg_import_ok = True
         print("✅ video_generator_v2 imported\n")
     except ImportError as e:
         print(f"❌ Import failed: {e}")
@@ -276,10 +351,11 @@ def process_queue_once():
         msg = str(e) or ""
         print(f"🔴 video_generator_v2: {msg}")
         if "package install" in msg.lower():
-            print("   Stop continuous mode. Kernel → Restart & Clear Output")
+            print("   Kernel → Restart & Clear Output")
             print("   Then: python cloud-jobs/kaggle/git_queue_processor.py once")
         else:
             print("   Kernel restart करें: Menu → Run → Restart & Clear Output")
+        print("❌ No jobs processed — fix dependencies first.\n")
         return
 
     pending = get_pending_jobs()
@@ -351,7 +427,10 @@ def process_queue_once():
 def run_once():
     print("\n" + "="*60 + "\n🎬 SINGLE RUN\n" + "="*60 + "\n")
     process_queue_once()
-    print("✅ Done!")
+    if not _vg_import_ok:
+        print("❌ Exiting — worker did not load; queue was not processed.")
+        sys.exit(1)
+    print("✅ Done! (check logs for Processing / Queue empty)")
 
 def run_continuous(interval=30):
     print("\n" + "="*60 + f"\n🚀 CONTINUOUS ({interval}s)\n" + "="*60 + "\n")
