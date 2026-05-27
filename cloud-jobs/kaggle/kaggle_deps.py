@@ -1,6 +1,6 @@
 """
 Pinned ML package install/check for Kaggle full_video worker.
-Aligned with video_generator_v2.py (diffusers + torch/torchvision only).
+Aligned with video_generator_v2.py (diffusers SDXL + torch/torchvision).
 Used by git_queue_processor.py and install_kaggle_deps.py.
 """
 
@@ -15,10 +15,12 @@ try:
 except ImportError:
     Version = None  # type: ignore[misc, assignment]
 
-DEPS_POLICY = "v3"
+DEPS_POLICY = "v3.1"
 
 PINNED = {
     "diffusers": "0.30.3",
+    "transformers": "4.44.2",
+    "accelerate": "0.33.0",
 }
 
 OPTIONAL_PACKAGES = [
@@ -213,10 +215,10 @@ def _pytorch_index_url_for_torch(torch_ver):
     return f"https://download.pytorch.org/whl/{cuda}"
 
 
-def _reassert_pinned_diffusers():
+def _reassert_pinned_ml():
     if versions_match():
         return True
-    print("   Re-installing diffusers after torchvision fix...")
+    print("   Re-installing pinned ML packages after torchvision fix...")
     r = _pip_install_pinned()
     if r.returncode != 0:
         print(f"   reassert pip failed:\n{(r.stderr or r.stdout or '')[-800:]}")
@@ -264,7 +266,7 @@ def _pip_install_torchvision_compat():
         return False
     if not _verify_torchvision_nms_subprocess():
         return False
-    return _reassert_pinned_diffusers()
+    return _reassert_pinned_ml()
 
 
 def _ensure_torchvision():
@@ -276,6 +278,7 @@ def _ensure_torchvision():
 
 def _verify_diffusers_import_subprocess():
     script = """
+import transformers
 from diffusers import StableDiffusionXLPipeline
 print("OK")
 """
@@ -306,7 +309,7 @@ def ensure_pinned_deps(force=False):
     """
     print(
         f"Kaggle deps policy {DEPS_POLICY} "
-        "(diffusers-only; no huggingface-hub downgrade)"
+        "(diffusers+transformers+accelerate; no huggingface-hub downgrade)"
     )
 
     if not force and versions_match():
