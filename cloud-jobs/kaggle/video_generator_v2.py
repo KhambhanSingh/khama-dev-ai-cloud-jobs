@@ -3,7 +3,7 @@ YouTube cartoon full_video generator — imported by git_queue_processor.py only
 Do not run this file directly on Kaggle; use git_queue_processor.py instead.
 
 Fixes:
-- huggingface-hub version conflict fixed (downgrade to 0.24.0)
+- huggingface-hub pinned to 0.26.x (avoids Kaggle 1.x; LocalEntryNotFoundError for diffusers)
 - CUDA OOM: एक time पर एक model
 - edge-tts: +0% format fix
 - VAE float32 fix
