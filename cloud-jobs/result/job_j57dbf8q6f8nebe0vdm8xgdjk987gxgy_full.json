@@ -1,5 +1,0 @@
-{
-  "status": "FAILED",
-  "recordId": "j57dbf8q6f8nebe0vdm8xgdjk987gxgy",
-  "error": "process_job() got an unexpected keyword argument 'hf_token'"
-}

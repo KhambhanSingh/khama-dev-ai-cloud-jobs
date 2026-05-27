@@ -1,5 +1,0 @@
-{
-  "status": "FAILED",
-  "recordId": "j572hrnqmhn659544w5wmtdcpd87hs7x",
-  "error": "\nStableDiffusionXLPipeline requires the transformers library but it was not found in your environment. You can install it with pip: `pip\ninstall transformers`\n"
-}
