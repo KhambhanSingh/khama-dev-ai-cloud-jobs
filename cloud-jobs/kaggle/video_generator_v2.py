@@ -16,37 +16,51 @@ import subprocess, sys, os
 # =========================================================
 # STEP 0: VERSION FIX — सबसे पहले यह होना चाहिए
 # =========================================================
+def _pip_extra_args():
+    if sys.version_info >= (3, 11):
+        return ["--break-system-packages"]
+    return []
+
 def fix_versions():
     print("🔧 Package versions fix हो रहे हैं...")
-
-    # Step 1: huggingface-hub downgrade (transformers को <1.0 चाहिए)
-    cmds = [
-        [sys.executable, "-m", "pip", "install", "-q",
-         "huggingface-hub==0.24.0", "--force-reinstall"],
-        [sys.executable, "-m", "pip", "install", "-q",
-         "transformers==4.44.2", "--force-reinstall"],
-        [sys.executable, "-m", "pip", "install", "-q",
-         "diffusers==0.30.3", "--force-reinstall"],
-        [sys.executable, "-m", "pip", "install", "-q",
-         "accelerate==0.33.0"],
-        [sys.executable, "-m", "pip", "install", "-q",
-         "edge-tts", "pydub", "safetensors", "Pillow"],
+    packages = [
+        "huggingface-hub==0.24.0",
+        "transformers==4.44.2",
+        "diffusers==0.30.3",
+        "accelerate==0.33.0",
+        "edge-tts",
+        "pydub",
+        "safetensors",
+        "Pillow",
     ]
-    for cmd in cmds:
-        pkg = cmd[4]
+    failed = False
+    for pkg in packages:
+        cmd = [
+            sys.executable, "-m", "pip", "install", "-q", pkg,
+            "--force-reinstall", *_pip_extra_args(),
+        ]
         print(f"   📦 {pkg}...")
         r = subprocess.run(cmd, capture_output=True, text=True)
         if r.returncode != 0:
-            print(f"   ⚠️  {r.stderr[-80:]}")
+            failed = True
+            err = (r.stderr or r.stdout or "")[-500:]
+            print(f"   ❌ pip failed: {err}")
 
-    # ffmpeg
     r = subprocess.run(["ffmpeg", "-version"], capture_output=True)
     if r.returncode != 0:
         subprocess.run(["apt-get", "install", "-y", "-q", "ffmpeg"],
                        capture_output=True)
+    if failed:
+        print("❌ Some package installs failed (see errors above).\n")
+        return False
     print("✅ Versions fixed!\n")
-    print("⚠️  IMPORTANT: Kernel restart required after package install!")
-    print("   Menu → Run → Restart & Clear Output → Run processor once again\n")
+    return True
+
+def _purge_hf_stack_modules():
+    roots = ("huggingface_hub", "transformers", "diffusers", "accelerate")
+    for name in list(sys.modules):
+        if name.split(".")[0] in roots:
+            del sys.modules[name]
 
 # =========================================================
 # VERIFY VERSIONS
@@ -78,7 +92,12 @@ def ensure_compatible_versions():
     if verify_imports():
         return
     print("\n⚠️  Incompatible versions — running fix_versions()...")
-    fix_versions()
+    if not fix_versions():
+        raise SystemExit("Kernel restart required after package install")
+    _purge_hf_stack_modules()
+    if verify_imports():
+        print("✅ Versions OK after pip install (no kernel restart needed).\n")
+        return
     print("\n🔴 STOP: Kernel restart required after package install")
     raise SystemExit("Kernel restart required after package install")
 
