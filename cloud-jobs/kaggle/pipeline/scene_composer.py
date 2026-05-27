@@ -5,7 +5,7 @@ import subprocess
 
 from .logging_util import log_stage
 
-from .validator import validate_scene_clips, validate_video
+from .validator import validate_scene_clips, validate_scene_png, validate_video
 
 
 def _run_ffmpeg(cmd):
@@ -16,6 +16,36 @@ def _run_ffmpeg(cmd):
         err = err.decode("utf-8", errors="replace")[:2000]
         log_stage("compose", message=err, level="ERROR")
         raise
+
+
+def _video_encode_args(fps):
+    fps = max(1, int(fps))
+    return [
+        "-c:v",
+        "libx264",
+        "-preset",
+        "veryfast",
+        "-crf",
+        "23",
+        "-b:v",
+        "2500k",
+        "-maxrate",
+        "4000k",
+        "-bufsize",
+        "8000k",
+        "-pix_fmt",
+        "yuv420p",
+        "-vsync",
+        "cfr",
+        "-r",
+        str(fps),
+        "-g",
+        str(fps),
+        "-keyint_min",
+        str(fps),
+        "-movflags",
+        "+faststart",
+    ]
 
 
 def _zoompan_vf(width, height, fps, duration_sec):
@@ -43,24 +73,7 @@ def _encode_scene_clip(image_path, out_path, duration_sec, width, height, fps):
         _zoompan_vf(width, height, fps, duration_sec),
         "-t",
         str(duration_sec),
-        "-r",
-        str(fps),
-        "-pix_fmt",
-        "yuv420p",
-        "-c:v",
-        "libx264",
-        "-preset",
-        "veryfast",
-        "-crf",
-        "23",
-        "-g",
-        str(fps),
-        "-keyint_min",
-        str(fps),
-        "-movflags",
-        "+faststart",
-        out_path,
-    ]
+    ] + _video_encode_args(fps) + [out_path]
     _run_ffmpeg(cmd)
     return out_path
 
@@ -82,7 +95,7 @@ def _write_concat_list(list_path, clip_paths):
         f.write("\n".join(lines) + "\n")
 
 
-def _concat_copy(list_path, video_only):
+def _concat_copy(list_path, video_only, fps):
     cmd = [
         "ffmpeg",
         "-y",
@@ -96,6 +109,10 @@ def _concat_copy(list_path, video_only):
         list_path,
         "-c",
         "copy",
+        "-vsync",
+        "cfr",
+        "-r",
+        str(fps),
         video_only,
     ]
     _run_ffmpeg(cmd)
@@ -113,24 +130,7 @@ def _concat_reencode(list_path, video_only, fps):
         "+genpts",
         "-i",
         list_path,
-        "-c:v",
-        "libx264",
-        "-preset",
-        "veryfast",
-        "-crf",
-        "23",
-        "-pix_fmt",
-        "yuv420p",
-        "-r",
-        str(fps),
-        "-g",
-        str(fps),
-        "-keyint_min",
-        str(fps),
-        "-movflags",
-        "+faststart",
-        video_only,
-    ]
+    ] + _video_encode_args(fps) + [video_only]
     _run_ffmpeg(cmd)
 
 
@@ -161,10 +161,20 @@ def concat_scenes_with_audio(
             "copy",
             "-c:a",
             "aac",
+            "-ar",
+            "44100",
+            "-ac",
+            "2",
             "-map",
             "0:v:0",
             "-map",
             "1:a:0",
+            "-vsync",
+            "cfr",
+            "-r",
+            str(fps),
+            "-movflags",
+            "+faststart",
             "-shortest",
             out_path,
         ]
@@ -176,7 +186,7 @@ def concat_scenes_with_audio(
     video_only = os.path.join(work, f"{record_id}_video_only.mp4")
 
     try:
-        _concat_copy(list_path, video_only)
+        _concat_copy(list_path, video_only, fps)
     except subprocess.CalledProcessError:
         log_stage(
             "compose",
@@ -196,10 +206,20 @@ def concat_scenes_with_audio(
         "copy",
         "-c:a",
         "aac",
+        "-ar",
+        "44100",
+        "-ac",
+        "2",
         "-map",
         "0:v:0",
         "-map",
         "1:a:0",
+        "-vsync",
+        "cfr",
+        "-r",
+        str(fps),
+        "-movflags",
+        "+faststart",
         "-shortest",
         out_path,
     ]
@@ -224,12 +244,33 @@ def compose_video(
     os.makedirs(clips_dir, exist_ok=True)
 
     timing_by_idx = {t["sceneIndex"]: t for t in beat_timings}
+    sorted_imgs = sorted(
+        scene_images,
+        key=lambda p: int(
+            os.path.basename(p).replace("scene_", "").replace(".png", "")
+        ),
+    )
+
+    total_video_sec = sum(
+        float(timing_by_idx.get(
+            int(os.path.basename(img).replace("scene_", "").replace(".png", "")),
+            {},
+        ).get("duration", 3.0))
+        for img in sorted_imgs
+    )
+    log_stage(
+        "compose",
+        record_id,
+        message=f"clip_count={len(sorted_imgs)} total_video_sec≈{total_video_sec:.1f}",
+    )
+
     clip_paths = []
 
-    for img in scene_images:
+    for img in sorted_imgs:
+        validate_scene_png(img)
         base = os.path.basename(img)
         idx = int(base.replace("scene_", "").replace(".png", ""))
-        dur = timing_by_idx.get(idx, {}).get("duration", 3.0)
+        dur = float(timing_by_idx.get(idx, {}).get("duration", 3.0))
         clip_out = os.path.join(clips_dir, f"clip_{idx:03d}.mp4")
 
         if reuse_clips and os.path.isfile(clip_out):
@@ -246,4 +287,5 @@ def compose_video(
     os.makedirs(videos_dir, exist_ok=True)
     final = os.path.join(videos_dir, f"{record_id}.mp4")
     concat_scenes_with_audio(record_id, clip_paths, audio_path, final, fps=fps)
+    log_stage("compose", record_id, message="compose_done")
     return final
