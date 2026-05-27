@@ -1,5 +1,2 @@
-huggingface-hub==0.26.5
-transformers==4.44.2
 diffusers==0.30.3
-accelerate==0.33.0
-# torchvision: installed by kaggle_deps to match Kaggle torch (do not pin torch here)
+# torchvision: matched to Kaggle torch in kaggle_deps (torch 2.12 -> 0.27.0)
