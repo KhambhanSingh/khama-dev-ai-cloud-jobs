@@ -133,8 +133,7 @@ def _setup_kaggle_import_path():
 
 def _purge_import_caches():
     roots = (
-        "huggingface_hub", "transformers", "diffusers", "accelerate",
-        "video_generator_v2", "kaggle_deps",
+        "diffusers", "accelerate", "video_generator_v2", "kaggle_deps",
     )
     for name in list(sys.modules):
         if name.split(".")[0] in roots:
