@@ -1,5 +1,6 @@
 """
 Pinned ML package install/check for Kaggle full_video worker.
+Aligned with video_generator_v2.py (diffusers + torch/torchvision only).
 Used by git_queue_processor.py and install_kaggle_deps.py.
 """
 
@@ -14,19 +15,24 @@ try:
 except ImportError:
     Version = None  # type: ignore[misc, assignment]
 
+DEPS_POLICY = "v3"
+
 PINNED = {
-    "huggingface-hub": "0.26.5",
-    "transformers": "4.44.2",
     "diffusers": "0.30.3",
-    "accelerate": "0.33.0",
 }
 
 OPTIONAL_PACKAGES = [
-    "edge-tts",
+    "gtts",
     "pydub",
-    "safetensors",
+    "moviepy",
     "Pillow",
+    "safetensors",
 ]
+
+OPTIONAL_PIP_NAMES = {
+    "gtts": "gTTS",
+    "Pillow": "Pillow",
+}
 
 
 def marker_path():
@@ -117,22 +123,25 @@ def _pip_install_pinned():
         "--no-cache-dir",
         *pip_extra_args(),
     ]
-    print("   Running single pip install for all pinned packages...")
+    print("   Running pip install for pinned packages...")
     return subprocess.run(cmd, capture_output=True, text=True)
+
+
+def _optional_import_ok(pkg):
+    mod = "PIL" if pkg == "Pillow" else pkg
+    r = _run_python_script(f"import {mod}\nprint('OK')")
+    return r.returncode == 0 and (r.stdout or "").strip().startswith("OK")
 
 
 def _pip_install_optional():
     for pkg in OPTIONAL_PACKAGES:
-        dist = "pillow" if pkg == "Pillow" else pkg
-        try:
-            importlib.metadata.version(dist)
+        pip_name = OPTIONAL_PIP_NAMES.get(pkg, pkg)
+        if _optional_import_ok(pkg):
             continue
-        except importlib.metadata.PackageNotFoundError:
-            pass
-        print(f"   📦 optional {pkg}...")
+        print(f"   optional {pip_name}...")
         subprocess.run(
             [
-                sys.executable, "-m", "pip", "install", "-q", pkg,
+                sys.executable, "-m", "pip", "install", "-q", pip_name,
                 *pip_extra_args(),
             ],
             capture_output=True,
@@ -143,7 +152,7 @@ def _pip_install_optional():
 def _touch_marker():
     try:
         with open(marker_path(), "w", encoding="utf-8") as f:
-            f.write("ok\n")
+            f.write(f"{DEPS_POLICY}\n")
     except OSError:
         pass
 
@@ -180,7 +189,9 @@ def _torchvision_spec_for_torch(torch_ver):
         v = Version(base)
     except Exception:
         return "torchvision"
-    if v >= Version("2.5.0"):
+    if v >= Version("2.12.0"):
+        spec = "torchvision==0.27.0"
+    elif v >= Version("2.5.0"):
         spec = "torchvision==0.20.1"
     elif v >= Version("2.4.0"):
         spec = "torchvision==0.19.1"
@@ -202,19 +213,15 @@ def _pytorch_index_url_for_torch(torch_ver):
     return f"https://download.pytorch.org/whl/{cuda}"
 
 
-def _reassert_pinned_hf():
-    """Re-install pinned ML stack if torchvision pip disturbed versions."""
+def _reassert_pinned_diffusers():
     if versions_match():
         return True
-    print("   Re-installing pinned ML packages after torchvision fix...")
+    print("   Re-installing diffusers after torchvision fix...")
     r = _pip_install_pinned()
     if r.returncode != 0:
-        print(f"   ❌ reassert pip failed:\n{(r.stderr or r.stdout or '')[-800:]}")
+        print(f"   reassert pip failed:\n{(r.stderr or r.stdout or '')[-800:]}")
         return False
-    if not versions_match() and not _verify_subprocess():
-        print(f"   ❌ pinned versions drifted: {diagnose_versions()}")
-        return False
-    return True
+    return versions_match() or _verify_subprocess()
 
 
 def _verify_torchvision_nms_subprocess():
@@ -237,7 +244,7 @@ print("OK")
 def _pip_install_torchvision_compat():
     torch_ver = _torch_version_subprocess()
     if not torch_ver:
-        print("   ❌ torch not available (GPU image required)")
+        print("   torch not available (GPU image required)")
         return False
     spec = _torchvision_spec_for_torch(torch_ver)
     index_url = _pytorch_index_url_for_torch(torch_ver)
@@ -253,33 +260,17 @@ def _pip_install_torchvision_compat():
         text=True,
     )
     if r.returncode != 0:
-        print(f"   ❌ torchvision install failed:\n{(r.stderr or r.stdout or '')[-800:]}")
+        print(f"   torchvision install failed:\n{(r.stderr or r.stdout or '')[-800:]}")
         return False
     if not _verify_torchvision_nms_subprocess():
         return False
-    return _reassert_pinned_hf()
-
-
-def _verify_hf_hub_errors_subprocess():
-    script = """
-from huggingface_hub.errors import LocalEntryNotFoundError
-print("OK")
-"""
-    r = _run_python_script(script)
-    out = (r.stdout or "").strip()
-    if r.returncode == 0 and out.startswith("OK"):
-        print("   huggingface_hub.errors import OK")
-        return True
-    err = (r.stderr or r.stdout or "").strip()
-    if err:
-        print(f"   huggingface_hub.errors import failed: {err[-800:]}")
-    return False
+    return _reassert_pinned_diffusers()
 
 
 def _ensure_torchvision():
     if _verify_torchvision_nms_subprocess():
         return True
-    print("\n📦 Fixing torchvision (torchvision::nms) for transformers/diffusers...")
+    print("\n📦 Fixing torchvision (torchvision::nms) for diffusers...")
     return _pip_install_torchvision_compat()
 
 
@@ -301,10 +292,7 @@ print("OK")
 
 def _ensure_runtime_imports():
     if not _ensure_torchvision():
-        print("\n❌ torchvision/torch mismatch — cannot load CLIP or diffusers.")
-        return False
-    if not _verify_hf_hub_errors_subprocess():
-        print("\n❌ huggingface-hub too old for diffusers — re-run install_kaggle_deps.py")
+        print("\n❌ torchvision/torch mismatch — cannot load diffusers.")
         return False
     if not _verify_diffusers_import_subprocess():
         print("\n❌ diffusers import check failed — fix deps before processing queue.")
@@ -314,8 +302,13 @@ def _ensure_runtime_imports():
 
 def ensure_pinned_deps(force=False):
     """
-    Install pinned ML stack if needed. Returns True when versions match.
+    Install pinned ML stack if needed. Returns True when versions match and imports OK.
     """
+    print(
+        f"Kaggle deps policy {DEPS_POLICY} "
+        "(diffusers-only; no huggingface-hub downgrade)"
+    )
+
     if not force and versions_match():
         print(f"✅ deps OK (skip install): {diagnose_versions()}")
         _touch_marker()
@@ -331,12 +324,8 @@ def ensure_pinned_deps(force=False):
         return False
 
     if not versions_match() and not _verify_subprocess():
-        print(f"\n❌ Pinned packages not active after install.")
+        print("\n❌ Pinned packages not active after install.")
         print(f"   {diagnose_versions()}")
-        subprocess.run(
-            [sys.executable, "-m", "pip", "show", "huggingface-hub"],
-            capture_output=False,
-        )
         print(
             "\n   Try: python cloud-jobs/kaggle/install_kaggle_deps.py\n"
             "   Then Kernel → Restart & Clear Output → Save Environment (Kaggle Settings)"
