@@ -7,12 +7,16 @@ from .validator import (
     retry_stage,
     validate_beats,
     validate_audio,
-    validate_video,
+    validate_video_output,
+    validate_scene_images,
     validate_characters,
 )
 from .audio_pipeline import build_narration_audio
+from .audio_post import finalize_narration_audio, mix_bgm, resolve_bgm_path
 from .image_pipeline import generate_all_scenes
 from .scene_composer import compose_video
+from .beat_subdivide import subdivide_long_beats
+from .caption_renderer import burn_captions
 
 
 def job_work_dirs(record_id):
@@ -37,10 +41,13 @@ def process_job_v2(job_data):
     characters = job_data.get("characters") or []
     lang = job_data.get("language", "hi")
     video_config = job_data.get("videoConfig") or {}
+    caption_style = job_data.get("captionStyle")
     max_dur = float(video_config.get("maxDurationSec", 1800))
 
     if job_data.get("videoStyle"):
         video_config["videoStyle"] = job_data["videoStyle"]
+    if job_data.get("narratorMode"):
+        video_config["narratorMode"] = True
 
     validate_beats(beats)
     validate_characters(characters, beats)
@@ -58,10 +65,19 @@ def process_job_v2(job_data):
             record_id, beats, lang, d["audio"], max_duration_sec=max_dur
         )
 
-    audio_path, timings, _, total_audio = retry_stage(
+    audio_path, timings, caption_words, total_audio = retry_stage(
         stage_tts, "tts", record_id
     )
     validate_audio(audio_path)
+
+    bgm_path = resolve_bgm_path(job_data)
+    if bgm_path:
+        log_stage("tts", record_id, message=f"mixing bgm {os.path.basename(bgm_path)}")
+        mix_bgm(audio_path, bgm_path, audio_path)
+    else:
+        finalize_narration_audio(audio_path, audio_path)
+
+    log_stage("tts", record_id, message=f"tts_done duration={total_audio:.1f}s")
 
     for beat in beats:
         idx = beat.get("sceneIndex")
@@ -70,12 +86,21 @@ def process_job_v2(job_data):
                 beat["duration"] = t["duration"]
                 break
 
+    beats, timings = subdivide_long_beats(beats, timings, max_sec=4.5)
+    log_stage(
+        "start",
+        record_id,
+        message=f"after_subdivide beats={len(beats)} clips≈{len(timings)}",
+    )
+
     def stage_images():
         return generate_all_scenes(
             record_id, beats, characters, video_config, d
         )
 
     scene_images = retry_stage(stage_images, "image", record_id)
+    validate_scene_images(scene_images, audio_duration_sec=total_audio)
+    log_stage("image", record_id, message="images_done")
 
     compose_attempt = [0]
 
@@ -91,8 +116,19 @@ def process_job_v2(job_data):
             reuse_clips=compose_attempt[0] > 1,
         )
 
-    final_video = retry_stage(stage_compose, "compose", record_id)
-    validate_video(final_video)
+    raw_video = retry_stage(stage_compose, "compose", record_id)
+
+    def stage_captions():
+        return burn_captions(
+            record_id, raw_video, caption_words, caption_style, d
+        )
+
+    final_video = raw_video
+    if caption_words:
+        final_video = retry_stage(stage_captions, "captions", record_id)
+
+    validate_video_output(final_video)
+    log_stage("validation", record_id, message="validation_pass")
 
     log_stage("done", record_id, message=f"duration={total_audio:.1f}s")
 
@@ -101,6 +137,6 @@ def process_job_v2(job_data):
         "video": final_video,
         "audio": audio_path,
         "audioDuration": total_audio,
-        "captionJson": [],
+        "captionJson": caption_words,
         "beatTimings": timings,
     }
