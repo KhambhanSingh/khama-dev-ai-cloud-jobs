@@ -78,6 +78,32 @@ def _trim_prompt(prompt, max_words=55):
     return " ".join(str(prompt or "").split()[:max_words])
 
 
+def _norm_name(value):
+    return str(value or "").strip().casefold()
+
+
+def _beat_character_entries(beat, characters):
+    """Resolve beat character names to registry entries (Unicode-safe)."""
+    beat_names = [_norm_name(n) for n in (beat.get("characters") or [])]
+    if not beat_names:
+        return []
+    out = []
+    seen = set()
+    for c in characters or []:
+        cname = _norm_name(c.get("name"))
+        cid = _norm_name(c.get("id"))
+        if cname in beat_names or cid in beat_names:
+            if cname not in seen:
+                seen.add(cname)
+                out.append(c)
+    return out
+
+
+def _safe_ref_filename(char_id):
+    safe = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in str(char_id))
+    return safe or "character"
+
+
 def _neutral_init(gen_w, gen_h):
     return Image.new("RGB", (gen_w, gen_h), (128, 128, 128))
 
@@ -127,17 +153,29 @@ def generate_scene_image(
     idx = beat.get("sceneIndex", 0)
     scene_path = os.path.join(scenes_dir, f"scene_{idx:03d}.png")
 
+    beat_chars = _beat_character_entries(beat, characters)
     visual = beat.get("visualPrompt") or ""
-    if not visual:
-        char_bits = ", ".join(
-            c.get("referencePrompt", c.get("name", ""))[:80]
-            for c in (characters or [])[:3]
+    if not visual and beat_chars:
+        char_bits = "; ".join(
+            f"{c.get('name')}: {c.get('referencePrompt', '')[:120]}"
+            for c in beat_chars[:6]
         )
-        visual = f"{beat.get('environment', 'scene')}, {char_bits}, {beat.get('action', '')}"
+        visual = (
+            f"Characters: {char_bits}. "
+            f"Environment: {beat.get('environment', 'scene')}. "
+            f"Action: {beat.get('action', '')}."
+        )
+    elif not visual:
+        visual = f"{beat.get('environment', 'scene')}, {beat.get('action', '')}"
 
-    visual = _trim_prompt(visual)
     style = str(video_config.get("style", "2D kids animation, cartoon, high detail"))
     full_prompt = f"{style}, {visual}"
+    if beat_chars:
+        for c in beat_chars:
+            name = str(c.get("name") or "")
+            if name and name not in full_prompt:
+                full_prompt += f" Include {name}."
+    full_prompt = _trim_prompt(full_prompt, max_words=80)
 
     os.makedirs(refs_dir, exist_ok=True)
     os.makedirs(scenes_dir, exist_ok=True)
@@ -148,27 +186,23 @@ def generate_scene_image(
     init_image = None
     strength = 0.58
 
-    beat_names = [str(n).lower() for n in (beat.get("characters") or [])]
     ref_path = None
-    for c in characters or []:
-        cid = c.get("id") or c.get("name", "")
-        cname = str(c.get("name", "")).lower()
-        cid_l = str(cid).lower()
-        if beat_names and cname not in beat_names and cid_l not in beat_names:
-            continue
-        ref_path = os.path.join(refs_dir, f"ref_{cid_l}.png")
+    primary = beat_chars[0] if beat_chars else None
+    if primary:
+        cid = primary.get("id") or primary.get("name", "")
+        ref_file = _safe_ref_filename(cid)
+        ref_path = os.path.join(refs_dir, f"ref_{ref_file}.png")
         if not os.path.isfile(ref_path):
             log_stage("image", record_id, beat=idx, message=f"ref gen {cid}")
             generate_reference_image(
                 pipe,
-                c.get("referencePrompt", c.get("name", "")),
+                primary.get("referencePrompt", primary.get("name", "")),
                 gen_w,
                 gen_h,
                 out_w,
                 out_h,
                 ref_path,
             )
-        break
 
     if ref_path and os.path.isfile(ref_path):
         init_image = Image.open(ref_path).convert("RGB")
