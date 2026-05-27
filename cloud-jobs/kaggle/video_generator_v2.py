@@ -45,10 +45,8 @@ def fix_versions():
         subprocess.run(["apt-get", "install", "-y", "-q", "ffmpeg"],
                        capture_output=True)
     print("✅ Versions fixed!\n")
-    print("⚠️  IMPORTANT: Kernel restart required after first run!")
-    print("   Menu → Run → Restart & Clear Output → Run again\n")
-
-#fix_versions()
+    print("⚠️  IMPORTANT: Kernel restart required after package install!")
+    print("   Menu → Run → Restart & Clear Output → Run processor once again\n")
 
 # =========================================================
 # VERIFY VERSIONS
@@ -76,9 +74,15 @@ def verify_imports():
         print(f"❌ Import verify failed: {e}")
         return False
 
-if not verify_imports():
-    print("\n🔴 STOP: Kernel restart करें, फिर दोबारा run करें!")
-    raise SystemExit("Kernel restart required")
+def ensure_compatible_versions():
+    if verify_imports():
+        return
+    print("\n⚠️  Incompatible versions — running fix_versions()...")
+    fix_versions()
+    print("\n🔴 STOP: Kernel restart required after package install")
+    raise SystemExit("Kernel restart required after package install")
+
+ensure_compatible_versions()
 
 # =========================================================
 # MAIN IMPORTS
