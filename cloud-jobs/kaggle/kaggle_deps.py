@@ -5,11 +5,17 @@ Used by git_queue_processor.py and install_kaggle_deps.py.
 
 import importlib.metadata
 import os
+import re
 import subprocess
 import sys
 
+try:
+    from packaging.version import Version
+except ImportError:
+    Version = None  # type: ignore[misc, assignment]
+
 PINNED = {
-    "huggingface-hub": "0.24.0",
+    "huggingface-hub": "0.26.5",
     "transformers": "4.44.2",
     "diffusers": "0.30.3",
     "accelerate": "0.33.0",
@@ -157,25 +163,58 @@ def _torch_version_subprocess():
     return (r.stdout or "").strip().split()[0] if r.stdout else None
 
 
+def _torch_base_version(torch_ver):
+    if not torch_ver:
+        return None
+    return torch_ver.split("+")[0].strip()
+
+
 def _torchvision_spec_for_torch(torch_ver):
     """Pick torchvision wheel compatible with Kaggle preinstalled torch (do not reinstall torch)."""
-    if not torch_ver:
+    base = _torch_base_version(torch_ver)
+    if not base:
         return "torchvision"
-    parts = torch_ver.split("+")[0].split(".")
+    if Version is None:
+        return "torchvision"
     try:
-        major = int(parts[0])
-        minor = int(parts[1]) if len(parts) > 1 else 0
-    except ValueError:
+        v = Version(base)
+    except Exception:
         return "torchvision"
-    if major == 2 and minor >= 4:
-        return "torchvision==0.19.1"
-    if major == 2 and minor == 3:
-        return "torchvision==0.18.1"
-    if major == 2 and minor == 2:
-        return "torchvision==0.17.2"
-    if major == 2:
-        return "torchvision==0.16.2"
-    return "torchvision"
+    if v >= Version("2.5.0"):
+        spec = "torchvision==0.20.1"
+    elif v >= Version("2.4.0"):
+        spec = "torchvision==0.19.1"
+    elif v >= Version("2.3.0"):
+        spec = "torchvision==0.18.1"
+    elif v >= Version("2.2.0"):
+        spec = "torchvision==0.17.2"
+    elif v >= Version("2.1.0"):
+        spec = "torchvision==0.16.2"
+    else:
+        spec = "torchvision"
+    print(f"   torchvision map: torch {base} (parsed {v}) -> {spec}")
+    return spec
+
+
+def _pytorch_index_url_for_torch(torch_ver):
+    m = re.search(r"\+(cu\d+)", torch_ver or "")
+    cuda = m.group(1) if m else "cu121"
+    return f"https://download.pytorch.org/whl/{cuda}"
+
+
+def _reassert_pinned_hf():
+    """Re-install pinned ML stack if torchvision pip disturbed versions."""
+    if versions_match():
+        return True
+    print("   Re-installing pinned ML packages after torchvision fix...")
+    r = _pip_install_pinned()
+    if r.returncode != 0:
+        print(f"   ❌ reassert pip failed:\n{(r.stderr or r.stdout or '')[-800:]}")
+        return False
+    if not versions_match() and not _verify_subprocess():
+        print(f"   ❌ pinned versions drifted: {diagnose_versions()}")
+        return False
+    return True
 
 
 def _verify_torchvision_nms_subprocess():
@@ -201,11 +240,13 @@ def _pip_install_torchvision_compat():
         print("   ❌ torch not available (GPU image required)")
         return False
     spec = _torchvision_spec_for_torch(torch_ver)
-    print(f"   Installing {spec} for torch {torch_ver}...")
+    index_url = _pytorch_index_url_for_torch(torch_ver)
+    print(f"   Installing {spec} for torch {torch_ver} (index {index_url}, --no-deps)...")
     r = subprocess.run(
         [
             sys.executable, "-m", "pip", "install", spec,
-            "--force-reinstall", "--no-cache-dir",
+            "--index-url", index_url,
+            "--force-reinstall", "--no-deps", "--no-cache-dir",
             *pip_extra_args(),
         ],
         capture_output=True,
@@ -214,7 +255,25 @@ def _pip_install_torchvision_compat():
     if r.returncode != 0:
         print(f"   ❌ torchvision install failed:\n{(r.stderr or r.stdout or '')[-800:]}")
         return False
-    return _verify_torchvision_nms_subprocess()
+    if not _verify_torchvision_nms_subprocess():
+        return False
+    return _reassert_pinned_hf()
+
+
+def _verify_hf_hub_errors_subprocess():
+    script = """
+from huggingface_hub.errors import LocalEntryNotFoundError
+print("OK")
+"""
+    r = _run_python_script(script)
+    out = (r.stdout or "").strip()
+    if r.returncode == 0 and out.startswith("OK"):
+        print("   huggingface_hub.errors import OK")
+        return True
+    err = (r.stderr or r.stdout or "").strip()
+    if err:
+        print(f"   huggingface_hub.errors import failed: {err[-800:]}")
+    return False
 
 
 def _ensure_torchvision():
@@ -243,6 +302,9 @@ print("OK")
 def _ensure_runtime_imports():
     if not _ensure_torchvision():
         print("\n❌ torchvision/torch mismatch — cannot load CLIP or diffusers.")
+        return False
+    if not _verify_hf_hub_errors_subprocess():
+        print("\n❌ huggingface-hub too old for diffusers — re-run install_kaggle_deps.py")
         return False
     if not _verify_diffusers_import_subprocess():
         print("\n❌ diffusers import check failed — fix deps before processing queue.")
