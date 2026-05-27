@@ -1,5 +1,5 @@
 {
   "status": "FAILED",
   "recordId": "j57amzy5ar3ska3zknx3jprc8s87hbzr",
-  "error": "CUDA out of memory. Tried to allocate 720.00 MiB. GPU 0 has a total capacity of 14.56 GiB of which 719.81 MiB is free. Including non-PyTorch memory, this process has 13.86 GiB memory in use. Of the allocated memory 13.65 GiB is allocated by PyTorch, and 75.10 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)"
+  "error": "Command '['ffmpeg', '-y', '-f', 'concat', '-safe', '0', '-i', 'cloud-jobs/work/j57amzy5ar3ska3zknx3jprc8s87hbzr/clips/concat_list.txt', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', 'cloud-jobs/work/j57amzy5ar3ska3zknx3jprc8s87hbzr/clips/j57amzy5ar3ska3zknx3jprc8s87hbzr_video_only.mp4']' returned non-zero exit status 1."
 }
