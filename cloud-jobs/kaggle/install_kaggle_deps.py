@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-One-time Kaggle setup: pin huggingface-hub, transformers, diffusers, accelerate.
+One-time Kaggle setup: pin diffusers (+ torchvision match for Kaggle torch).
 
 Kaggle notebook (after git bootstrap):
   !cd /kaggle/working && python cloud-jobs/kaggle/install_kaggle_deps.py
