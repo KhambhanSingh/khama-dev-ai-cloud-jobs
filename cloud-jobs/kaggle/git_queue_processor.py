@@ -358,7 +358,11 @@ def process_queue_once():
             record_id = job_data["recordId"]
             print(f"▶️  Processing: {record_id}\n")
 
-            result = vg.process_job(job_data, hf_token=HF_TOKEN)
+            if HF_TOKEN:
+                os.environ["HF_TOKEN"] = HF_TOKEN
+                os.environ["HUGGING_FACE_HUB_TOKEN"] = HF_TOKEN
+
+            result = vg.process_job(job_data)
 
             os.makedirs(VIDEO_DIR, exist_ok=True)
             stable = os.path.join(VIDEO_DIR, f"{record_id}.mp4")
