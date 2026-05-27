@@ -1,4 +1,4 @@
-"""SDXL scene images with character reference locking via img2img."""
+"""SDXL scene images with character reference locking via img2img (single GPU pipeline)."""
 
 import gc
 import os
@@ -8,8 +8,11 @@ from PIL import Image
 
 from .logging_util import log_stage
 
-_BASE_PIPE = None
+# One img2img pipeline in VRAM (built from txt2img components once).
 _IMG2IMG_PIPE = None
+
+DEFAULT_GEN_MAX_W = int(os.environ.get("KAGGLE_GEN_MAX_WIDTH", "768"))
+DEFAULT_GEN_MAX_H = int(os.environ.get("KAGGLE_GEN_MAX_HEIGHT", "432"))
 
 
 def clear_gpu_memory():
@@ -18,41 +21,52 @@ def clear_gpu_memory():
         torch.cuda.empty_cache()
 
 
-def load_base_model():
-    global _BASE_PIPE
-    if _BASE_PIPE:
-        return _BASE_PIPE
+def _round8(n):
+    return max(8, int(n) // 8 * 8)
 
-    from diffusers import StableDiffusionXLPipeline
 
-    log_stage("image", message="Loading SDXL Turbo txt2img")
-    _BASE_PIPE = StableDiffusionXLPipeline.from_pretrained(
-        "stabilityai/sdxl-turbo",
-        torch_dtype=torch.float16,
-        variant="fp16",
-        use_safetensors=True,
-    ).to("cuda")
-    _BASE_PIPE.enable_attention_slicing()
-    _BASE_PIPE.enable_vae_slicing()
-    _BASE_PIPE.enable_vae_tiling()
-    _BASE_PIPE.set_progress_bar_config(disable=True)
-    return _BASE_PIPE
+def _gen_dimensions(video_config):
+    """Cap SD generation size for 15GB GPUs; output size stays in video_config."""
+    out_w = int(video_config.get("width", 1280))
+    out_h = int(video_config.get("height", 720))
+    max_w = int(video_config.get("genMaxWidth", DEFAULT_GEN_MAX_W))
+    max_h = int(video_config.get("genMaxHeight", DEFAULT_GEN_MAX_H))
+
+    scale = min(1.0, max_w / out_w, max_h / out_h)
+    gen_w = _round8(out_w * scale)
+    gen_h = _round8(out_h * scale)
+    return gen_w, gen_h, out_w, out_h
+
+
+def _upscale_image(image, out_w, out_h):
+    if image.size == (out_w, out_h):
+        return image
+    return image.resize((out_w, out_h), Image.Resampling.LANCZOS)
 
 
 def load_img2img_model():
+    """Load SDXL once: txt2img components -> img2img, drop duplicate weights."""
     global _IMG2IMG_PIPE
-    if _IMG2IMG_PIPE:
+    if _IMG2IMG_PIPE is not None:
         return _IMG2IMG_PIPE
 
-    from diffusers import StableDiffusionXLImg2ImgPipeline
+    from diffusers import (
+        StableDiffusionXLPipeline,
+        StableDiffusionXLImg2ImgPipeline,
+    )
 
-    log_stage("image", message="Loading SDXL Turbo img2img")
-    _IMG2IMG_PIPE = StableDiffusionXLImg2ImgPipeline.from_pretrained(
+    log_stage("image", message="Loading SDXL Turbo (single pipeline)")
+    base = StableDiffusionXLPipeline.from_pretrained(
         "stabilityai/sdxl-turbo",
         torch_dtype=torch.float16,
         variant="fp16",
         use_safetensors=True,
-    ).to("cuda")
+    )
+    _IMG2IMG_PIPE = StableDiffusionXLImg2ImgPipeline(**base.components)
+    del base
+    clear_gpu_memory()
+
+    _IMG2IMG_PIPE.to("cuda")
     _IMG2IMG_PIPE.enable_attention_slicing()
     _IMG2IMG_PIPE.enable_vae_slicing()
     _IMG2IMG_PIPE.enable_vae_tiling()
@@ -64,17 +78,37 @@ def _trim_prompt(prompt, max_words=55):
     return " ".join(str(prompt or "").split()[:max_words])
 
 
-def generate_reference_image(pipe, prompt, width, height, out_path):
+def _neutral_init(gen_w, gen_h):
+    return Image.new("RGB", (gen_w, gen_h), (128, 128, 128))
+
+
+def _run_generation(pipe, prompt, gen_w, gen_h, init_image=None, strength=0.58):
     prompt = _trim_prompt(prompt)
     with torch.inference_mode():
-        out = pipe(
-            prompt=prompt,
-            height=height,
-            width=width,
-            num_inference_steps=2,
-            guidance_scale=0.0,
-        )
-        image = out.images[0]
+        if init_image is not None:
+            init = init_image.convert("RGB").resize((gen_w, gen_h))
+            out = pipe(
+                prompt=prompt,
+                image=init,
+                strength=strength,
+                num_inference_steps=2,
+                guidance_scale=0.0,
+            )
+        else:
+            # No reference: gray init + high strength ≈ txt2img
+            out = pipe(
+                prompt=prompt,
+                image=_neutral_init(gen_w, gen_h),
+                strength=0.92,
+                num_inference_steps=2,
+                guidance_scale=0.0,
+            )
+        return out.images[0]
+
+
+def generate_reference_image(pipe, prompt, gen_w, gen_h, out_w, out_h, out_path):
+    image = _run_generation(pipe, prompt, gen_w, gen_h, init_image=None)
+    image = _upscale_image(image, out_w, out_h)
     image.save(out_path)
     return out_path
 
@@ -87,9 +121,9 @@ def generate_scene_image(
     refs_dir,
     scenes_dir,
     previous_scene_path=None,
+    pipe=None,
 ):
-    width = int(video_config.get("width", 1280))
-    height = int(video_config.get("height", 720))
+    gen_w, gen_h, out_w, out_h = _gen_dimensions(video_config)
     idx = beat.get("sceneIndex", 0)
     scene_path = os.path.join(scenes_dir, f"scene_{idx:03d}.png")
 
@@ -108,13 +142,12 @@ def generate_scene_image(
     os.makedirs(refs_dir, exist_ok=True)
     os.makedirs(scenes_dir, exist_ok=True)
 
-    base_pipe = load_base_model()
-    img_pipe = load_img2img_model()
+    if pipe is None:
+        pipe = load_img2img_model()
 
     init_image = None
     strength = 0.58
 
-    # Pick reference: first character in beat, else previous scene
     beat_names = [str(n).lower() for n in (beat.get("characters") or [])]
     ref_path = None
     for c in characters or []:
@@ -127,41 +160,34 @@ def generate_scene_image(
         if not os.path.isfile(ref_path):
             log_stage("image", record_id, beat=idx, message=f"ref gen {cid}")
             generate_reference_image(
-                base_pipe,
+                pipe,
                 c.get("referencePrompt", c.get("name", "")),
-                width,
-                height,
+                gen_w,
+                gen_h,
+                out_w,
+                out_h,
                 ref_path,
             )
         break
 
     if ref_path and os.path.isfile(ref_path):
-        init_image = Image.open(ref_path).convert("RGB").resize((width, height))
+        init_image = Image.open(ref_path).convert("RGB")
     elif previous_scene_path and os.path.isfile(previous_scene_path):
-        init_image = Image.open(previous_scene_path).convert("RGB").resize((width, height))
+        init_image = Image.open(previous_scene_path).convert("RGB")
         strength = 0.52
 
-    log_stage("image", record_id, beat=idx, message=full_prompt[:120])
+    log_stage(
+        "image",
+        record_id,
+        beat=idx,
+        message=f"gen={gen_w}x{gen_h} out={out_w}x{out_h} {full_prompt[:80]}",
+    )
 
     try:
-        with torch.inference_mode():
-            if init_image is not None:
-                out = img_pipe(
-                    prompt=full_prompt,
-                    image=init_image,
-                    strength=strength,
-                    num_inference_steps=2,
-                    guidance_scale=0.0,
-                )
-            else:
-                out = base_pipe(
-                    prompt=full_prompt,
-                    height=height,
-                    width=width,
-                    num_inference_steps=2,
-                    guidance_scale=0.0,
-                )
-            image = out.images[0]
+        image = _run_generation(
+            pipe, full_prompt, gen_w, gen_h, init_image=init_image, strength=strength
+        )
+        image = _upscale_image(image, out_w, out_h)
         image.save(scene_path)
     except Exception as e:
         log_stage("image", record_id, beat=idx, message=f"fail: {e}", level="ERROR")
@@ -188,6 +214,7 @@ def generate_all_scenes(record_id, beats, characters, video_config, work_dirs):
     if video_config.get("videoStyle"):
         video_config = {**video_config, "style": video_config.get("videoStyle")}
 
+    pipe = load_img2img_model()
     paths = []
     prev = None
     for beat in beats:
@@ -199,6 +226,7 @@ def generate_all_scenes(record_id, beats, characters, video_config, work_dirs):
             refs_dir,
             scenes_dir,
             previous_scene_path=prev,
+            pipe=pipe,
         )
         paths.append(path)
         prev = path
