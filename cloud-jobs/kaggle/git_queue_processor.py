@@ -22,6 +22,16 @@ NEXT_GITHUB_REPO = ""
 HF_TOKEN         = ""
 
 # ==================== SECRETS ====================
+def normalize_github_repo(repo):
+    parts = [p for p in repo.strip().strip("/").split("/") if p]
+    while len(parts) > 2 and parts[-1] == "cloud-jobs":
+        parts.pop()
+    if len(parts) != 2:
+        raise ValueError(
+            f"NEXT_GITHUB_REPO must be owner/repo, got: {repo!r}"
+        )
+    return f"{parts[0]}/{parts[1]}"
+
 def setup_secrets():
     global GITHUB_TOKEN, GIT_USER_EMAIL, GIT_USER_NAME
     global GIT_REPO_URL, GIT_BRANCH, NEXT_GITHUB_REPO, HF_TOKEN
@@ -43,7 +53,7 @@ def setup_secrets():
             print("   ⚠️  HF_TOKEN set नहीं है")
 
         try:
-            NEXT_GITHUB_REPO = s.get_secret("NEXT_GITHUB_REPO")
+            NEXT_GITHUB_REPO = normalize_github_repo(s.get_secret("NEXT_GITHUB_REPO"))
         except Exception:
             NEXT_GITHUB_REPO = "KhambhanSingh/khama-dev-ai-cloud-jobs"
 
