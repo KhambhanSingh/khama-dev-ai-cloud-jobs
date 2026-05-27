@@ -273,8 +273,13 @@ def process_queue_once():
         print("   video_generator_v2.py को /kaggle/working/ में रखें!")
         return
     except SystemExit as e:
-        print(f"🔴 video_generator_v2: {e}")
-        print("   Kernel restart करें: Menu → Run → Restart & Clear Output")
+        msg = str(e) or ""
+        print(f"🔴 video_generator_v2: {msg}")
+        if "package install" in msg.lower():
+            print("   Stop continuous mode. Kernel → Restart & Clear Output")
+            print("   Then: python cloud-jobs/kaggle/git_queue_processor.py once")
+        else:
+            print("   Kernel restart करें: Menu → Run → Restart & Clear Output")
         return
 
     pending = get_pending_jobs()
