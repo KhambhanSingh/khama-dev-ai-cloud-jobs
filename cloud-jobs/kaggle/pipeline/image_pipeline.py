@@ -3,16 +3,20 @@
 import gc
 import os
 
+import numpy as np
 import torch
 from PIL import Image
 
 from .logging_util import log_stage
+from .validator import validate_scene_png, validate_scene_images
 
 # One img2img pipeline in VRAM (built from txt2img components once).
 _IMG2IMG_PIPE = None
 
 DEFAULT_GEN_MAX_W = int(os.environ.get("KAGGLE_GEN_MAX_WIDTH", "768"))
 DEFAULT_GEN_MAX_H = int(os.environ.get("KAGGLE_GEN_MAX_HEIGHT", "432"))
+SCENE_GEN_STEPS = int(os.environ.get("KAGGLE_SCENE_STEPS", "6"))
+SCENE_GEN_STEPS_RETRY = int(os.environ.get("KAGGLE_SCENE_STEPS_RETRY", "10"))
 
 
 def clear_gpu_memory():
@@ -104,11 +108,16 @@ def _safe_ref_filename(char_id):
     return safe or "character"
 
 
-def _neutral_init(gen_w, gen_h):
-    return Image.new("RGB", (gen_w, gen_h), (128, 128, 128))
+def _noise_init(gen_w, gen_h):
+    """Colorful noise init — avoid flat grey SDXL failure mode."""
+    arr = np.random.randint(0, 255, (gen_h, gen_w, 3), dtype=np.uint8)
+    return Image.fromarray(arr, mode="RGB")
 
 
-def _run_generation(pipe, prompt, gen_w, gen_h, init_image=None, strength=0.58):
+def _run_generation(
+    pipe, prompt, gen_w, gen_h, init_image=None, strength=0.58, steps=None, guidance=1.0
+):
+    steps = steps or SCENE_GEN_STEPS
     prompt = _trim_prompt(prompt)
     with torch.inference_mode():
         if init_image is not None:
@@ -117,26 +126,37 @@ def _run_generation(pipe, prompt, gen_w, gen_h, init_image=None, strength=0.58):
                 prompt=prompt,
                 image=init,
                 strength=strength,
-                num_inference_steps=2,
-                guidance_scale=0.0,
+                num_inference_steps=steps,
+                guidance_scale=guidance,
             )
         else:
-            # No reference: gray init + high strength ≈ txt2img
+            init = _noise_init(gen_w, gen_h)
             out = pipe(
                 prompt=prompt,
-                image=_neutral_init(gen_w, gen_h),
-                strength=0.92,
-                num_inference_steps=2,
-                guidance_scale=0.0,
+                image=init,
+                strength=0.85,
+                num_inference_steps=steps,
+                guidance_scale=guidance,
             )
         return out.images[0]
 
 
 def generate_reference_image(pipe, prompt, gen_w, gen_h, out_w, out_h, out_path):
-    image = _run_generation(pipe, prompt, gen_w, gen_h, init_image=None)
-    image = _upscale_image(image, out_w, out_h)
-    image.save(out_path)
-    return out_path
+    last_err = None
+    for attempt in range(1, 4):
+        try:
+            steps = SCENE_GEN_STEPS if attempt == 1 else SCENE_GEN_STEPS_RETRY
+            image = _run_generation(
+                pipe, prompt, gen_w, gen_h, init_image=None, strength=0.85, steps=steps
+            )
+            image = _upscale_image(image, out_w, out_h)
+            image.save(out_path)
+            validate_scene_png(out_path)
+            return out_path
+        except Exception as e:
+            last_err = e
+            log_stage("image", message=f"ref gen attempt {attempt} failed: {e}", level="ERROR")
+    raise last_err
 
 
 def generate_scene_image(
@@ -184,7 +204,8 @@ def generate_scene_image(
         pipe = load_img2img_model()
 
     init_image = None
-    strength = 0.58
+    narrator_mode = bool(video_config.get("narratorMode"))
+    strength = 0.50 if narrator_mode else 0.58
 
     ref_path = None
     primary = beat_chars[0] if beat_chars else None
@@ -205,10 +226,22 @@ def generate_scene_image(
             )
 
     if ref_path and os.path.isfile(ref_path):
-        init_image = Image.open(ref_path).convert("RGB")
-    elif previous_scene_path and os.path.isfile(previous_scene_path):
-        init_image = Image.open(previous_scene_path).convert("RGB")
-        strength = 0.52
+        try:
+            validate_scene_png(ref_path)
+            init_image = Image.open(ref_path).convert("RGB")
+            if narrator_mode:
+                strength = 0.48
+        except (ValueError, OSError):
+            init_image = None
+            ref_path = None
+
+    if init_image is None and previous_scene_path and os.path.isfile(previous_scene_path):
+        try:
+            validate_scene_png(previous_scene_path)
+            init_image = Image.open(previous_scene_path).convert("RGB")
+            strength = 0.48 if narrator_mode else 0.52
+        except (ValueError, OSError):
+            init_image = None
 
     log_stage(
         "image",
@@ -217,27 +250,37 @@ def generate_scene_image(
         message=f"gen={gen_w}x{gen_h} out={out_w}x{out_h} {full_prompt[:80]}",
     )
 
-    try:
-        image = _run_generation(
-            pipe, full_prompt, gen_w, gen_h, init_image=init_image, strength=strength
-        )
-        image = _upscale_image(image, out_w, out_h)
-        image.save(scene_path)
-    except Exception as e:
-        log_stage("image", record_id, beat=idx, message=f"fail: {e}", level="ERROR")
-        if previous_scene_path and os.path.isfile(previous_scene_path):
-            import shutil
-
-            shutil.copy2(previous_scene_path, scene_path)
-        elif ref_path and os.path.isfile(ref_path):
-            import shutil
-
-            shutil.copy2(ref_path, scene_path)
-        else:
-            raise
+    last_err = None
+    for attempt in range(1, 4):
+        try:
+            steps = SCENE_GEN_STEPS if attempt == 1 else SCENE_GEN_STEPS_RETRY
+            image = _run_generation(
+                pipe,
+                full_prompt,
+                gen_w,
+                gen_h,
+                init_image=init_image,
+                strength=strength,
+                steps=steps,
+            )
+            image = _upscale_image(image, out_w, out_h)
+            image.save(scene_path)
+            validate_scene_png(scene_path)
+            clear_gpu_memory()
+            return scene_path
+        except Exception as e:
+            last_err = e
+            log_stage(
+                "image",
+                record_id,
+                beat=idx,
+                message=f"attempt {attempt}/3 failed: {e}",
+                level="ERROR",
+            )
+            strength = min(0.75, strength + 0.08)
 
     clear_gpu_memory()
-    return scene_path
+    raise last_err or RuntimeError(f"scene generation failed for beat {idx}")
 
 
 def generate_all_scenes(record_id, beats, characters, video_config, work_dirs):
@@ -265,4 +308,6 @@ def generate_all_scenes(record_id, beats, characters, video_config, work_dirs):
         paths.append(path)
         prev = path
 
+    validate_scene_images(paths)
+    log_stage("image", record_id, message=f"images_done count={len(paths)}")
     return paths
