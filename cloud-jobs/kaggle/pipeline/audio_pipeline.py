@@ -120,13 +120,13 @@ def synthesize_beat_tts(text, lang, out_wav, emotion="neutral"):
 
 def build_narration_audio(record_id, beats, lang, audio_dir, max_duration_sec=1800):
     """
-    Returns (master_wav_path, beat_timings, caption_json_words).
+    Returns (master_wav_path, beat_timings, unused_caption_slot, total_sec).
     beat_timings: [{ sceneIndex, start, end, duration, narrationText }]
+    Third tuple element is always [] (captions disabled).
     """
     os.makedirs(audio_dir, exist_ok=True)
     master = AudioSegment.empty()
     timings = []
-    caption_words = []
     cursor = 0.0
 
     for beat in beats:
@@ -158,19 +158,6 @@ def build_narration_audio(record_id, beats, lang, audio_dir, max_duration_sec=18
             }
         )
 
-        words = text.split()
-        if words:
-            per = duration / len(words)
-            for wi, w in enumerate(words):
-                caption_words.append(
-                    {
-                        "word": w,
-                        "start": start + wi * per,
-                        "end": start + (wi + 1) * per,
-                        "confidence": 1.0,
-                    }
-                )
-
     if not timings:
         raise ValueError("no audio segments generated")
 
@@ -190,15 +177,9 @@ def build_narration_audio(record_id, beats, lang, audio_dir, max_duration_sec=18
             t["start"] = cursor
             t["end"] = cursor + t["duration"]
             cursor = t["end"]
-        if caption_words:
-            cap_total = caption_words[-1]["end"]
-            if cap_total > 0:
-                for c in caption_words:
-                    c["start"] *= total / cap_total
-                    c["end"] *= total / cap_total
 
     master_path = os.path.join(audio_dir, f"{record_id}.wav")
     master = normalize(master)
     master.export(master_path, format="wav")
 
-    return master_path, timings, caption_words, total
+    return master_path, timings, [], total
