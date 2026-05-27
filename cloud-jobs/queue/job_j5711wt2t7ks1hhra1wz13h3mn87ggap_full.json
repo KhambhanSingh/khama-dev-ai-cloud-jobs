@@ -1,0 +1,123 @@
+{
+  "beats": [
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 1",
+      "characters": [],
+      "duration": 18.428571428571427,
+      "emotion": "neutral",
+      "endTime": 18.428571428571427,
+      "environment": "story scene",
+      "narrationText": "एक बहुत बड़े जंगल में वनराज नाम का एक शेर रहता था।  वह बहुत ही क्रूर और शक्तिशाली था।  वह अपनी भूख मिटाने के लिए हर दिन कई जानवरों का शिकार करता था।  जंगल के सभी जानवर उससे बहुत डरे हुए रहते थे।",
+      "sceneIndex": 0,
+      "startTime": 0,
+      "visualPrompt": "Cartoon, story scene, story moment, emotion: neutral, cinematic composition, medium shot, soft natural lighting, high detail, consistent cartoon style, no text, no watermark"
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 2",
+      "characters": [],
+      "duration": 21.428571428571427,
+      "emotion": "neutral",
+      "endTime": 39.857142857142854,
+      "environment": "story scene",
+      "narrationText": "एक दिन सभी जानवरों ने मिलकर एक योजना बनाई और शेर के पास गए।  उन्होंने शेर से विनती की कि आप हर रोज़ इतने जानवरों को मत मारिए।  हम वादा करते हैं कि आपकी भूख मिटाने के लिए हर दिन एक जानवर खुद आपके पास आ जाएगा।  शेर मान गया।",
+      "sceneIndex": 1,
+      "startTime": 18.428571428571427,
+      "visualPrompt": "Cartoon, story scene, story moment, emotion: neutral, cinematic composition, medium shot, soft natural lighting, high detail, consistent cartoon style, no text, no watermark"
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 3",
+      "characters": [],
+      "duration": 12.857142857142858,
+      "emotion": "neutral",
+      "endTime": 52.71428571428571,
+      "environment": "story scene",
+      "narrationText": "एक दिन एक नन्हे खरगोश की बारी आई।  खरगोश बहुत बुद्धिमान था।  वह जानबूझकर शेर के पास देर से पहुँचा।  शेर भूख के मारे गुस्से में लाल-पीला हो रहा था।",
+      "sceneIndex": 2,
+      "startTime": 39.857142857142854,
+      "visualPrompt": "Cartoon, story scene, story moment, emotion: neutral, cinematic composition, medium shot, soft natural lighting, high detail, consistent cartoon style, no text, no watermark"
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 4",
+      "characters": [],
+      "duration": 24.857142857142858,
+      "emotion": "neutral",
+      "endTime": 77.57142857142857,
+      "environment": "story scene",
+      "narrationText": "जब खरगोश वहाँ पहुँचा, तो शेर ने दहाड़ते हुए पूछा कि तुम इतनी देर से क्यों आए हो?  खरगोश ने बड़े प्यार से कहा कि महाराज, रास्ते में मुझे एक दूसरा शेर मिल गया था।  वह कह रहा था कि वह इस जंगल का असली राजा है।  उसने मुझे रोकने की कोशिश की, इसलिए मुझे देर हो गई।",
+      "sceneIndex": 3,
+      "startTime": 52.71428571428571,
+      "visualPrompt": "Cartoon, story scene, story moment, emotion: neutral, cinematic composition, medium shot, soft natural lighting, high detail, consistent cartoon style, no text, no watermark"
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 5",
+      "characters": [],
+      "duration": 18.428571428571427,
+      "emotion": "neutral",
+      "endTime": 96,
+      "environment": "story scene",
+      "narrationText": "यह सुनकर वनराज को बहुत गुस्सा आया।  उसने कहा कि मुझे अभी उस दूसरे शेर के पास ले चलो।  खरगोश शेर को एक गहरे कुएँ के पास ले गया।  उसने कहा कि महाराज, वह दूसरा शेर इसी किले के अंदर छिपा बैठा है।",
+      "sceneIndex": 4,
+      "startTime": 77.57142857142857,
+      "visualPrompt": "Cartoon, story scene, story moment, emotion: neutral, cinematic composition, medium shot, soft natural lighting, high detail, consistent cartoon style, no text, no watermark"
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 6",
+      "characters": [],
+      "duration": 21,
+      "emotion": "neutral",
+      "endTime": 117,
+      "environment": "story scene",
+      "narrationText": "शेर ने जैसे ही कुएँ के अंदर झाँका, उसे अपनी ही परछाई दिखाई दी।  उसने उसे दूसरा शेर समझा और ज़ोर से दहाड़ा।  कुएँ से भी उसकी अपनी ही दहाड़ गूँजी।  शेर बिना सोचे-समझे उस दूसरे शेर को मारने के लिए कुएँ में कूद गया और डूबकर मर गया।",
+      "sceneIndex": 5,
+      "startTime": 96,
+      "visualPrompt": "Cartoon, story scene, story moment, emotion: neutral, cinematic composition, medium shot, soft natural lighting, high detail, consistent cartoon style, no text, no watermark"
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 7",
+      "characters": [],
+      "duration": 9.857142857142858,
+      "emotion": "neutral",
+      "endTime": 126.85714285714286,
+      "environment": "story scene",
+      "narrationText": "नन्हे खरगोश ने अपनी बुद्धिमानी से अपनी और बाकी सब जानवरों की जान बचा ली।  सभी जानवरों ने खरगोश की बहुत तारीफ की।",
+      "sceneIndex": 6,
+      "startTime": 117,
+      "visualPrompt": "Cartoon, story scene, story moment, emotion: neutral, cinematic composition, medium shot, soft natural lighting, high detail, consistent cartoon style, no text, no watermark"
+    }
+  ],
+  "captionJson": [],
+  "characters": [],
+  "createdAt": 1779884567261,
+  "emotions": [
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral"
+  ],
+  "index": "full",
+  "language": "hi",
+  "legacyCharacters": [],
+  "narration": "एक बहुत बड़े जंगल में वनराज नाम का एक शेर रहता था। वह बहुत ही क्रूर और शक्तिशाली था। वह अपनी भूख मिटाने के लिए हर दिन कई जानवरों का शिकार करता था। जंगल के सभी जानवर उससे बहुत डरे हुए रहते थे। एक दिन सभी जानवरों ने मिलकर एक योजना बनाई और शेर के पास गए। उन्होंने शेर से विनती की कि आप हर रोज़ इतने जानवरों को मत मारिए। हम वादा करते हैं कि आपकी भूख मिटाने के लिए हर दिन एक जानवर खुद आपके पास आ जाएगा। शेर मान गया। एक दिन एक नन्हे खरगोश की बारी आई। खरगोश बहुत बुद्धिमान था। वह जानबूझकर शेर के पास देर से पहुँचा। शेर भूख के मारे गुस्से में लाल-पीला हो रहा था। जब खरगोश वहाँ पहुँचा, तो शेर ने दहाड़ते हुए पूछा कि तुम इतनी देर से क्यों आए हो? खरगोश ने बड़े प्यार से कहा कि महाराज, रास्ते में मुझे एक दूसरा शेर मिल गया था। वह कह रहा था कि वह इस जंगल का असली राजा है। उसने मुझे रोकने की कोशिश की, इसलिए मुझे देर हो गई। यह सुनकर वनराज को बहुत गुस्सा आया। उसने कहा कि मुझे अभी उस दूसरे शेर के पास ले चलो। खरगोश शेर को एक गहरे कुएँ के पास ले गया। उसने कहा कि महाराज, वह दूसरा शेर इसी किले के अंदर छिपा बैठा है। शेर ने जैसे ही कुएँ के अंदर झाँका, उसे अपनी ही परछाई दिखाई दी। उसने उसे दूसरा शेर समझा और ज़ोर से दहाड़ा। कुएँ से भी उसकी अपनी ही दहाड़ गूँजी। शेर बिना सोचे-समझे उस दूसरे शेर को मारने के लिए कुएँ में कूद गया और डूबकर मर गया। नन्हे खरगोश ने अपनी बुद्धिमानी से अपनी और बाकी सब जानवरों की जान बचा ली। सभी जानवरों ने खरगोश की बहुत तारीफ की।",
+  "recordId": "j5711wt2t7ks1hhra1wz13h3mn87ggap",
+  "type": "full_video",
+  "version": 2,
+  "videoConfig": {
+    "fps": 24,
+    "height": 720,
+    "maxDurationSec": 1800,
+    "minDurationSec": 15,
+    "width": 1280
+  },
+  "videoStyle": "Cartoon",
+  "voice": "af_sarah"
+}
