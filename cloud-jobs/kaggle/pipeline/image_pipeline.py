@@ -295,18 +295,28 @@ def generate_scene_image(
         for c in beat_chars[:3]
     )
 
+    # Ground image in what is actually being narrated at this moment.
+    # Using the first 25 words of the beat's narration text ensures the
+    # generated scene depicts the specific story event being spoken.
+    narration_snippet = " ".join(str(beat.get("narrationText", "")).split()[:25]).strip()
+
     if char_anchor:
         full_prompt = (
             f"{style}. "
             f"Characters: {char_anchor}. "
             f"Background: {environment}. "
-            f"Pose: {pose_kw}. "
+            + (f"Story moment: {narration_snippet}. " if narration_snippet else "")
+            + f"Pose: {pose_kw}. "
             + (f"Action: {action}. " if action else "")
         )
     else:
         # Fallback when no character registry entry matches this beat
         visual_fallback = beat.get("visualPrompt") or f"{environment}, {action}"
-        full_prompt = f"{style}. {visual_fallback}. {pose_kw}."
+        full_prompt = (
+            f"{style}. {visual_fallback}. "
+            + (f"Story moment: {narration_snippet}. " if narration_snippet else "")
+            + f"{pose_kw}."
+        )
 
     full_prompt = _trim_prompt(full_prompt, max_words=80)
 
