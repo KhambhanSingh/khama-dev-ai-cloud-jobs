@@ -1,0 +1,254 @@
+{
+  "beats": [
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 1",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 5.493233082706768,
+      "emotion": "neutral",
+      "endTime": 5.493233082706768,
+      "environment": "story scene",
+      "narrationText": "मीरा एक छोटी और प्यारी बच्ची थी।  उसे रंग-बिरंगी चीजें बहुत पसंद थीं।",
+      "sceneIndex": 0,
+      "startTime": 0,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: मीरा एक छोटी और प्यारी बच्ची थी।  उसे रंग-बिरंगी चीजें बहुत पसंद थीं।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 2",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 6.760902255639098,
+      "emotion": "neutral",
+      "endTime": 12.254135338345865,
+      "environment": "story scene",
+      "narrationText": "उसके पास एक सुंदर तोता था जिसका नाम मिठू था।  मिठू बहुत समझदार और बातूनी था।",
+      "sceneIndex": 1,
+      "startTime": 5.493233082706768,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: उसके पास एक सुंदर तोता था जिसका नाम मिठू था।  मिठू बहुत समझदार और बातूनी था।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 3",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 8.873684210526315,
+      "emotion": "neutral",
+      "endTime": 21.127819548872182,
+      "environment": "story scene",
+      "narrationText": "वह मीरा की हर बात सुनता और कभी-कभी नकल भी करता। \nएक दिन, मीरा अपनी गुड़िया के साथ खेल रही थी।",
+      "sceneIndex": 2,
+      "startTime": 12.254135338345865,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: वह मीरा की हर बात सुनता और कभी-कभी नकल भी करता। \nएक दिन, मीरा अपनी गुड़िया के साथ खेल रही थी।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 4",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 6.760902255639098,
+      "emotion": "neutral",
+      "endTime": 27.88872180451128,
+      "environment": "story scene",
+      "narrationText": "अचानक उसकी गुड़िया का एक हाथ टूट गया।  मीरा बहुत उदास हो गई और रोने लगी।",
+      "sceneIndex": 3,
+      "startTime": 21.127819548872182,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: अचानक उसकी गुड़िया का एक हाथ टूट गया।  मीरा बहुत उदास हो गई और रोने लगी।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 5",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 9.718796992481204,
+      "emotion": "neutral",
+      "endTime": 37.60751879699249,
+      "environment": "story scene",
+      "narrationText": "मिठू ने मीरा को रोते हुए देखा।  वह तुरंत उड़कर मीरा के पास आया और अपनी मीठी आवाज में बोला, \"मीरा, रो मत!",
+      "sceneIndex": 4,
+      "startTime": 27.88872180451128,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: मिठू ने मीरा को रोते हुए देखा।  वह तुरंत उड़कर मीरा के पास आया और अपनी मीठी आवाज में बोला, \"मीरा, रो मत!. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 6",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 5.91578947368421,
+      "emotion": "neutral",
+      "endTime": 43.523308270676694,
+      "environment": "story scene",
+      "narrationText": "मैं तुम्हारी मदद करूंगा। \"\nमीरा ने आंसू पोंछते हुए मिठू की तरफ देखा।",
+      "sceneIndex": 5,
+      "startTime": 37.60751879699249,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: मैं तुम्हारी मदद करूंगा। \"\nमीरा ने आंसू पोंछते हुए मिठू की तरफ देखा।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 7",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 8.451127819548871,
+      "emotion": "neutral",
+      "endTime": 51.974436090225566,
+      "environment": "story scene",
+      "narrationText": "मिठू अपनी छोटी-सी चोंच से गुड़िया के टूटे हुए हाथ को छूने लगा।  उसने सोचा, \"मैं इसे कैसे ठीक करूं?",
+      "sceneIndex": 6,
+      "startTime": 43.523308270676694,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: मिठू अपनी छोटी-सी चोंच से गुड़िया के टूटे हुए हाथ को छूने लगा।  उसने सोचा, \"मैं इसे कैसे ठीक करूं?. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 8",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 9.29624060150376,
+      "emotion": "neutral",
+      "endTime": 61.27067669172933,
+      "environment": "story scene",
+      "narrationText": "\"\nतभी मिठू को एक विचार आया।  वह उड़कर बाहर बगीचे में गया और एक मजबूत लता का छोटा टुकड़ा ले आया।",
+      "sceneIndex": 7,
+      "startTime": 51.974436090225566,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: \"\nतभी मिठू को एक विचार आया।  वह उड़कर बाहर बगीचे में गया और एक मजबूत लता का छोटा टुकड़ा ले आया।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 9",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 14.789473684210526,
+      "emotion": "neutral",
+      "endTime": 76.06015037593986,
+      "environment": "story scene",
+      "narrationText": "फिर वह वापस आया और अपनी चोंच से उस लता को बड़े ध्यान से गुड़िया के टूटे हुए हिस्से से जोड़ने की कोशिश करने लगा। \nमीरा मिठू को इतनी मेहनत करते हुए देखकर हैरान थी।",
+      "sceneIndex": 8,
+      "startTime": 61.27067669172933,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: फिर वह वापस आया और अपनी चोंच से उस लता को बड़े ध्यान से गुड़िया के टूटे हुए हिस्से से जोड़ने की कोशिश करने लगा। \nमीरा मिठू को इतनी मेहनत करते हुए देखकर हैरान थी।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 10",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 18.59248120300752,
+      "emotion": "neutral",
+      "endTime": 94.65263157894738,
+      "environment": "story scene",
+      "narrationText": "मिठू ने कुछ देर तक कोशिश की और आखिर में, उसने लता को गुड़िया के हाथ से मजबूती से बांध दिया।  गुड़िया का हाथ अब पहले जैसा नहीं था, लेकिन वह अब पूरी तरह से जुड़ा हुआ था और उससे खेला जा सकता था।",
+      "sceneIndex": 9,
+      "startTime": 76.06015037593986,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: मिठू ने कुछ देर तक कोशिश की और आखिर में, उसने लता को गुड़िया के हाथ से मजबूती से बांध दिया।  गुड़िया का हाथ अब पहले जैसा नहीं था, लेकिन वह अब पूरी तरह से जुड़ा हुआ था और उससे खेला जा सकता था।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 11",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 5.91578947368421,
+      "emotion": "neutral",
+      "endTime": 100.56842105263159,
+      "environment": "story scene",
+      "narrationText": "मीरा बहुत खुश हुई।  उसने मिठू को गले लगा लिया और कहा, \"धन्यवाद मिठू!",
+      "sceneIndex": 10,
+      "startTime": 94.65263157894738,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: मीरा बहुत खुश हुई।  उसने मिठू को गले लगा लिया और कहा, \"धन्यवाद मिठू!. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 12",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 7.606015037593985,
+      "emotion": "neutral",
+      "endTime": 108.17443609022558,
+      "environment": "story scene",
+      "narrationText": "तुम मेरे सबसे अच्छे दोस्त हो। \" मिठू ने खुशी से अपनी गर्दन हिलाई और बोला, \"मीरा-मीरा, दोस्त!",
+      "sceneIndex": 11,
+      "startTime": 100.56842105263159,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: तुम मेरे सबसे अच्छे दोस्त हो। \" मिठू ने खुशी से अपनी गर्दन हिलाई और बोला, \"मीरा-मीरा, दोस्त!. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 13",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 12.254135338345865,
+      "emotion": "neutral",
+      "endTime": 120.42857142857144,
+      "environment": "story scene",
+      "narrationText": "\"\nउस दिन से, मीरा और मिठू की दोस्ती और भी गहरी हो गई।  मिठू ने मीरा को सिखाया कि मुसीबत में एक-दूसरे की मदद करना कितना ज़रूरी है।",
+      "sceneIndex": 12,
+      "startTime": 108.17443609022558,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: \"\nउस दिन से, मीरा और मिठू की दोस्ती और भी गहरी हो गई।  मिठू ने मीरा को सिखाया कि मुसीबत में एक-दूसरे की मदद करना कितना ज़रूरी है।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    }
+  ],
+  "captionJson": [],
+  "captionStyle": {
+    "name": "Youtuber",
+    "style": "text-yellow-400 text-xl font-extrabold uppercase"
+  },
+  "characters": [
+    {
+      "appearance": "friendly professional presenter, neutral expression",
+      "clothing": "modern smart-casual outfit",
+      "colorPalette": "neutral warm tones",
+      "id": "c_44d5d5c",
+      "name": "नायक",
+      "personality": "engaging, clear, professional",
+      "referencePrompt": "2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon.",
+      "species": "human presenter"
+    }
+  ],
+  "createdAt": 1780193667930,
+  "emotions": [
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral"
+  ],
+  "index": "full",
+  "language": "hi",
+  "legacyCharacters": [
+    "2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon."
+  ],
+  "narration": "मीरा एक छोटी और प्यारी बच्ची थी। उसे रंग-बिरंगी चीजें बहुत पसंद थीं। उसके पास एक सुंदर तोता था जिसका नाम मिठू था। मिठू बहुत समझदार और बातूनी था। वह मीरा की हर बात सुनता और कभी-कभी नकल भी करता।\nएक दिन, मीरा अपनी गुड़िया के साथ खेल रही थी। अचानक उसकी गुड़िया का एक हाथ टूट गया। मीरा बहुत उदास हो गई और रोने लगी। मिठू ने मीरा को रोते हुए देखा। वह तुरंत उड़कर मीरा के पास आया और अपनी मीठी आवाज में बोला, \"मीरा, रो मत! मैं तुम्हारी मदद करूंगा।\"\nमीरा ने आंसू पोंछते हुए मिठू की तरफ देखा। मिठू अपनी छोटी-सी चोंच से गुड़िया के टूटे हुए हाथ को छूने लगा। उसने सोचा, \"मैं इसे कैसे ठीक करूं?\"\nतभी मिठू को एक विचार आया। वह उड़कर बाहर बगीचे में गया और एक मजबूत लता का छोटा टुकड़ा ले आया। फिर वह वापस आया और अपनी चोंच से उस लता को बड़े ध्यान से गुड़िया के टूटे हुए हिस्से से जोड़ने की कोशिश करने लगा।\nमीरा मिठू को इतनी मेहनत करते हुए देखकर हैरान थी। मिठू ने कुछ देर तक कोशिश की और आखिर में, उसने लता को गुड़िया के हाथ से मजबूती से बांध दिया। गुड़िया का हाथ अब पहले जैसा नहीं था, लेकिन वह अब पूरी तरह से जुड़ा हुआ था और उससे खेला जा सकता था।\nमीरा बहुत खुश हुई। उसने मिठू को गले लगा लिया और कहा, \"धन्यवाद मिठू! तुम मेरे सबसे अच्छे दोस्त हो।\" मिठू ने खुशी से अपनी गर्दन हिलाई और बोला, \"मीरा-मीरा, दोस्त!\"\nउस दिन से, मीरा और मिठू की दोस्ती और भी गहरी हो गई। मिठू ने मीरा को सिखाया कि मुसीबत में एक-दूसरे की मदद करना कितना ज़रूरी है।",
+  "narratorMode": true,
+  "recordId": "j576j5aet0sbfrzwezv12fgra187rcv8",
+  "topic": "Kids Story",
+  "type": "full_video",
+  "version": 2,
+  "videoConfig": {
+    "fps": 24,
+    "height": 720,
+    "maxDurationSec": 1800,
+    "minDurationSec": 15,
+    "narratorMode": true,
+    "videoStyle": "Cartoon",
+    "width": 1280
+  },
+  "videoStyle": "Cartoon",
+  "voice": "af_sarah"
+}
