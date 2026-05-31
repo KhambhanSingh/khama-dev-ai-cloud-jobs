@@ -12,7 +12,7 @@ from .validator import (
     validate_characters,
 )
 from .audio_pipeline import build_narration_audio
-from .audio_post import finalize_narration_audio, mix_bgm, resolve_bgm_path
+from .audio_post import finalize_narration_audio, mix_bgm, resolve_bgm_path, validate_voice_present
 from .image_pipeline import generate_all_scenes
 from .scene_composer import compose_video
 from .beat_subdivide import subdivide_long_beats
@@ -77,6 +77,7 @@ def process_job_v2(job_data):
     else:
         finalize_narration_audio(audio_path, audio_path)
 
+    validate_voice_present(audio_path)
     log_stage("tts", record_id, message=f"tts_done duration={total_audio:.1f}s")
 
     for beat in beats:
