@@ -100,21 +100,49 @@ ENGLISH_LOCATION_MAP = {
 _GENERIC_ENV = ("story scene", "scene", "background", "")
 
 
+def _lookup_env(text):
+    """Return the most specific (longest) matching background description.
+
+    Order-independent so a generic word like घर/home does not beat a more
+    specific बगीचा/garden just because it appears earlier in the vocabulary.
+    Hindi matches take priority over English when both are present.
+    """
+    raw = str(text or "")
+    if not raw.strip():
+        return ""
+    hay = raw.lower()
+
+    best_desc = ""
+    best_len = -1
+    for keyword, description in HINDI_LOCATION_MAP.items():
+        if keyword in raw and len(keyword) > best_len:
+            best_len = len(keyword)
+            best_desc = description
+    if best_desc:
+        return best_desc
+
+    best_len = -1
+    for keyword, description in ENGLISH_LOCATION_MAP.items():
+        if keyword in hay and len(keyword) > best_len:
+            best_len = len(keyword)
+            best_desc = description
+    return best_desc
+
+
 def infer_environment(narration_text, visual_prompt, environment_field=""):
     """Map script narration / environment text to a specific background description.
 
-    Tries the Hindi and English vocabularies first, then falls back to any
-    non-generic environment text, and finally a safe default.
+    Prefers the explicit environment field first so an incidental location word
+    in the narration cannot override the beat's actual setting, then the
+    narration/visual prompt, then any non-generic env text, then a safe default.
     """
-    raw = f"{environment_field} {narration_text} {visual_prompt}"
-    hay = raw.lower()
+    field = _lookup_env(environment_field)
+    if field:
+        return field
 
-    for keyword, description in HINDI_LOCATION_MAP.items():
-        if keyword in raw:
-            return description
-    for keyword, description in ENGLISH_LOCATION_MAP.items():
-        if keyword in hay:
-            return description
+    text = _lookup_env(f"{narration_text} {visual_prompt}")
+    if text:
+        return text
 
     env = str(environment_field or "").strip()
     if env and env.lower() not in _GENERIC_ENV:
