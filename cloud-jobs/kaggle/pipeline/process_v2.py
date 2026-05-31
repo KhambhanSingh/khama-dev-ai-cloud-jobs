@@ -63,7 +63,7 @@ def process_job_v2(job_data):
             record_id, beats, lang, d["audio"], max_duration_sec=max_dur
         )
 
-    audio_path, timings, _caption_words, total_audio = retry_stage(
+    audio_path, timings, total_audio = retry_stage(
         stage_tts, "tts", record_id
     )
     validate_audio(audio_path)
@@ -117,7 +117,6 @@ def process_job_v2(job_data):
 
     raw_video = retry_stage(stage_compose, "compose", record_id)
 
-    # Captions/subtitles feature removed — raw_video is the final output.
     final_video = raw_video
     validate_video_output(final_video)
     log_stage("validation", record_id, message="validation_pass")
@@ -129,6 +128,5 @@ def process_job_v2(job_data):
         "video": final_video,
         "audio": audio_path,
         "audioDuration": total_audio,
-        "captionJson": [],
         "beatTimings": timings,
     }
