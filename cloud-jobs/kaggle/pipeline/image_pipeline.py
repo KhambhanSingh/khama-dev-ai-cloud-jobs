@@ -295,27 +295,34 @@ def generate_scene_image(
         for c in beat_chars[:3]
     )
 
-    # Ground image in what is actually being narrated at this moment.
-    # Using the first 25 words of the beat's narration text ensures the
-    # generated scene depicts the specific story event being spoken.
-    narration_snippet = " ".join(str(beat.get("narrationText", "")).split()[:25]).strip()
+    # Use the Gemini-generated English visualPrompt as the primary scene description.
+    # It was written by the LLM explicitly for SDXL and is always in English.
+    # DO NOT inject beat.narrationText — it is in Hindi and SDXL ignores it.
+    visual_from_planner = str(beat.get("visualPrompt") or "").strip()
 
-    if char_anchor:
+    if char_anchor and visual_from_planner:
+        # Best case: character anchors + pre-computed English scene description + pose
+        full_prompt = (
+            f"{style}. "
+            f"Characters: {char_anchor}. "
+            f"Scene: {visual_from_planner}. "
+            f"Pose: {pose_kw}."
+        )
+    elif char_anchor:
+        # No visualPrompt: fall back to environment + action (both English from planner)
         full_prompt = (
             f"{style}. "
             f"Characters: {char_anchor}. "
             f"Background: {environment}. "
-            + (f"Story moment: {narration_snippet}. " if narration_snippet else "")
-            + f"Pose: {pose_kw}. "
             + (f"Action: {action}. " if action else "")
+            + f"Pose: {pose_kw}."
         )
     else:
-        # Fallback when no character registry entry matches this beat
-        visual_fallback = beat.get("visualPrompt") or f"{environment}, {action}"
+        # No characters matched: use visualPrompt or environment/action
         full_prompt = (
-            f"{style}. {visual_fallback}. "
-            + (f"Story moment: {narration_snippet}. " if narration_snippet else "")
-            + f"{pose_kw}."
+            f"{style}. "
+            f"{visual_from_planner or f'{environment}, {action}'}. "
+            f"{pose_kw}."
         )
 
     full_prompt = _trim_prompt(full_prompt, max_words=80)
