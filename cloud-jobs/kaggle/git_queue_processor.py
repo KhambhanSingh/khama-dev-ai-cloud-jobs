@@ -270,13 +270,11 @@ def github_raw_url(rel_path):
     rel = rel_path.lstrip("/").replace("\\", "/")
     return f"https://raw.githubusercontent.com/{owner}/{name}/{GIT_BRANCH}/{rel}"
 
-def write_result(record_id, status, video_url=None, error=None, caption_json=None):
+def write_result(record_id, status, video_url=None, error=None):
     os.makedirs(RESULT_DIR, exist_ok=True)
     payload = {"status": status, "recordId": str(record_id)}
     if video_url: payload["videoUrl"] = video_url
     if error:     payload["error"]    = str(error)[:4000]
-    if caption_json is not None:
-        payload["captionJson"] = caption_json
     path = os.path.join(RESULT_DIR, f"job_{record_id}_full.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2, ensure_ascii=False)
@@ -399,7 +397,6 @@ def process_queue_once():
                 record_id,
                 "DONE",
                 video_url=raw_url,
-                caption_json=result.get("captionJson"),
             )
             need_push = True
             backup_locally(result)
