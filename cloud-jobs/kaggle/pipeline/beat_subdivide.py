@@ -2,6 +2,44 @@
 
 import copy
 import math
+import re
+
+
+def _split_to_n_parts(text, n):
+    """
+    Split narration text into n roughly equal parts using sentence boundaries.
+    Hindi sentence boundary: ।  English: . ! ?
+    Falls back to word-chunk split when fewer than 2 sentences are found.
+    Each part is non-empty — falls back to the full text for empty slots.
+    """
+    text = str(text or "").strip()
+    if n <= 1 or not text:
+        return [text] * max(1, n)
+
+    sentences = [s.strip() for s in re.split(r"(?<=[।.!?])\s+", text) if s.strip()]
+
+    if len(sentences) < 2:
+        # No sentence boundaries found — distribute word chunks
+        words = text.split()
+        if not words:
+            return [text] * n
+        per = max(1, len(words) // n)
+        parts = []
+        for i in range(n):
+            start = i * per
+            end = (i + 1) * per if i < n - 1 else len(words)
+            chunk = " ".join(words[start:end]).strip()
+            parts.append(chunk or text)
+        return parts
+
+    per = max(1, len(sentences) // n)
+    parts = []
+    for i in range(n):
+        start = i * per
+        end = (i + 1) * per if i < n - 1 else len(sentences)
+        chunk = " ".join(sentences[start:end]).strip()
+        parts.append(chunk or text)
+    return parts
 
 
 def subdivide_long_beats(beats, timings, max_sec=4.5):
@@ -22,9 +60,24 @@ def subdivide_long_beats(beats, timings, max_sec=4.5):
         n = max(1, int(math.ceil(dur / max_sec)))
         sub_dur = dur / n
 
+        # Split narration text into n sentence-based slices so each sub-beat
+        # gets a unique excerpt — image pipeline will use this to generate a
+        # scene that visually matches what is being spoken at that moment.
+        text_parts = _split_to_n_parts(beat.get("narrationText", ""), n)
+
         for part in range(n):
             sub = copy.deepcopy(beat)
             sub["sceneIndex"] = new_idx
+
+            # Assign the sentence slice for this sub-beat
+            sub["narrationText"] = text_parts[part]
+
+            # Clear pre-computed visualPrompt for sub-beats (n > 1) so
+            # generate_scene_image builds a fresh prompt from the new slice.
+            # For n == 1 the original visualPrompt is preserved.
+            if n > 1:
+                sub["visualPrompt"] = ""
+
             if part > 0:
                 sub["beatTitle"] = f"{beat.get('beatTitle', 'Beat')} ({part + 1}/{n})"
             new_beats.append(sub)
@@ -37,7 +90,7 @@ def subdivide_long_beats(beats, timings, max_sec=4.5):
                     "start": start,
                     "end": end,
                     "duration": sub_dur,
-                    "narrationText": beat.get("narrationText", ""),
+                    "narrationText": text_parts[part],
                 }
             )
             new_idx += 1
