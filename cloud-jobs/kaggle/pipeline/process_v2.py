@@ -16,7 +16,6 @@ from .audio_post import finalize_narration_audio, mix_bgm, resolve_bgm_path, val
 from .image_pipeline import generate_all_scenes
 from .scene_composer import compose_video
 from .beat_subdivide import subdivide_long_beats
-from .caption_renderer import burn_captions
 
 
 def job_work_dirs(record_id):
@@ -41,7 +40,6 @@ def process_job_v2(job_data):
     characters = job_data.get("characters") or []
     lang = job_data.get("language", "hi")
     video_config = job_data.get("videoConfig") or {}
-    caption_style = job_data.get("captionStyle")
     max_dur = float(video_config.get("maxDurationSec", 1800))
 
     if job_data.get("videoStyle"):
@@ -65,7 +63,7 @@ def process_job_v2(job_data):
             record_id, beats, lang, d["audio"], max_duration_sec=max_dur
         )
 
-    audio_path, timings, caption_words, total_audio = retry_stage(
+    audio_path, timings, _caption_words, total_audio = retry_stage(
         stage_tts, "tts", record_id
     )
     validate_audio(audio_path)
@@ -119,15 +117,8 @@ def process_job_v2(job_data):
 
     raw_video = retry_stage(stage_compose, "compose", record_id)
 
-    def stage_captions():
-        return burn_captions(
-            record_id, raw_video, caption_words, caption_style, d
-        )
-
+    # Captions/subtitles feature removed — raw_video is the final output.
     final_video = raw_video
-    if caption_words:
-        final_video = retry_stage(stage_captions, "captions", record_id)
-
     validate_video_output(final_video)
     log_stage("validation", record_id, message="validation_pass")
 
