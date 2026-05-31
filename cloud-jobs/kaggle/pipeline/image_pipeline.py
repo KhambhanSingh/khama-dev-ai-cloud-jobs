@@ -46,7 +46,41 @@ EMOTION_POSE_KEYWORDS = {
     "calm":      "peaceful composed posture, gentle relaxed expression",
     "panic":     "running away, arms flailing, terrified expression",
     "sleepy":    "heavy drooping eyelids, slouched posture, yawning",
+    "worried":   "furrowed brow, biting lip, anxious clasped hands",
+    "playful":   "playful bouncy pose, mischievous grin, lively gesture",
+    "emotional": "deeply moved expression, glistening eyes, hand over heart",
 }
+
+# Deterministic emotion fallback (mirrors detectEmotion in environment.js) so a
+# beat that arrives "neutral" still reflects the narration's real emotion.
+_EMOTION_VOCAB = [
+    ("crying", ["रोया", "रोई", "रोने", "सिसक", "आँसू", "आंसू", "cry", "sob", "weep", "tears"]),
+    ("laughing", ["हँस", "हंस", "ठहाक", "खिलखिला", "laugh", "giggle", "chuckle"]),
+    ("scared", ["डर", "डरा", "डरी", "भयभीत", "घबरा", "सहम", "खौफ", "scared", "afraid", "fear", "terrified", "frightened"]),
+    ("angry", ["गुस्सा", "गुस्से", "क्रोध", "नाराज", "क्रुद्ध", "क्रोधित", "angry", "furious", "rage", "annoyed"]),
+    ("excited", ["उत्साह", "उत्साहित", "जोश", "रोमांच", "excited", "thrilled", "eager", "ecstatic"]),
+    ("surprised", ["हैरान", "चौंक", "अचंभ", "आश्चर्य", "हक्का", "surprised", "shocked", "amazed", "astonished"]),
+    ("worried", ["चिंता", "चिंतित", "परेशान", "फिक्र", "फ़िक्र", "बेचैन", "worried", "anxious", "nervous", "concerned"]),
+    ("sad", ["उदास", "दुखी", "दुःख", "दुख", "गमगीन", "निराश", "मायूस", "sad", "unhappy", "gloomy", "grief", "sorrow"]),
+    ("playful", ["शरारत", "मस्ती", "खिलवाड़", "playful", "mischiev", "frolic", "teasing"]),
+    ("thinking", ["सोच", "विचार", "सोचने", "think", "ponder", "wonder", "contempl"]),
+    ("suspense", ["रहस्य", "सस्पेंस", "रहस्यमय", "suspense", "tense", "mysterious", "eerie"]),
+    ("sleepy", ["नींद", "सोने", "थक", "ऊँघ", "sleepy", "tired", "yawn", "drowsy"]),
+    ("happy", ["खुश", "प्रसन्न", "आनंद", "मुस्कुरा", "हर्ष", "खुशी", "happy", "glad", "joy", "smile", "cheerful", "delighted"]),
+    ("calm", ["शांत", "सुकून", "इत्मीनान", "calm", "peaceful", "serene", "relaxed", "tranquil"]),
+]
+
+
+def _detect_emotion(text):
+    raw = str(text or "")
+    if not raw.strip():
+        return ""
+    low = raw.lower()
+    for emotion, keys in _EMOTION_VOCAB:
+        for k in keys:
+            if k in raw or k.lower() in low:
+                return emotion
+    return ""
 
 # Camera framing keywords so scenes are not all the same flat wide shot.
 CAMERA_KEYWORDS = {
@@ -156,8 +190,24 @@ def _norm_name(value):
     return str(value or "").strip().casefold()
 
 
+# Props/toys must never be a scene's primary character (mirrors TOY_SPECIES in
+# lib/videoPipeline/characterHeuristic.js).
+_PROP_SPECIES = {"teddy bear toy", "doll toy"}
+
+
+def _character_priority(c):
+    """main non-prop (0) < supporting non-prop (1) < prop main (2) < prop (3)."""
+    is_prop = str(c.get("species", "")).strip().lower() in _PROP_SPECIES
+    is_main = "main" in str(c.get("role", "")).strip().lower()
+    return (2 if is_prop else 0) + (0 if is_main else 1)
+
+
 def _beat_character_entries(beat, characters):
-    """Resolve beat character names to registry entries (Unicode-safe)."""
+    """Resolve beat character names to registry entries (Unicode-safe).
+
+    Sorted so real main characters come first and props/toys last, so the
+    primary rendered character is never a prop.
+    """
     beat_names = [_norm_name(n) for n in (beat.get("characters") or [])]
     if not beat_names:
         return []
@@ -170,12 +220,30 @@ def _beat_character_entries(beat, characters):
             if cname not in seen:
                 seen.add(cname)
                 out.append(c)
+    out.sort(key=_character_priority)
     return out
 
 
 def _safe_ref_filename(char_id):
     safe = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in str(char_id))
     return safe or "character"
+
+
+def _char_seed(char):
+    """Stable per-character seed so a character renders with a consistent
+    identity across every scene (mirrors slugId-style hashing on the JS side)."""
+    base = str((char or {}).get("id") or (char or {}).get("name") or "")
+    h = 0
+    for ch in base:
+        h = (h * 31 + ord(ch)) & 0x7FFFFFFF
+    return h or 1
+
+
+def _make_generator(seed):
+    if seed is None:
+        return None
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    return torch.Generator(device=device).manual_seed(int(seed) % (2 ** 31))
 
 
 def _noise_init(gen_w, gen_h):
@@ -194,10 +262,12 @@ def _run_generation(
     steps=None,
     guidance=2.0,
     negative_prompt=None,
+    seed=None,
 ):
     steps = steps or SCENE_GEN_STEPS
     prompt = _trim_prompt(prompt)
     neg = negative_prompt or DEFAULT_NEGATIVE_PROMPT
+    generator = _make_generator(seed)
     with torch.inference_mode():
         if init_image is not None:
             init = init_image.convert("RGB").resize((gen_w, gen_h))
@@ -208,6 +278,7 @@ def _run_generation(
                 strength=strength,
                 num_inference_steps=steps,
                 guidance_scale=guidance,
+                generator=generator,
             )
         else:
             init = _noise_init(gen_w, gen_h)
@@ -218,6 +289,7 @@ def _run_generation(
                 strength=0.85,
                 num_inference_steps=steps,
                 guidance_scale=guidance,
+                generator=generator,
             )
         return out.images[0]
 
@@ -231,7 +303,7 @@ REFERENCE_PROMPT_SUFFIX = (
 )
 
 
-def generate_reference_image(pipe, prompt, gen_w, gen_h, out_w, out_h, out_path, negative_prompt=None):
+def generate_reference_image(pipe, prompt, gen_w, gen_h, out_w, out_h, out_path, negative_prompt=None, seed=None):
     ref_prompt = _trim_prompt(f"{prompt}. {REFERENCE_PROMPT_SUFFIX}", max_words=80)
     last_err = None
     for attempt in range(1, 4):
@@ -247,6 +319,7 @@ def generate_reference_image(pipe, prompt, gen_w, gen_h, out_w, out_h, out_path,
                 steps=steps,
                 guidance=2.0,
                 negative_prompt=negative_prompt,
+                seed=seed,
             )
             image = _upscale_image(image, out_w, out_h)
             image.save(out_path)
@@ -284,8 +357,16 @@ def generate_scene_image(
         beat.get("environment", ""),
     )
 
-    # BUG 4 + BUG 10: Inject emotion-driven pose keywords
-    emotion = str(beat.get("emotion", "neutral")).lower()
+    # BUG 4 + BUG 10: Inject emotion-driven pose keywords. When the beat is
+    # empty/neutral, detect a real emotion from the narration/visual prompt.
+    emotion = str(beat.get("emotion", "neutral")).strip().lower()
+    if not emotion or emotion == "neutral":
+        detected = _detect_emotion(
+            f"{beat.get('narrationText', '')} {beat.get('summary', '')} "
+            f"{beat.get('action', '')} {beat.get('visualPrompt', '')}"
+        )
+        if detected:
+            emotion = detected
     pose_kw = EMOTION_POSE_KEYWORDS.get(emotion, EMOTION_POSE_KEYWORDS["neutral"])
 
     action = str(beat.get("action", "")).strip()
@@ -302,18 +383,35 @@ def generate_scene_image(
         if _w in env_hay:
             motion_kw = _cue
             break
-    cinematic_tail = f"Camera: {camera_kw}. Lighting: {lighting_kw}." + (
-        f" Motion: {motion_kw}." if motion_kw else ""
+    cinematic_tail = (
+        f"Camera: {camera_kw}. Lighting: {lighting_kw}."
+        + (f" Motion: {motion_kw}." if motion_kw else "")
+        + " Animated storytelling, cinematic composition, high detail."
     )
 
     # Render the primary character only by default. A 2nd is included solely when
     # the beat genuinely lists 2+ distinct characters (a real interaction). Drawing
     # more than this is what produced the "wall of clones" output.
     render_chars = beat_chars[:2]
-    char_anchor = "; ".join(
-        f"{c.get('name')}: {c.get('referencePrompt', '')[:90]}"
-        for c in render_chars
-    )
+
+    def _anchor(c):
+        tags = ", ".join(
+            t
+            for t in (
+                str(c.get("species", "")).strip()
+                if str(c.get("species", "")).strip().lower() not in ("", "character")
+                else "",
+                str(c.get("role", "")).strip(),
+            )
+            if t
+        )
+        head = f"{c.get('name')} ({tags})" if tags else str(c.get("name"))
+        colors = str(c.get("colorPalette", "")).strip()
+        ref = str(c.get("referencePrompt", ""))[:130]
+        extra = f" colors: {colors}." if colors else ""
+        return f"{head}: {ref}{extra}"
+
+    char_anchor = "; ".join(_anchor(c) for c in render_chars)
     solo_hint = (
         "exactly one character in frame"
         if len(render_chars) <= 1
@@ -387,6 +485,7 @@ def generate_scene_image(
                 out_w,
                 out_h,
                 ref_path,
+                seed=_char_seed(primary),
             )
 
     if ref_path and os.path.isfile(ref_path):
@@ -413,6 +512,8 @@ def generate_scene_image(
         message=f"gen={gen_w}x{gen_h} out={out_w}x{out_h} strength={strength:.2f} {full_prompt[:80]}",
     )
 
+    scene_seed = _char_seed(primary) if primary else None
+
     last_err = None
     for attempt in range(1, 4):
         try:
@@ -426,6 +527,7 @@ def generate_scene_image(
                 strength=strength,
                 steps=steps,
                 guidance=3.0,
+                seed=scene_seed,
             )
             image = _upscale_image(image, out_w, out_h)
             image.save(scene_path)
@@ -476,6 +578,7 @@ def generate_all_scenes(record_id, beats, characters, video_config, work_dirs):
                     out_w,
                     out_h,
                     ref_path,
+                    seed=_char_seed(char),
                 )
             except Exception as ref_err:
                 log_stage(
