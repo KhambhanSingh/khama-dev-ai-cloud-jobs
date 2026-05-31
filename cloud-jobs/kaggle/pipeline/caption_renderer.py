@@ -5,39 +5,73 @@ import subprocess
 
 from .logging_util import log_stage
 
-# Map UI caption style names to ASS force_style
+# Map UI caption style names to ASS force_style.
+# NOTE: ASS colours are &HAABBGGRR (BGR byte order), NOT RGB.
+#   White  = &H00FFFFFF  (B=FF G=FF R=FF) — correct
+#   Black  = &H00000000  — correct
+#   Gold   = &H0000D7FF  (B=00 G=D7 R=FF — gold in BGR, not &H00FFD700 which is cyan)
+#   Orange = &H000066FF  (B=00 G=66 R=FF)
+#   Green  = &H0000FF00  (B=00 G=FF R=00) — correct
+#   Purple = &H00FF66FF  (B=FF G=66 R=FF) — correct
+# BUG 9: All styles now use correct BGR colors + white+black-outline baseline for readability.
+# BUG 6: MarginL=80,MarginR=80 and WrapStyle=0 added to all styles to prevent overflow.
 CAPTION_STYLES = {
     "Youtuber": (
-        "FontName=Arial,FontSize=22,Bold=1,PrimaryColour=&H00FFD700,"
-        "OutlineColour=&H00000000,BorderStyle=1,Outline=2,Alignment=2,MarginV=28"
+        "FontName=Arial,FontSize=22,Bold=1,"
+        "PrimaryColour=&H00FFFFFF,"        # white (universally readable)
+        "OutlineColour=&H00000000,"        # black outline
+        "BackColour=&H80000000,"           # semi-transparent black shadow box
+        "BorderStyle=1,Outline=3,Shadow=1,Alignment=2,"
+        "MarginV=40,MarginL=80,MarginR=80,WrapStyle=0"
     ),
     "Caption": (
-        "FontName=Arial,FontSize=20,Bold=1,PrimaryColour=&H00FFFFFF,"
-        "OutlineColour=&H00000000,BorderStyle=1,Outline=2,Alignment=2,MarginV=28"
+        "FontName=Arial,FontSize=20,Bold=1,"
+        "PrimaryColour=&H00FFFFFF,"
+        "OutlineColour=&H00000000,"
+        "BorderStyle=1,Outline=2,Shadow=1,Alignment=2,"
+        "MarginV=36,MarginL=80,MarginR=80,WrapStyle=0"
     ),
     "Kids": (
-        "FontName=Arial,FontSize=28,Bold=1,PrimaryColour=&H00FFFFFF,"
-        "OutlineColour=&H00FF6600,BorderStyle=1,Outline=3,Alignment=2,MarginV=32"
+        "FontName=Arial,FontSize=28,Bold=1,"
+        "PrimaryColour=&H00FFFFFF,"
+        "OutlineColour=&H000066FF,"        # orange outline in BGR: B=00 G=66 R=FF
+        "BorderStyle=1,Outline=3,Shadow=1,Alignment=2,"
+        "MarginV=40,MarginL=80,MarginR=80,WrapStyle=0"
     ),
     "Minimal": (
-        "FontName=Arial,FontSize=18,Bold=0,PrimaryColour=&H00FFFFFF,"
-        "OutlineColour=&H00000000,BorderStyle=1,Outline=1,Alignment=2,MarginV=24"
+        "FontName=Arial,FontSize=18,Bold=0,"
+        "PrimaryColour=&H00FFFFFF,"
+        "OutlineColour=&H00000000,"
+        "BorderStyle=1,Outline=1,Alignment=2,"
+        "MarginV=28,MarginL=80,MarginR=80,WrapStyle=0"
     ),
     "Neon": (
-        "FontName=Arial,FontSize=22,Bold=1,PrimaryColour=&H0000FF00,"
-        "OutlineColour=&H00000000,BorderStyle=1,Outline=2,Alignment=2,MarginV=28"
+        "FontName=Arial,FontSize=22,Bold=1,"
+        "PrimaryColour=&H0000FF00,"        # green — BGR &H0000FF00 is correct green
+        "OutlineColour=&H00000000,"
+        "BorderStyle=1,Outline=2,Alignment=2,"
+        "MarginV=36,MarginL=80,MarginR=80,WrapStyle=0"
     ),
     "Supreme": (
-        "FontName=Arial,FontSize=20,Bold=1,Italic=1,PrimaryColour=&H00FFFFFF,"
-        "OutlineColour=&H00000000,BorderStyle=1,Outline=2,Alignment=2,MarginV=28"
+        "FontName=Arial,FontSize=20,Bold=1,Italic=1,"
+        "PrimaryColour=&H00FFFFFF,"
+        "OutlineColour=&H00000000,"
+        "BorderStyle=1,Outline=2,Shadow=1,Alignment=2,"
+        "MarginV=36,MarginL=80,MarginR=80,WrapStyle=0"
     ),
     "Gradient": (
-        "FontName=Arial,FontSize=20,Bold=1,PrimaryColour=&H00FFFFFF,"
-        "OutlineColour=&H00000000,BorderStyle=1,Outline=2,Alignment=2,MarginV=28"
+        "FontName=Arial,FontSize=20,Bold=1,"
+        "PrimaryColour=&H0000D7FF,"        # gold in BGR: B=00 G=D7 R=FF
+        "OutlineColour=&H00000000,"
+        "BorderStyle=1,Outline=2,Shadow=1,Alignment=2,"
+        "MarginV=36,MarginL=80,MarginR=80,WrapStyle=0"
     ),
     "Glitch": (
-        "FontName=Arial,FontSize=22,Bold=1,PrimaryColour=&H00FF66FF,"
-        "OutlineColour=&H00000000,BorderStyle=1,Outline=2,Alignment=2,MarginV=28"
+        "FontName=Arial,FontSize=22,Bold=1,"
+        "PrimaryColour=&H00FF66FF,"        # purple: B=FF G=66 R=FF — BGR correct
+        "OutlineColour=&H00000000,"
+        "BorderStyle=1,Outline=2,Alignment=2,"
+        "MarginV=36,MarginL=80,MarginR=80,WrapStyle=0"
     ),
 }
 
@@ -50,7 +84,7 @@ def _sec_to_srt(t):
     return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
 
 
-def _group_phrases(caption_words, max_words=8, max_gap=0.6):
+def _group_phrases(caption_words, max_words=6, max_gap=0.6):
     if not caption_words:
         return []
     phrases = []
