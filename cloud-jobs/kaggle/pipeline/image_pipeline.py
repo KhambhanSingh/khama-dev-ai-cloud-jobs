@@ -24,6 +24,8 @@ DEFAULT_NEGATIVE_PROMPT = (
     "no background people, no duplicate characters, no miniature figures, "
     "no clones, no shelf figures, crowded shelves, cluttered store interior, "
     "shop shelves with dolls, background faces, repeated character copies, "
+    "multiple identical characters, character grid, sticker sheet, "
+    "toy store, plush toys on shelves, collection of figures, "
     "blurry, bad anatomy, deformed, distorted, watermark, text, logo"
 )
 
@@ -179,14 +181,24 @@ def _run_generation(
         return out.images[0]
 
 
+# Reference anchors must be the character ALONE on a clean backdrop, otherwise
+# SDXL invents a setting (e.g. toy-store shelves) that then bleeds into every
+# scene through img2img. This suffix is applied to reference prompts only.
+REFERENCE_PROMPT_SUFFIX = (
+    "full body, single character, centered, plain solid neutral background, "
+    "character model sheet, no other characters, no scenery, no background objects"
+)
+
+
 def generate_reference_image(pipe, prompt, gen_w, gen_h, out_w, out_h, out_path, negative_prompt=None):
+    ref_prompt = _trim_prompt(f"{prompt}. {REFERENCE_PROMPT_SUFFIX}", max_words=80)
     last_err = None
     for attempt in range(1, 4):
         try:
             steps = SCENE_GEN_STEPS if attempt == 1 else SCENE_GEN_STEPS_RETRY
             image = _run_generation(
                 pipe,
-                prompt,
+                ref_prompt,
                 gen_w,
                 gen_h,
                 init_image=None,
@@ -237,10 +249,18 @@ def generate_scene_image(
 
     action = str(beat.get("action", "")).strip()
 
-    # BUG 2: Character anchor FIRST in prompt so CLIP token attention prioritises face/outfit
+    # Render the primary character only by default. A 2nd is included solely when
+    # the beat genuinely lists 2+ distinct characters (a real interaction). Drawing
+    # more than this is what produced the "wall of clones" output.
+    render_chars = beat_chars[:2]
     char_anchor = "; ".join(
-        f"{c.get('name')}: {c.get('referencePrompt', '')[:100]}"
-        for c in beat_chars[:3]
+        f"{c.get('name')}: {c.get('referencePrompt', '')[:90]}"
+        for c in render_chars
+    )
+    solo_hint = (
+        "exactly one character in frame"
+        if len(render_chars) <= 1
+        else "exactly two characters interacting"
     )
 
     # Use the Gemini-generated English visualPrompt as the primary scene description.
@@ -249,21 +269,22 @@ def generate_scene_image(
     visual_from_planner = str(beat.get("visualPrompt") or "").strip()
 
     if char_anchor and visual_from_planner:
-        # Best case: character anchors + pre-computed English scene description + pose
+        # Best case: lead with the story SETTING so the background follows the
+        # script, then add the character anchor and pose.
         full_prompt = (
             f"{style}. "
-            f"Characters: {char_anchor}. "
             f"Scene: {visual_from_planner}. "
-            f"Pose: {pose_kw}."
+            f"Featuring {char_anchor}. "
+            f"{solo_hint}. Pose: {pose_kw}."
         )
     elif char_anchor:
-        # No visualPrompt: fall back to environment + action (both English from planner)
+        # No visualPrompt: lead with environment + action (both English from planner)
         full_prompt = (
             f"{style}. "
-            f"Characters: {char_anchor}. "
-            f"Background: {environment}. "
-            + (f"Action: {action}. " if action else "")
-            + f"Pose: {pose_kw}."
+            f"Setting: {environment}. "
+            + (f"{action}. " if action else "")
+            + f"Featuring {char_anchor}. "
+            + f"{solo_hint}. Pose: {pose_kw}."
         )
     else:
         # No characters matched: use visualPrompt or environment/action
@@ -282,10 +303,11 @@ def generate_scene_image(
         pipe = load_img2img_model()
 
     init_image = None
-    # BUG 2: Lower strength for more consistent character faces when ref is available
-    # narrator mode → even lower (0.38) for maximum face lock
-    strength_with_ref = 0.38 if narrator_mode else 0.42
-    strength_with_prev = 0.45 if narrator_mode else 0.50
+    # Strength must be high enough that the SCENE background follows the script
+    # instead of cloning the reference image's backdrop. Too low (0.42) baked the
+    # reference's setting into every scene. img2img still preserves identity here.
+    strength_with_ref = 0.50 if narrator_mode else 0.62
+    strength_with_prev = 0.55 if narrator_mode else 0.60
     strength_no_ref = 0.85  # full generation when no reference exists
 
     strength = strength_no_ref
@@ -344,7 +366,7 @@ def generate_scene_image(
                 init_image=init_image,
                 strength=strength,
                 steps=steps,
-                guidance=2.0,
+                guidance=3.0,
             )
             image = _upscale_image(image, out_w, out_h)
             image.save(scene_path)
