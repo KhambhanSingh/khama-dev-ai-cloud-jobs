@@ -1,0 +1,277 @@
+{
+  "beats": [
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 1",
+      "characters": [
+        "छोटू"
+      ],
+      "duration": 8.889795918367348,
+      "durationEstimate": 8.889795918367348,
+      "emotion": "neutral",
+      "endTime": 8.889795918367348,
+      "environment": "dense lush green jungle, large ancient trees, leaves, dappled forest sunlight",
+      "narrationText": "एक प्यारे से जंगल में एक छोटी सी चिड़िया रहती थी, उसका नाम था छोटू।  छोटू बहुत चंचल और खुशमिज़ाज थी।",
+      "sceneIndex": 0,
+      "startTime": 0,
+      "visualPrompt": "2D animated story. Style: Cartoon. Characters: छोटू (same character): 2D animated story. छोटू: human girl, age young child, female, small. Same face, body, colors, clothes every scene. Style: Cartoon. Environment: dense lush green jungle, large ancient trees, leaves, dappled forest sunlight. Camera: wide shot. Lighting: cinematic balanced lighting. Action: story moment. Emotion: neutral. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 2",
+      "characters": [
+        "गोलू"
+      ],
+      "duration": 9.736443148688048,
+      "durationEstimate": 9.736443148688048,
+      "emotion": "neutral",
+      "endTime": 18.626239067055394,
+      "environment": "dense lush green jungle, large ancient trees, leaves, dappled forest sunlight",
+      "narrationText": "वह रोज़ सुबह उठकर गाना गाती और नए फूलों पर बैठती।  उसी जंगल में एक गिलहरी भी रहती थी, जिसका नाम था गोलू।",
+      "sceneIndex": 1,
+      "startTime": 8.889795918367348,
+      "visualPrompt": "2D animated story. Style: Cartoon. Characters: गोलू (same character): 2D animated story. गोलू: human girl, age young child, female. Same face, body, colors, clothes every scene. Style: Cartoon. Continuity from previous scene: story moment at story scene. Environment: dense lush green jungle, large ancient trees, leaves, dappled forest sunlight. Camera: wide shot. Lighting: cinematic balanced lighting. Action: story moment. Emotion: neutral. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 3",
+      "characters": [
+        "गोलू"
+      ],
+      "duration": 9.736443148688048,
+      "durationEstimate": 9.736443148688048,
+      "emotion": "neutral",
+      "endTime": 28.36268221574344,
+      "environment": "dense lush green jungle, large ancient trees, leaves, dappled forest sunlight",
+      "narrationText": "गोलू बहुत मेहनती थी और हमेशा अपने लिए अखरोट जमा करती रहती थी। \n\nएक दिन, जंगल में अचानक बहुत तेज़ बारिश होने लगी।",
+      "sceneIndex": 2,
+      "startTime": 18.626239067055394,
+      "visualPrompt": "2D animated story. Style: Cartoon. Characters: गोलू (same character): 2D animated story. गोलू: human girl, age young child, female. Same face, body, colors, clothes every scene. Style: Cartoon. Continuity from previous scene: story moment at story scene. Environment: dense lush green jungle, large ancient trees, leaves, dappled forest sunlight. Camera: wide shot. Lighting: cinematic balanced lighting. Action: story moment. Emotion: neutral. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 4",
+      "characters": [
+        "छोटू"
+      ],
+      "duration": 10.159766763848397,
+      "durationEstimate": 10.159766763848397,
+      "emotion": "neutral",
+      "endTime": 38.522448979591836,
+      "environment": "rainy scene, dark clouds, wet ground, puddles with reflections, falling rain",
+      "narrationText": "बारिश इतनी ज़ोरदार थी कि छोटू को अपना खाना ढूंढने के लिए बाहर निकलना मुश्किल हो गया।  छोटू अपने घोंसले में उदास बैठी थी।",
+      "sceneIndex": 3,
+      "startTime": 28.36268221574344,
+      "visualPrompt": "2D animated story. Style: Cartoon. Characters: छोटू (same character): 2D animated story. छोटू: human girl, age young child, female, small. Same face, body, colors, clothes every scene. Style: Cartoon. Continuity from previous scene: story moment at story scene. Environment: rainy scene, dark clouds, wet ground, puddles with reflections, falling rain. Camera: wide shot. Lighting: cinematic balanced lighting. Action: story moment. Emotion: neutral. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 5",
+      "characters": [
+        "गोलू"
+      ],
+      "duration": 5.926530612244898,
+      "durationEstimate": 5.926530612244898,
+      "emotion": "neutral",
+      "endTime": 44.44897959183673,
+      "environment": "natural outdoor setting with clear sky, story-appropriate surroundings",
+      "narrationText": "उसे बहुत भूख लग रही थी। \n\nतभी, गोलू गिलहरी अपने बिल से बाहर निकली।",
+      "sceneIndex": 4,
+      "startTime": 38.522448979591836,
+      "visualPrompt": "2D animated story. Style: Cartoon. Characters: गोलू (same character): 2D animated story. गोलू: human girl, age young child, female. Same face, body, colors, clothes every scene. Style: Cartoon. Continuity from previous scene: story moment at story scene. Environment: natural outdoor setting with clear sky, story-appropriate surroundings. Camera: wide shot. Lighting: cinematic balanced lighting. Action: story moment. Emotion: neutral. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 6",
+      "characters": [
+        "छोटू",
+        "गोलू"
+      ],
+      "duration": 8.043148688046648,
+      "durationEstimate": 8.043148688046648,
+      "emotion": "neutral",
+      "endTime": 52.49212827988338,
+      "environment": "natural outdoor setting with clear sky, story-appropriate surroundings",
+      "narrationText": "उसके हाथ में एक बड़ा सा अखरोट था।  गोलू ने देखा कि छोटू बहुत शांत और उदास बैठी है।",
+      "sceneIndex": 5,
+      "startTime": 44.44897959183673,
+      "visualPrompt": "2D animated story. Style: Cartoon. Characters: छोटू (same character): 2D animated story. छोटू: human girl, age young child, female, small. Same face, body, colors, clothes every scene. Style: Cartoon; गोलू (same character): 2D animated story. गोलू: human girl, age young child, female. Same face, body, colors, clothes every scene. Style: Cartoon. Continuity from previous scene: story moment at story scene. Environment: natural outdoor setting with clear sky, story-appropriate surroundings. Camera: wide shot. Lighting: cinematic balanced lighting. Action: story moment. Emotion: neutral. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 7",
+      "characters": [
+        "छोटू",
+        "गोलू"
+      ],
+      "duration": 5.079883381924199,
+      "durationEstimate": 5.079883381924199,
+      "emotion": "neutral",
+      "endTime": 57.57201166180758,
+      "environment": "natural outdoor setting with clear sky, story-appropriate surroundings",
+      "narrationText": "गोलू ने पूछा, \"अरे छोटू, तुम इतनी चुप क्यों हो?  क्या हुआ?",
+      "sceneIndex": 6,
+      "startTime": 52.49212827988338,
+      "visualPrompt": "2D animated story. Style: Cartoon. Characters: छोटू (same character): 2D animated story. छोटू: human girl, age young child, female, small. Same face, body, colors, clothes every scene. Style: Cartoon; गोलू (same character): 2D animated story. गोलू: human girl, age young child, female. Same face, body, colors, clothes every scene. Style: Cartoon. Continuity from previous scene: story moment at story scene. Environment: natural outdoor setting with clear sky, story-appropriate surroundings. Camera: wide shot. Lighting: cinematic balanced lighting. Action: story moment. Emotion: neutral. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 8",
+      "characters": [
+        "छोटू",
+        "गोलू"
+      ],
+      "duration": 12.276384839650147,
+      "durationEstimate": 12.276384839650147,
+      "emotion": "neutral",
+      "endTime": 69.84839650145773,
+      "environment": "rainy scene, dark clouds, wet ground, puddles with reflections, falling rain",
+      "narrationText": "\"\n\nछोटू ने उदास आवाज़ में कहा, \"गोलू, मुझे बहुत भूख लगी है, लेकिन मैं इस बारिश में खाना ढूंढने बाहर नहीं जा सकती। \"\n\nगोलू बहुत दयालु थी।",
+      "sceneIndex": 7,
+      "startTime": 57.57201166180758,
+      "visualPrompt": "2D animated story. Style: Cartoon. Characters: छोटू (same character): 2D animated story. छोटू: human girl, age young child, female, small. Same face, body, colors, clothes every scene. Style: Cartoon; गोलू (same character): 2D animated story. गोलू: human girl, age young child, female. Same face, body, colors, clothes every scene. Style: Cartoon. Continuity from previous scene: story moment at story scene. Environment: rainy scene, dark clouds, wet ground, puddles with reflections, falling rain. Camera: wide shot. Lighting: cinematic balanced lighting. Action: story moment. Emotion: neutral. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 9",
+      "characters": [
+        "छोटू"
+      ],
+      "duration": 11.429737609329447,
+      "durationEstimate": 11.429737609329447,
+      "emotion": "neutral",
+      "endTime": 81.27813411078718,
+      "environment": "natural outdoor setting with clear sky, story-appropriate surroundings",
+      "narrationText": "उसने तुरंत अपने पास से दो और अखरोट निकाले और छोटू की तरफ बढ़ा दिए।  उसने कहा, \"कोई बात नहीं छोटू, मेरे पास बहुत सारे अखरोट हैं।",
+      "sceneIndex": 8,
+      "startTime": 69.84839650145773,
+      "visualPrompt": "2D animated story. Style: Cartoon. Characters: छोटू (same character): 2D animated story. छोटू: human girl, age young child, female, small. Same face, body, colors, clothes every scene. Style: Cartoon. Continuity from previous scene: story moment at story scene. Environment: natural outdoor setting with clear sky, story-appropriate surroundings. Camera: wide shot. Lighting: cinematic balanced lighting. Action: story moment. Emotion: neutral. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 10",
+      "characters": [
+        "छोटू"
+      ],
+      "duration": 3.809912536443149,
+      "durationEstimate": 3.809912536443149,
+      "emotion": "neutral",
+      "endTime": 85.08804664723033,
+      "environment": "natural outdoor setting with clear sky, story-appropriate surroundings",
+      "narrationText": "तुम ये खा लो। \"\n\nछोटू बहुत खुश हुई।",
+      "sceneIndex": 9,
+      "startTime": 81.27813411078718,
+      "visualPrompt": "2D animated story. Style: Cartoon. Characters: छोटू (same character): 2D animated story. छोटू: human girl, age young child, female, small. Same face, body, colors, clothes every scene. Style: Cartoon. Continuity from previous scene: story moment at story scene. Environment: natural outdoor setting with clear sky, story-appropriate surroundings. Camera: wide shot. Lighting: cinematic balanced lighting. Action: story moment. Emotion: neutral. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 11",
+      "characters": [
+        "छोटू",
+        "गोलू"
+      ],
+      "duration": 9.313119533527697,
+      "durationEstimate": 9.313119533527697,
+      "emotion": "neutral",
+      "endTime": 94.40116618075803,
+      "environment": "natural outdoor setting with clear sky, story-appropriate surroundings",
+      "narrationText": "उसने गोलू को धन्यवाद दिया और दोनों ने मिलकर अखरोट खाए।  उस दिन से छोटू और गोलू बहुत अच्छे दोस्त बन गए।",
+      "sceneIndex": 10,
+      "startTime": 85.08804664723033,
+      "visualPrompt": "2D animated story. Style: Cartoon. Characters: छोटू (same character): 2D animated story. छोटू: human girl, age young child, female, small. Same face, body, colors, clothes every scene. Style: Cartoon; गोलू (same character): 2D animated story. गोलू: human girl, age young child, female. Same face, body, colors, clothes every scene. Style: Cartoon. Continuity from previous scene: story moment at story scene. Environment: natural outdoor setting with clear sky, story-appropriate surroundings. Camera: wide shot. Lighting: cinematic balanced lighting. Action: story moment. Emotion: neutral. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 12",
+      "characters": [
+        "छोटू"
+      ],
+      "duration": 9.313119533527697,
+      "durationEstimate": 9.313119533527697,
+      "emotion": "neutral",
+      "endTime": 103.71428571428572,
+      "environment": "dense lush green jungle, large ancient trees, leaves, dappled forest sunlight",
+      "narrationText": "वे हमेशा एक-दूसरे की मदद करते और खुशी-खुशी जंगल में रहते थे।  छोटू ने सीखा कि सच्चे दोस्त हमेशा साथ देते हैं।",
+      "sceneIndex": 11,
+      "startTime": 94.40116618075803,
+      "visualPrompt": "2D animated story. Style: Cartoon. Characters: छोटू (same character): 2D animated story. छोटू: human girl, age young child, female, small. Same face, body, colors, clothes every scene. Style: Cartoon. Continuity from previous scene: story moment at story scene. Environment: dense lush green jungle, large ancient trees, leaves, dappled forest sunlight. Camera: wide shot. Lighting: cinematic balanced lighting. Action: story moment. Emotion: neutral. No text, no watermark."
+    }
+  ],
+  "characters": [
+    {
+      "age": "young child",
+      "appearance": "small",
+      "clothing": "",
+      "colorPalette": "",
+      "emotionalTone": "",
+      "facialFeatures": "",
+      "gender": "female",
+      "hairstyle": "",
+      "id": "c_447a393",
+      "name": "छोटू",
+      "personality": "",
+      "props": [],
+      "referencePrompt": "2D animated story. छोटू: human girl, age young child, female, small. Same face, body, colors, clothes every scene. Style: Cartoon",
+      "relationships": {},
+      "species": "human girl",
+      "voiceStyle": ""
+    },
+    {
+      "age": "young child",
+      "appearance": "",
+      "clothing": "",
+      "colorPalette": "",
+      "emotionalTone": "",
+      "facialFeatures": "",
+      "gender": "female",
+      "hairstyle": "",
+      "id": "c_445d464",
+      "name": "गोलू",
+      "personality": "",
+      "props": [],
+      "referencePrompt": "2D animated story. गोलू: human girl, age young child, female. Same face, body, colors, clothes every scene. Style: Cartoon",
+      "relationships": {},
+      "species": "human girl",
+      "voiceStyle": ""
+    }
+  ],
+  "createdAt": 1780205827362,
+  "emotions": [
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral"
+  ],
+  "genre": "",
+  "index": "full",
+  "language": "hi",
+  "legacyCharacters": [
+    "2D animated story. छोटू: human girl, age young child, female, small. Same face, body, colors, clothes every scene. Style: Cartoon",
+    "2D animated story. गोलू: human girl, age young child, female. Same face, body, colors, clothes every scene. Style: Cartoon"
+  ],
+  "narration": "एक प्यारे से जंगल में एक छोटी सी चिड़िया रहती थी, उसका नाम था छोटू। छोटू बहुत चंचल और खुशमिज़ाज थी। वह रोज़ सुबह उठकर गाना गाती और नए फूलों पर बैठती। उसी जंगल में एक गिलहरी भी रहती थी, जिसका नाम था गोलू। गोलू बहुत मेहनती थी और हमेशा अपने लिए अखरोट जमा करती रहती थी।\n\nएक दिन, जंगल में अचानक बहुत तेज़ बारिश होने लगी। बारिश इतनी ज़ोरदार थी कि छोटू को अपना खाना ढूंढने के लिए बाहर निकलना मुश्किल हो गया। छोटू अपने घोंसले में उदास बैठी थी। उसे बहुत भूख लग रही थी।\n\nतभी, गोलू गिलहरी अपने बिल से बाहर निकली। उसके हाथ में एक बड़ा सा अखरोट था। गोलू ने देखा कि छोटू बहुत शांत और उदास बैठी है।\n\nगोलू ने पूछा, \"अरे छोटू, तुम इतनी चुप क्यों हो? क्या हुआ?\"\n\nछोटू ने उदास आवाज़ में कहा, \"गोलू, मुझे बहुत भूख लगी है, लेकिन मैं इस बारिश में खाना ढूंढने बाहर नहीं जा सकती।\"\n\nगोलू बहुत दयालु थी। उसने तुरंत अपने पास से दो और अखरोट निकाले और छोटू की तरफ बढ़ा दिए। उसने कहा, \"कोई बात नहीं छोटू, मेरे पास बहुत सारे अखरोट हैं। तुम ये खा लो।\"\n\nछोटू बहुत खुश हुई। उसने गोलू को धन्यवाद दिया और दोनों ने मिलकर अखरोट खाए। उस दिन से छोटू और गोलू बहुत अच्छे दोस्त बन गए। वे हमेशा एक-दूसरे की मदद करते और खुशी-खुशी जंगल में रहते थे। छोटू ने सीखा कि सच्चे दोस्त हमेशा साथ देते हैं।",
+  "narratorMode": false,
+  "recordId": "j570zcp8sn2cb88xmz54gqkasx87r642",
+  "topic": "Kids Story",
+  "type": "full_video",
+  "version": 2,
+  "videoConfig": {
+    "fps": 24,
+    "height": 720,
+    "maxDurationSec": 1800,
+    "minDurationSec": 15,
+    "narratorMode": false,
+    "videoStyle": "Cartoon",
+    "width": 1280
+  },
+  "videoStyle": "Cartoon",
+  "voice": "af_sarah"
+}
