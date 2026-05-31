@@ -1,0 +1,270 @@
+{
+  "beats": [
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 1",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 10.593900481540931,
+      "emotion": "neutral",
+      "endTime": 10.593900481540931,
+      "environment": "story scene",
+      "narrationText": "एक बार की बात है, एक छोटे से गाँव में चिंटू नाम की एक नन्ही गौरैया रहती थी।  चिंटू बहुत ही चंचल और प्यारी थी।",
+      "sceneIndex": 0,
+      "startTime": 0,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: एक बार की बात है, एक छोटे से गाँव में चिंटू नाम की एक नन्ही गौरैया रहती थी।  चिंटू बहुत ही चंचल और प्यारी थी।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 2",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 14.407704654895666,
+      "emotion": "neutral",
+      "endTime": 25.001605136436595,
+      "environment": "story scene",
+      "narrationText": "वह रोज़ सुबह जल्दी उठकर पूरे गाँव में घूमती और दाना चुगती थी।  एक दिन, जब चिंटू एक सुंदर बगीचे में दाना खोज रही थी, तो उसे ज़मीन पर एक चमचमाता हुआ मोती मिला।",
+      "sceneIndex": 1,
+      "startTime": 10.593900481540931,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: वह रोज़ सुबह जल्दी उठकर पूरे गाँव में घूमती और दाना चुगती थी।  एक दिन, जब चिंटू एक सुंदर बगीचे में दाना खोज रही थी, तो उसे ज़मीन पर एक चमचमाता हुआ मोती मिला।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 3",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 6.356340288924558,
+      "emotion": "neutral",
+      "endTime": 31.35794542536115,
+      "environment": "story scene",
+      "narrationText": "मोती बहुत ही सुंदर था और धूप में जगमगा रहा था। \n\nचिंटू बहुत खुश हुई।",
+      "sceneIndex": 2,
+      "startTime": 25.001605136436595,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: मोती बहुत ही सुंदर था और धूप में जगमगा रहा था। \n\nचिंटू बहुत खुश हुई।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 4",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 3.390048154093098,
+      "emotion": "neutral",
+      "endTime": 34.74799357945425,
+      "environment": "story scene",
+      "narrationText": "उसने सोचा, \"वाह!  यह मोती कितना सुंदर है।",
+      "sceneIndex": 3,
+      "startTime": 31.35794542536115,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: उसने सोचा, \"वाह!  यह मोती कितना सुंदर है।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 5",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 9.746388443017656,
+      "emotion": "neutral",
+      "endTime": 44.49438202247191,
+      "environment": "story scene",
+      "narrationText": "मैं इसे अपने घोंसले में ले जाऊँगी और इसे रोज़ देखूँगी। \" लेकिन तभी उसे याद आया कि यह मोती उसका नहीं है।",
+      "sceneIndex": 4,
+      "startTime": 34.74799357945425,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: मैं इसे अपने घोंसले में ले जाऊँगी और इसे रोज़ देखूँगी। \" लेकिन तभी उसे याद आया कि यह मोती उसका नहीं है।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 6",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 3.8138041733547348,
+      "emotion": "neutral",
+      "endTime": 48.30818619582664,
+      "environment": "story scene",
+      "narrationText": "किसी और का होगा।  चिंटू थोड़ी देर सोचती रही।",
+      "sceneIndex": 5,
+      "startTime": 44.49438202247191,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: किसी और का होगा।  चिंटू थोड़ी देर सोचती रही।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 7",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 10.593900481540931,
+      "emotion": "neutral",
+      "endTime": 58.90208667736758,
+      "environment": "story scene",
+      "narrationText": "उसे लगा कि बिना पूछे किसी की चीज़ लेना अच्छी बात नहीं होती। \n\nउसी बगीचे में, मीनू नाम की एक प्यारी बच्ची खेल रही थी।",
+      "sceneIndex": 6,
+      "startTime": 48.30818619582664,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: उसे लगा कि बिना पूछे किसी की चीज़ लेना अच्छी बात नहीं होती। \n\nउसी बगीचे में, मीनू नाम की एक प्यारी बच्ची खेल रही थी।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 8",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 6.356340288924558,
+      "emotion": "neutral",
+      "endTime": 65.25842696629213,
+      "environment": "story scene",
+      "narrationText": "मीनू उदास दिख रही थी।  चिंटू ने मीनू को देखा और उसके पास उड़कर गई।",
+      "sceneIndex": 7,
+      "startTime": 58.90208667736758,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: मीनू उदास दिख रही थी।  चिंटू ने मीनू को देखा और उसके पास उड़कर गई।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 9",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 12.28892455858748,
+      "emotion": "neutral",
+      "endTime": 77.54735152487962,
+      "environment": "story scene",
+      "narrationText": "मीनू ने बताया, \"मेरी एक प्यारी सी मोतियों की माला टूट गई है और उसमें से एक मोती कहीं गिर गया है।  मैं उसे कब से ढूंढ रही हूँ।",
+      "sceneIndex": 8,
+      "startTime": 65.25842696629213,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: मीनू ने बताया, \"मेरी एक प्यारी सी मोतियों की माला टूट गई है और उसमें से एक मोती कहीं गिर गया है।  मैं उसे कब से ढूंढ रही हूँ।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 10",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 7.6276083467094695,
+      "emotion": "neutral",
+      "endTime": 85.17495987158908,
+      "environment": "story scene",
+      "narrationText": "\"\n\nचिंटू ने तुरंत अपनी चोंच में दबाया हुआ मोती मीनू को दिखाया।  मीनू की आँखें चमक उठीं।",
+      "sceneIndex": 9,
+      "startTime": 77.54735152487962,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: \"\n\nचिंटू ने तुरंत अपनी चोंच में दबाया हुआ मोती मीनू को दिखाया।  मीनू की आँखें चमक उठीं।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 11",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 3.8138041733547348,
+      "emotion": "neutral",
+      "endTime": 88.98876404494382,
+      "environment": "story scene",
+      "narrationText": "उसने खुशी से कहा, \"हाँ!  यह वही मोती है।",
+      "sceneIndex": 10,
+      "startTime": 85.17495987158908,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: उसने खुशी से कहा, \"हाँ!  यह वही मोती है।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 12",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 8.475120385232744,
+      "emotion": "neutral",
+      "endTime": 97.46388443017656,
+      "environment": "story scene",
+      "narrationText": "तुमने इसे ढूंढने में मेरी मदद की, चिंटू। \" मीनू ने खुशी-खुशी मोती ले लिया और चिंटू को धन्यवाद दिया।",
+      "sceneIndex": 11,
+      "startTime": 88.98876404494382,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: तुमने इसे ढूंढने में मेरी मदद की, चिंटू। \" मीनू ने खुशी-खुशी मोती ले लिया और चिंटू को धन्यवाद दिया।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 13",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 9.322632423756017,
+      "emotion": "neutral",
+      "endTime": 106.78651685393258,
+      "environment": "story scene",
+      "narrationText": "मीनू ने चिंटू के लिए कुछ स्वादिष्ट दाने ज़मीन पर बिखेर दिए।  चिंटू ने दाने खाए और खुशी-खुशी अपने घर लौट गई।",
+      "sceneIndex": 12,
+      "startTime": 97.46388443017656,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: मीनू ने चिंटू के लिए कुछ स्वादिष्ट दाने ज़मीन पर बिखेर दिए।  चिंटू ने दाने खाए और खुशी-खुशी अपने घर लौट गई।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 14",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 6.356340288924558,
+      "emotion": "neutral",
+      "endTime": 113.14285714285714,
+      "environment": "story scene",
+      "narrationText": "उस दिन चिंटू ने ईमानदारी का महत्व सीखा और मीनू ने एक सच्चा दोस्त पाया।",
+      "sceneIndex": 13,
+      "startTime": 106.78651685393258,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: उस दिन चिंटू ने ईमानदारी का महत्व सीखा और मीनू ने एक सच्चा दोस्त पाया।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    }
+  ],
+  "captionJson": [],
+  "captionStyle": {
+    "name": "Youtuber",
+    "style": "text-yellow-400 text-xl font-extrabold uppercase"
+  },
+  "characters": [
+    {
+      "appearance": "friendly professional presenter, neutral expression",
+      "clothing": "modern smart-casual outfit",
+      "colorPalette": "neutral warm tones",
+      "id": "c_44d5d5c",
+      "name": "नायक",
+      "personality": "engaging, clear, professional",
+      "referencePrompt": "2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon.",
+      "species": "human presenter"
+    }
+  ],
+  "createdAt": 1780194741723,
+  "emotions": [
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral"
+  ],
+  "index": "full",
+  "language": "hi",
+  "legacyCharacters": [
+    "2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon."
+  ],
+  "narration": "एक बार की बात है, एक छोटे से गाँव में चिंटू नाम की एक नन्ही गौरैया रहती थी। चिंटू बहुत ही चंचल और प्यारी थी। वह रोज़ सुबह जल्दी उठकर पूरे गाँव में घूमती और दाना चुगती थी। एक दिन, जब चिंटू एक सुंदर बगीचे में दाना खोज रही थी, तो उसे ज़मीन पर एक चमचमाता हुआ मोती मिला। मोती बहुत ही सुंदर था और धूप में जगमगा रहा था।\n\nचिंटू बहुत खुश हुई। उसने सोचा, \"वाह! यह मोती कितना सुंदर है। मैं इसे अपने घोंसले में ले जाऊँगी और इसे रोज़ देखूँगी।\" लेकिन तभी उसे याद आया कि यह मोती उसका नहीं है। किसी और का होगा। चिंटू थोड़ी देर सोचती रही। उसे लगा कि बिना पूछे किसी की चीज़ लेना अच्छी बात नहीं होती।\n\nउसी बगीचे में, मीनू नाम की एक प्यारी बच्ची खेल रही थी। मीनू उदास दिख रही थी। चिंटू ने मीनू को देखा और उसके पास उड़कर गई। मीनू ने बताया, \"मेरी एक प्यारी सी मोतियों की माला टूट गई है और उसमें से एक मोती कहीं गिर गया है। मैं उसे कब से ढूंढ रही हूँ।\"\n\nचिंटू ने तुरंत अपनी चोंच में दबाया हुआ मोती मीनू को दिखाया। मीनू की आँखें चमक उठीं। उसने खुशी से कहा, \"हाँ! यह वही मोती है। तुमने इसे ढूंढने में मेरी मदद की, चिंटू।\" मीनू ने खुशी-खुशी मोती ले लिया और चिंटू को धन्यवाद दिया। मीनू ने चिंटू के लिए कुछ स्वादिष्ट दाने ज़मीन पर बिखेर दिए। चिंटू ने दाने खाए और खुशी-खुशी अपने घर लौट गई। उस दिन चिंटू ने ईमानदारी का महत्व सीखा और मीनू ने एक सच्चा दोस्त पाया।",
+  "narratorMode": true,
+  "recordId": "j5730qpze722r99hcjwav51ytd87rfdq",
+  "topic": "Kids Story",
+  "type": "full_video",
+  "version": 2,
+  "videoConfig": {
+    "fps": 24,
+    "height": 720,
+    "maxDurationSec": 1800,
+    "minDurationSec": 15,
+    "narratorMode": true,
+    "videoStyle": "Cartoon",
+    "width": 1280
+  },
+  "videoStyle": "Cartoon",
+  "voice": "af_sarah"
+}
