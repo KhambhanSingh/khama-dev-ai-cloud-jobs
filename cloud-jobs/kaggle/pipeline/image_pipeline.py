@@ -48,6 +48,47 @@ EMOTION_POSE_KEYWORDS = {
     "sleepy":    "heavy drooping eyelids, slouched posture, yawning",
 }
 
+# Camera framing keywords so scenes are not all the same flat wide shot.
+CAMERA_KEYWORDS = {
+    "wide shot":     "wide establishing shot, full scene visible",
+    "wide":          "wide establishing shot, full scene visible",
+    "close-up":      "close-up shot, face and expression filling the frame",
+    "closeup":       "close-up shot, face and expression filling the frame",
+    "medium shot":   "medium shot, character from the waist up",
+    "medium":        "medium shot, character from the waist up",
+    "tracking shot": "dynamic tracking shot following the movement",
+    "tracking":      "dynamic tracking shot following the movement",
+    "slow pan":      "slow cinematic pan across the scene",
+    "pan":           "slow cinematic pan across the scene",
+    "overhead":      "high overhead angle looking down on the scene",
+    "low angle":     "dramatic low angle looking up at the character",
+}
+DEFAULT_CAMERA = "cinematic composition"
+
+# Mood/emotion -> lighting (mirrors moodToLighting in environment.js).
+MOOD_LIGHTING = {
+    "sad":       "soft diffused lighting, muted tones",
+    "crying":    "soft diffused lighting, muted tones",
+    "happy":     "warm bright lighting, vibrant colors",
+    "excited":   "warm bright lighting, vibrant colors",
+    "laughing":  "warm bright lighting, vibrant colors",
+    "scared":    "dramatic shadows, high contrast",
+    "suspense":  "dramatic shadows, high contrast",
+    "panic":     "dramatic shadows, high contrast",
+    "angry":     "harsh directional lighting, intense colors",
+    "calm":      "soft natural lighting, gentle tones",
+}
+DEFAULT_LIGHTING = "cinematic balanced lighting"
+
+# Weather keyword -> motion / atmosphere cue for liveliness.
+WEATHER_MOTION = {
+    "rain":  "rain falling, wet surfaces reflecting light",
+    "storm": "strong wind, swaying trees, driving rain",
+    "snow":  "snowflakes drifting down softly",
+    "fog":   "drifting mist, hazy air",
+}
+
+
 def clear_gpu_memory():
     gc.collect()
     if torch.cuda.is_available():
@@ -249,6 +290,22 @@ def generate_scene_image(
 
     action = str(beat.get("action", "")).strip()
 
+    # Camera framing (varies per scene), emotion-driven lighting, and a weather
+    # motion cue so scenes feel cinematic instead of static and repetitive.
+    camera_style = str(beat.get("cameraStyle", "")).strip().lower()
+    camera_kw = CAMERA_KEYWORDS.get(camera_style, DEFAULT_CAMERA)
+    mood = str(beat.get("mood", "")).strip().lower()
+    lighting_kw = MOOD_LIGHTING.get(emotion) or MOOD_LIGHTING.get(mood) or DEFAULT_LIGHTING
+    env_hay = f"{beat.get('environment', '')} {beat.get('visualPrompt', '')}".lower()
+    motion_kw = ""
+    for _w, _cue in WEATHER_MOTION.items():
+        if _w in env_hay:
+            motion_kw = _cue
+            break
+    cinematic_tail = f"Camera: {camera_kw}. Lighting: {lighting_kw}." + (
+        f" Motion: {motion_kw}." if motion_kw else ""
+    )
+
     # Render the primary character only by default. A 2nd is included solely when
     # the beat genuinely lists 2+ distinct characters (a real interaction). Drawing
     # more than this is what produced the "wall of clones" output.
@@ -270,12 +327,13 @@ def generate_scene_image(
 
     if char_anchor and visual_from_planner:
         # Best case: lead with the story SETTING so the background follows the
-        # script, then add the character anchor and pose.
+        # script, then add the character anchor, pose, camera and lighting.
         full_prompt = (
             f"{style}. "
             f"Scene: {visual_from_planner}. "
             f"Featuring {char_anchor}. "
-            f"{solo_hint}. Pose: {pose_kw}."
+            f"{solo_hint}. Pose: {pose_kw}. "
+            f"{cinematic_tail}"
         )
     elif char_anchor:
         # No visualPrompt: lead with environment + action (both English from planner)
@@ -284,17 +342,18 @@ def generate_scene_image(
             f"Setting: {environment}. "
             + (f"{action}. " if action else "")
             + f"Featuring {char_anchor}. "
-            + f"{solo_hint}. Pose: {pose_kw}."
+            + f"{solo_hint}. Pose: {pose_kw}. "
+            + f"{cinematic_tail}"
         )
     else:
         # No characters matched: use visualPrompt or environment/action
         full_prompt = (
             f"{style}. "
             f"{visual_from_planner or f'{environment}, {action}'}. "
-            f"{pose_kw}."
+            f"{pose_kw}. {cinematic_tail}"
         )
 
-    full_prompt = _trim_prompt(full_prompt, max_words=80)
+    full_prompt = _trim_prompt(full_prompt, max_words=90)
 
     os.makedirs(refs_dir, exist_ok=True)
     os.makedirs(scenes_dir, exist_ok=True)
