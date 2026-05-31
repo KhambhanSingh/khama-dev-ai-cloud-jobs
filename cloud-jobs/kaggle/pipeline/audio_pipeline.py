@@ -108,6 +108,15 @@ def synthesize_beat_tts(text, lang, out_wav, emotion="neutral"):
         combined = _apply_emotion(combined, emotion)
         combined = normalize(combined)
         combined.export(out_wav, format="wav")
+        wav_size = os.path.getsize(out_wav)
+        if wav_size < 5_000:
+            raise ValueError(
+                f"TTS WAV too small ({wav_size} bytes) — gTTS likely failed or produced silence"
+            )
+        log_stage(
+            "tts",
+            message=f"beat wav size={wav_size} dur={len(combined)/1000.0:.1f}s path={out_wav}",
+        )
         return len(combined) / 1000.0
     finally:
         try:
@@ -200,6 +209,13 @@ def build_narration_audio(record_id, beats, lang, audio_dir, max_duration_sec=18
 
     master_path = os.path.join(audio_dir, f"{record_id}.wav")
     master = normalize(master)
+    # 500 ms safety buffer so audio is never shorter than the composed video (BUG 8)
+    master += AudioSegment.silent(duration=500)
     master.export(master_path, format="wav")
+    log_stage(
+        "tts",
+        record_id,
+        message=f"master_wav size={os.path.getsize(master_path)} dur={total:.1f}s path={master_path}",
+    )
 
     return master_path, timings, caption_words, total
