@@ -1,0 +1,234 @@
+{
+  "beats": [
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 1",
+      "characters": [
+        "भरे जंगल में बंटी"
+      ],
+      "duration": 10.608899297423886,
+      "emotion": "neutral",
+      "endTime": 10.608899297423886,
+      "environment": "story scene",
+      "narrationText": "एक समय की बात है, एक हरे-भरे जंगल में बंटी नाम का एक शरारती खरगोश रहता था।  बंटी को दौड़ना और उछलना बहुत पसंद था।",
+      "sceneIndex": 0,
+      "startTime": 0,
+      "visualPrompt": "2D animated story. Style: Cartoon. Characters: भरे जंगल में बंटी: 2D animated story. भरे जंगल में बंटी: rabbit. Same face, body, colors, clothes every scene. Style: Cartoon. Environment: story scene. Action: story moment. Emotion: neutral. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 2",
+      "characters": [
+        "भरे जंगल में बंटी"
+      ],
+      "duration": 10.608899297423886,
+      "emotion": "neutral",
+      "endTime": 21.21779859484777,
+      "environment": "story scene",
+      "narrationText": "उसी जंगल में चिंकी नाम की एक नन्ही गिलहरी भी रहती थी।  चिंकी बहुत मेहनती थी और हमेशा अपने लिए अखरोट इकट्ठा करती रहती थी।",
+      "sceneIndex": 1,
+      "startTime": 10.608899297423886,
+      "visualPrompt": "2D animated story. Style: Cartoon. Characters: भरे जंगल में बंटी: 2D animated story. भरे जंगल में बंटी: rabbit. Same face, body, colors, clothes every scene. Style: Cartoon. Environment: story scene. Action: story moment. Emotion: neutral. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 3",
+      "characters": [
+        "भरे जंगल में बंटी"
+      ],
+      "duration": 13.155035128805618,
+      "emotion": "neutral",
+      "endTime": 34.372833723653386,
+      "environment": "story scene",
+      "narrationText": "एक धूप वाले दिन, बंटी जंगल में खेल रहा था जब उसे एक बड़ा, रसीला सेब मिला।  सेब इतना लाल और चमकीला था कि बंटी की आँखों में चमक आ गई।",
+      "sceneIndex": 2,
+      "startTime": 21.21779859484777,
+      "visualPrompt": "2D animated story. Style: Cartoon. Characters: भरे जंगल में बंटी: 2D animated story. भरे जंगल में बंटी: rabbit. Same face, body, colors, clothes every scene. Style: Cartoon. Environment: story scene. Action: story moment. Emotion: neutral. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 4",
+      "characters": [
+        "भरे जंगल में बंटी"
+      ],
+      "duration": 14.00374707259953,
+      "emotion": "neutral",
+      "endTime": 48.37658079625292,
+      "environment": "story scene",
+      "narrationText": "वह उस सेब को खाने के लिए बहुत उत्साहित था। \n\nबंटी सेब को लेकर अपने घर की ओर जा रहा था, तभी उसने देखा कि चिंकी एक पेड़ के नीचे उदास बैठी है।",
+      "sceneIndex": 3,
+      "startTime": 34.372833723653386,
+      "visualPrompt": "2D animated story. Style: Cartoon. Characters: भरे जंगल में बंटी: 2D animated story. भरे जंगल में बंटी: rabbit. Same face, body, colors, clothes every scene. Style: Cartoon. Environment: story scene. Action: story moment. Emotion: neutral. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 5",
+      "characters": [
+        "भरे जंगल में बंटी"
+      ],
+      "duration": 11.033255269320842,
+      "emotion": "neutral",
+      "endTime": 59.40983606557376,
+      "environment": "story scene",
+      "narrationText": "चिंकी ने आज सुबह से कुछ नहीं खाया था और उसे बहुत भूख लगी थी।  बंटी ने चिंकी से पूछा, \"चिंकी, तुम इतनी उदास क्यों हो?",
+      "sceneIndex": 4,
+      "startTime": 48.37658079625292,
+      "visualPrompt": "2D animated story. Style: Cartoon. Characters: भरे जंगल में बंटी: 2D animated story. भरे जंगल में बंटी: rabbit. Same face, body, colors, clothes every scene. Style: Cartoon. Environment: story scene. Action: story moment. Emotion: neutral. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 6",
+      "characters": [
+        "भरे जंगल में बंटी"
+      ],
+      "duration": 13.155035128805618,
+      "emotion": "neutral",
+      "endTime": 72.56487119437938,
+      "environment": "story scene",
+      "narrationText": "\" चिंकी ने धीरे से कहा, \"बंटी, मुझे बहुत भूख लगी है, लेकिन मुझे आज कोई अखरोट नहीं मिला। \" बंटी ने अपने हाथ में पकड़े हुए बड़े सेब को देखा।",
+      "sceneIndex": 5,
+      "startTime": 59.40983606557376,
+      "visualPrompt": "2D animated story. Style: Cartoon. Characters: भरे जंगल में बंटी: 2D animated story. भरे जंगल में बंटी: rabbit. Same face, body, colors, clothes every scene. Style: Cartoon. Environment: story scene. Action: story moment. Emotion: neutral. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 7",
+      "characters": [
+        "भरे जंगल में बंटी"
+      ],
+      "duration": 11.033255269320842,
+      "emotion": "neutral",
+      "endTime": 83.59812646370023,
+      "environment": "story scene",
+      "narrationText": "उसने सोचा कि यह सेब इतना बड़ा है कि वह इसे अकेला पूरा नहीं खा पाएगा। \n\nबंटी ने तुरंत चिंकी से कहा, \"चिंकी, उदास मत हो!",
+      "sceneIndex": 6,
+      "startTime": 72.56487119437938,
+      "visualPrompt": "2D animated story. Style: Cartoon. Characters: भरे जंगल में बंटी: 2D animated story. भरे जंगल में बंटी: rabbit. Same face, body, colors, clothes every scene. Style: Cartoon. Environment: story scene. Action: story moment. Emotion: neutral. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 8",
+      "characters": [
+        "भरे जंगल में बंटी"
+      ],
+      "duration": 6.365339578454332,
+      "emotion": "neutral",
+      "endTime": 89.96346604215455,
+      "environment": "story scene",
+      "narrationText": "देखो, मेरे पास एक बड़ा और मीठा सेब है।  चलो, हम इसे मिलकर खाते हैं।",
+      "sceneIndex": 7,
+      "startTime": 83.59812646370023,
+      "visualPrompt": "2D animated story. Style: Cartoon. Characters: भरे जंगल में बंटी: 2D animated story. भरे जंगल में बंटी: rabbit. Same face, body, colors, clothes every scene. Style: Cartoon. Environment: story scene. Action: story moment. Emotion: neutral. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 9",
+      "characters": [
+        "भरे जंगल में बंटी"
+      ],
+      "duration": 9.335831381733021,
+      "emotion": "neutral",
+      "endTime": 99.29929742388757,
+      "environment": "story scene",
+      "narrationText": "\" चिंकी यह सुनकर बहुत खुश हुई।  बंटी ने सेब को दो बराबर हिस्सों में बांटा और एक हिस्सा चिंकी को दिया।",
+      "sceneIndex": 8,
+      "startTime": 89.96346604215455,
+      "visualPrompt": "2D animated story. Style: Cartoon. Characters: भरे जंगल में बंटी: 2D animated story. भरे जंगल में बंटी: rabbit. Same face, body, colors, clothes every scene. Style: Cartoon. Environment: story scene. Action: story moment. Emotion: neutral. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 10",
+      "characters": [
+        "भरे जंगल में बंटी"
+      ],
+      "duration": 8.062763466042155,
+      "emotion": "neutral",
+      "endTime": 107.36206088992972,
+      "environment": "story scene",
+      "narrationText": "दोनों दोस्तों ने मिलकर मीठे सेब का मज़ा लिया।  सेब इतना स्वादिष्ट था कि दोनों को बहुत अच्छा लगा।",
+      "sceneIndex": 9,
+      "startTime": 99.29929742388757,
+      "visualPrompt": "2D animated story. Style: Cartoon. Characters: भरे जंगल में बंटी: 2D animated story. भरे जंगल में बंटी: rabbit. Same face, body, colors, clothes every scene. Style: Cartoon. Environment: story scene. Action: story moment. Emotion: neutral. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 11",
+      "characters": [
+        "भरे जंगल में बंटी"
+      ],
+      "duration": 12.730679156908664,
+      "emotion": "neutral",
+      "endTime": 120.09274004683839,
+      "environment": "story scene",
+      "narrationText": "बंटी ने महसूस किया कि अपनी चीज़ें दूसरों के साथ बांटने में कितनी खुशी मिलती है।  चिंकी ने बंटी को धन्यवाद दिया और दोनों दोस्त खुशी-खुशी अपने-अपने रास्ते चले गए।",
+      "sceneIndex": 10,
+      "startTime": 107.36206088992972,
+      "visualPrompt": "2D animated story. Style: Cartoon. Characters: भरे जंगल में बंटी: 2D animated story. भरे जंगल में बंटी: rabbit. Same face, body, colors, clothes every scene. Style: Cartoon. Environment: story scene. Action: story moment. Emotion: neutral. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 12",
+      "characters": [
+        "भरे जंगल में बंटी"
+      ],
+      "duration": 9.335831381733021,
+      "emotion": "neutral",
+      "endTime": 129.42857142857142,
+      "environment": "story scene",
+      "narrationText": "उस दिन से बंटी और चिंकी ने हमेशा अपनी चीज़ें एक-दूसरे के साथ बांटीं और उनकी दोस्ती और भी गहरी हो गई।",
+      "sceneIndex": 11,
+      "startTime": 120.09274004683839,
+      "visualPrompt": "2D animated story. Style: Cartoon. Characters: भरे जंगल में बंटी: 2D animated story. भरे जंगल में बंटी: rabbit. Same face, body, colors, clothes every scene. Style: Cartoon. Environment: story scene. Action: story moment. Emotion: neutral. No text, no watermark."
+    }
+  ],
+  "captionJson": [],
+  "characters": [
+    {
+      "appearance": "",
+      "clothing": "",
+      "colorPalette": "",
+      "id": "c_6daa6091",
+      "name": "भरे जंगल में बंटी",
+      "personality": "",
+      "referencePrompt": "2D animated story. भरे जंगल में बंटी: rabbit. Same face, body, colors, clothes every scene. Style: Cartoon",
+      "species": "rabbit"
+    }
+  ],
+  "createdAt": 1780196313151,
+  "emotions": [
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral"
+  ],
+  "index": "full",
+  "language": "hi",
+  "legacyCharacters": [
+    "2D animated story. भरे जंगल में बंटी: rabbit. Same face, body, colors, clothes every scene. Style: Cartoon"
+  ],
+  "narration": "एक समय की बात है, एक हरे-भरे जंगल में बंटी नाम का एक शरारती खरगोश रहता था। बंटी को दौड़ना और उछलना बहुत पसंद था। उसी जंगल में चिंकी नाम की एक नन्ही गिलहरी भी रहती थी। चिंकी बहुत मेहनती थी और हमेशा अपने लिए अखरोट इकट्ठा करती रहती थी। एक धूप वाले दिन, बंटी जंगल में खेल रहा था जब उसे एक बड़ा, रसीला सेब मिला। सेब इतना लाल और चमकीला था कि बंटी की आँखों में चमक आ गई। वह उस सेब को खाने के लिए बहुत उत्साहित था।\n\nबंटी सेब को लेकर अपने घर की ओर जा रहा था, तभी उसने देखा कि चिंकी एक पेड़ के नीचे उदास बैठी है। चिंकी ने आज सुबह से कुछ नहीं खाया था और उसे बहुत भूख लगी थी। बंटी ने चिंकी से पूछा, \"चिंकी, तुम इतनी उदास क्यों हो?\" चिंकी ने धीरे से कहा, \"बंटी, मुझे बहुत भूख लगी है, लेकिन मुझे आज कोई अखरोट नहीं मिला।\" बंटी ने अपने हाथ में पकड़े हुए बड़े सेब को देखा। उसने सोचा कि यह सेब इतना बड़ा है कि वह इसे अकेला पूरा नहीं खा पाएगा।\n\nबंटी ने तुरंत चिंकी से कहा, \"चिंकी, उदास मत हो! देखो, मेरे पास एक बड़ा और मीठा सेब है। चलो, हम इसे मिलकर खाते हैं।\" चिंकी यह सुनकर बहुत खुश हुई। बंटी ने सेब को दो बराबर हिस्सों में बांटा और एक हिस्सा चिंकी को दिया। दोनों दोस्तों ने मिलकर मीठे सेब का मज़ा लिया। सेब इतना स्वादिष्ट था कि दोनों को बहुत अच्छा लगा। बंटी ने महसूस किया कि अपनी चीज़ें दूसरों के साथ बांटने में कितनी खुशी मिलती है। चिंकी ने बंटी को धन्यवाद दिया और दोनों दोस्त खुशी-खुशी अपने-अपने रास्ते चले गए। उस दिन से बंटी और चिंकी ने हमेशा अपनी चीज़ें एक-दूसरे के साथ बांटीं और उनकी दोस्ती और भी गहरी हो गई।",
+  "narratorMode": false,
+  "recordId": "j57d59da8k2f92dkd0hzm3anwn87sm5d",
+  "topic": "Kids Story",
+  "type": "full_video",
+  "version": 2,
+  "videoConfig": {
+    "fps": 24,
+    "height": 720,
+    "maxDurationSec": 1800,
+    "minDurationSec": 15,
+    "narratorMode": false,
+    "videoStyle": "Cartoon",
+    "width": 1280
+  },
+  "videoStyle": "Cartoon",
+  "voice": "af_sarah"
+}
