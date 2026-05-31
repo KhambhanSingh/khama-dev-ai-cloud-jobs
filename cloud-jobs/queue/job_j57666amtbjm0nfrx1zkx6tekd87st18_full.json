@@ -1,0 +1,279 @@
+{
+  "beats": [
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 1",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 8.485999050783104,
+      "durationEstimate": 8.485999050783104,
+      "emotion": "neutral",
+      "endTime": 8.485999050783104,
+      "environment": "story scene",
+      "narrationText": "एक छोटी सी प्यारी बच्ची थी, जिसका नाम था रिया।  रिया को अपने प्यारे टेडी बियर से बहुत प्यार था।",
+      "sceneIndex": 0,
+      "startTime": 0,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: एक छोटी सी प्यारी बच्ची थी, जिसका नाम था रिया।  रिया को अपने प्यारे टेडी बियर से बहुत प्यार था।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 2",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 9.75889890840057,
+      "durationEstimate": 9.75889890840057,
+      "emotion": "neutral",
+      "endTime": 18.244897959183675,
+      "environment": "story scene",
+      "narrationText": "वह टेडी को हर जगह अपने साथ ले जाती थी।  जब रिया सुबह उठती, तो टेडी उसके बिस्तर पर उसका इंतज़ार करता मिलता।",
+      "sceneIndex": 1,
+      "startTime": 8.485999050783104,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: वह टेडी को हर जगह अपने साथ ले जाती थी।  जब रिया सुबह उठती, तो टेडी उसके बिस्तर पर उसका इंतज़ार करता मिलता।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 3",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 11.45609871855719,
+      "durationEstimate": 11.45609871855719,
+      "emotion": "neutral",
+      "endTime": 29.700996677740864,
+      "environment": "story scene",
+      "narrationText": "जब रिया नाश्ता करती, तो टेडी उसके बगल में कुर्सी पर बैठ जाता।  और जब रिया खेलने जाती, तो टेडी उसकी गोद में आराम से बैठा रहता।",
+      "sceneIndex": 2,
+      "startTime": 18.244897959183675,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: जब रिया नाश्ता करती, तो टेडी उसके बगल में कुर्सी पर बैठ जाता।  और जब रिया खेलने जाती, तो टेडी उसकी गोद में आराम से बैठा रहता।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 4",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 8.061699098243947,
+      "durationEstimate": 8.061699098243947,
+      "emotion": "neutral",
+      "endTime": 37.76269577598481,
+      "environment": "story scene",
+      "narrationText": "एक दिन, रिया अपनी सबसे अच्छी दोस्त, मीरा के घर गई।  मीरा के पास भी बहुत सारे खिलौने थे।",
+      "sceneIndex": 3,
+      "startTime": 29.700996677740864,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: एक दिन, रिया अपनी सबसे अच्छी दोस्त, मीरा के घर गई।  मीरा के पास भी बहुत सारे खिलौने थे।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 5",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 5.5158993830090175,
+      "durationEstimate": 5.5158993830090175,
+      "emotion": "neutral",
+      "endTime": 43.278595158993824,
+      "environment": "story scene",
+      "narrationText": "रिया ने मीरा को अपना टेडी दिखाया।  मीरा को टेडी बहुत पसंद आया।",
+      "sceneIndex": 4,
+      "startTime": 37.76269577598481,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: रिया ने मीरा को अपना टेडी दिखाया।  मीरा को टेडी बहुत पसंद आया।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 6",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 11.45609871855719,
+      "durationEstimate": 11.45609871855719,
+      "emotion": "neutral",
+      "endTime": 54.73469387755101,
+      "environment": "story scene",
+      "narrationText": "मीरा ने कहा, \"रिया, क्या मैं थोड़ी देर टेडी के साथ खेल सकती हूँ? \"\n\nरिया ने पहले कभी अपना टेडी किसी और को नहीं दिया था।",
+      "sceneIndex": 5,
+      "startTime": 43.278595158993824,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: मीरा ने कहा, \"रिया, क्या मैं थोड़ी देर टेडी के साथ खेल सकती हूँ? \"\n\nरिया ने पहले कभी अपना टेडी किसी और को नहीं दिया था।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 7",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 4.667299477930707,
+      "durationEstimate": 4.667299477930707,
+      "emotion": "neutral",
+      "endTime": 59.401993355481714,
+      "environment": "story scene",
+      "narrationText": "उसे थोड़ा अजीब लगा।  उसने टेडी को कस कर पकड़ लिया।",
+      "sceneIndex": 6,
+      "startTime": 54.73469387755101,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: उसे थोड़ा अजीब लगा।  उसने टेडी को कस कर पकड़ लिया।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 8",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 7.637399145704793,
+      "durationEstimate": 7.637399145704793,
+      "emotion": "neutral",
+      "endTime": 67.03939250118651,
+      "environment": "story scene",
+      "narrationText": "फिर उसने सोचा, \"मीरा मेरी दोस्त है।  और टेडी इतना प्यारा है कि सब उसके साथ खेलना चाहेंगे।",
+      "sceneIndex": 7,
+      "startTime": 59.401993355481714,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: फिर उसने सोचा, \"मीरा मेरी दोस्त है।  और टेडी इतना प्यारा है कि सब उसके साथ खेलना चाहेंगे।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 9",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 8.910299003322258,
+      "durationEstimate": 8.910299003322258,
+      "emotion": "neutral",
+      "endTime": 75.94969150450876,
+      "environment": "story scene",
+      "narrationText": "\"\n\nरिया ने मुस्कुराते हुए कहा, \"हाँ मीरा, तुम टेडी के साथ खेल सकती हो।  लेकिन तुम्हें उसका ध्यान रखना होगा।",
+      "sceneIndex": 8,
+      "startTime": 67.03939250118651,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: \"\n\nरिया ने मुस्कुराते हुए कहा, \"हाँ मीरा, तुम टेडी के साथ खेल सकती हो।  लेकिन तुम्हें उसका ध्यान रखना होगा।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 10",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 7.213099193165638,
+      "durationEstimate": 7.213099193165638,
+      "emotion": "neutral",
+      "endTime": 83.1627906976744,
+      "environment": "story scene",
+      "narrationText": "\"\nमीरा बहुत खुश हुई।  उसने टेडी को बड़े प्यार से पकड़ा और उसके साथ खेलने लगी।",
+      "sceneIndex": 9,
+      "startTime": 75.94969150450876,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: \"\nमीरा बहुत खुश हुई।  उसने टेडी को बड़े प्यार से पकड़ा और उसके साथ खेलने लगी।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 11",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 13.577598481252966,
+      "durationEstimate": 13.577598481252966,
+      "emotion": "neutral",
+      "endTime": 96.74038917892736,
+      "environment": "story scene",
+      "narrationText": "रिया और मीरा दोनों ने मिलकर टेडी के साथ बहुत मज़े किए।  उन्होंने टेडी को चाय पार्टी में शामिल किया, उसे एक छोटी सी गाड़ी में बिठाया और उसे कहानी भी सुनाई।",
+      "sceneIndex": 10,
+      "startTime": 83.1627906976744,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: रिया और मीरा दोनों ने मिलकर टेडी के साथ बहुत मज़े किए।  उन्होंने टेडी को चाय पार्टी में शामिल किया, उसे एक छोटी सी गाड़ी में बिठाया और उसे कहानी भी सुनाई।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 12",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 8.485999050783104,
+      "durationEstimate": 8.485999050783104,
+      "emotion": "neutral",
+      "endTime": 105.22638822971047,
+      "environment": "story scene",
+      "narrationText": "शाम को जब रिया घर वापस आई, तो उसने टेडी को गले लगाया।  टेडी भी बहुत खुश लग रहा था।",
+      "sceneIndex": 11,
+      "startTime": 96.74038917892736,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: शाम को जब रिया घर वापस आई, तो उसने टेडी को गले लगाया।  टेडी भी बहुत खुश लग रहा था।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 13",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 12.728998576174655,
+      "durationEstimate": 12.728998576174655,
+      "emotion": "neutral",
+      "endTime": 117.95538680588513,
+      "environment": "story scene",
+      "narrationText": "रिया ने सीखा कि अपने पसंदीदा खिलौनों को दोस्तों के साथ बांटना कितना अच्छा होता है।  और टेडी को भी नए दोस्त मीरा के साथ खेलकर बहुत मज़ा आया था।",
+      "sceneIndex": 12,
+      "startTime": 105.22638822971047,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: रिया ने सीखा कि अपने पसंदीदा खिलौनों को दोस्तों के साथ बांटना कितना अच्छा होता है।  और टेडी को भी नए दोस्त मीरा के साथ खेलकर बहुत मज़ा आया था।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 14",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 9.75889890840057,
+      "durationEstimate": 9.75889890840057,
+      "emotion": "neutral",
+      "endTime": 127.7142857142857,
+      "environment": "story scene",
+      "narrationText": "उस दिन से रिया और टेडी दोनों ने मीरा के साथ मिलकर खूब खेल खेले और उनकी दोस्ती और भी गहरी हो गई।",
+      "sceneIndex": 13,
+      "startTime": 117.95538680588513,
+      "visualPrompt": "2D animated explainer. Style: Cartoon. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: उस दिन से रिया और टेडी दोनों ने मीरा के साथ मिलकर खूब खेल खेले और उनकी दोस्ती और भी गहरी हो गई।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    }
+  ],
+  "characters": [
+    {
+      "appearance": "friendly professional presenter, neutral expression",
+      "clothing": "modern smart-casual outfit",
+      "colorPalette": "neutral warm tones",
+      "id": "c_44d5d5c",
+      "name": "नायक",
+      "personality": "engaging, clear, professional",
+      "referencePrompt": "2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon.",
+      "species": "human presenter"
+    }
+  ],
+  "createdAt": 1780199350459,
+  "emotions": [
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral"
+  ],
+  "index": "full",
+  "language": "hi",
+  "legacyCharacters": [
+    "2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Cartoon."
+  ],
+  "narration": "एक छोटी सी प्यारी बच्ची थी, जिसका नाम था रिया। रिया को अपने प्यारे टेडी बियर से बहुत प्यार था। वह टेडी को हर जगह अपने साथ ले जाती थी। जब रिया सुबह उठती, तो टेडी उसके बिस्तर पर उसका इंतज़ार करता मिलता। जब रिया नाश्ता करती, तो टेडी उसके बगल में कुर्सी पर बैठ जाता। और जब रिया खेलने जाती, तो टेडी उसकी गोद में आराम से बैठा रहता।\n\nएक दिन, रिया अपनी सबसे अच्छी दोस्त, मीरा के घर गई। मीरा के पास भी बहुत सारे खिलौने थे। रिया ने मीरा को अपना टेडी दिखाया। मीरा को टेडी बहुत पसंद आया। मीरा ने कहा, \"रिया, क्या मैं थोड़ी देर टेडी के साथ खेल सकती हूँ?\"\n\nरिया ने पहले कभी अपना टेडी किसी और को नहीं दिया था। उसे थोड़ा अजीब लगा। उसने टेडी को कस कर पकड़ लिया। फिर उसने सोचा, \"मीरा मेरी दोस्त है। और टेडी इतना प्यारा है कि सब उसके साथ खेलना चाहेंगे।\"\n\nरिया ने मुस्कुराते हुए कहा, \"हाँ मीरा, तुम टेडी के साथ खेल सकती हो। लेकिन तुम्हें उसका ध्यान रखना होगा।\"\nमीरा बहुत खुश हुई। उसने टेडी को बड़े प्यार से पकड़ा और उसके साथ खेलने लगी। रिया और मीरा दोनों ने मिलकर टेडी के साथ बहुत मज़े किए। उन्होंने टेडी को चाय पार्टी में शामिल किया, उसे एक छोटी सी गाड़ी में बिठाया और उसे कहानी भी सुनाई।\n\nशाम को जब रिया घर वापस आई, तो उसने टेडी को गले लगाया। टेडी भी बहुत खुश लग रहा था। रिया ने सीखा कि अपने पसंदीदा खिलौनों को दोस्तों के साथ बांटना कितना अच्छा होता है। और टेडी को भी नए दोस्त मीरा के साथ खेलकर बहुत मज़ा आया था। उस दिन से रिया और टेडी दोनों ने मीरा के साथ मिलकर खूब खेल खेले और उनकी दोस्ती और भी गहरी हो गई।",
+  "narratorMode": true,
+  "recordId": "j57666amtbjm0nfrx1zkx6tekd87st18",
+  "topic": "Kids Story",
+  "type": "full_video",
+  "version": 2,
+  "videoConfig": {
+    "fps": 24,
+    "height": 720,
+    "maxDurationSec": 1800,
+    "minDurationSec": 15,
+    "narratorMode": true,
+    "videoStyle": "Cartoon",
+    "width": 1280
+  },
+  "videoStyle": "Cartoon",
+  "voice": "af_sarah"
+}
