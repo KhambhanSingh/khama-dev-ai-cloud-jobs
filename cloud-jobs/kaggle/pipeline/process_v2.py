@@ -129,6 +129,6 @@ def process_job_v2(job_data):
         "video": final_video,
         "audio": audio_path,
         "audioDuration": total_audio,
-        "captionJson": caption_words,
+        "captionJson": [],
         "beatTimings": timings,
     }
