@@ -1,0 +1,234 @@
+{
+  "beats": [
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 1",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 10.567514677103716,
+      "emotion": "neutral",
+      "endTime": 10.567514677103716,
+      "environment": "story scene",
+      "narrationText": "एक घने जंगल में, एक नटखट गिलहरी रहती थी जिसका नाम गोलू था।  गोलू बहुत फुर्तीला और हमेशा कुछ नया खोजने में लगा रहता था।",
+      "sceneIndex": 0,
+      "startTime": 0,
+      "visualPrompt": "2D animated explainer. Style: Realistic. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Realistic. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: एक घने जंगल में, एक नटखट गिलहरी रहती थी जिसका नाम गोलू था।  गोलू बहुत फुर्तीला और हमेशा कुछ नया खोजने में लगा रहता था।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 2",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 13.526418786692757,
+      "emotion": "neutral",
+      "endTime": 24.093933463796475,
+      "environment": "story scene",
+      "narrationText": "एक दिन, जंगल में घूमते हुए, गोलू को एक बहुत ही खास और चमकदार अखरोट मिला।  वह इतना सुंदर था कि गोलू ने सोचा, \"मैं इसे किसी के साथ साझा नहीं करूँगा।",
+      "sceneIndex": 1,
+      "startTime": 10.567514677103716,
+      "visualPrompt": "2D animated explainer. Style: Realistic. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Realistic. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: एक दिन, जंगल में घूमते हुए, गोलू को एक बहुत ही खास और चमकदार अखरोट मिला।  वह इतना सुंदर था कि गोलू ने सोचा, \"मैं इसे किसी के साथ साझा नहीं करूँगा।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 3",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 8.031311154598825,
+      "emotion": "neutral",
+      "endTime": 32.1252446183953,
+      "environment": "story scene",
+      "narrationText": "यह मेरा है! \"\n\nगोलू अखरोट लेकर अपने पेड़ पर चढ़ गया और उसे छिपाने की जगह सोचने लगा।",
+      "sceneIndex": 2,
+      "startTime": 24.093933463796475,
+      "visualPrompt": "2D animated explainer. Style: Realistic. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Realistic. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: यह मेरा है! \"\n\nगोलू अखरोट लेकर अपने पेड़ पर चढ़ गया और उसे छिपाने की जगह सोचने लगा।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 4",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 10.144814090019567,
+      "emotion": "neutral",
+      "endTime": 42.270058708414865,
+      "environment": "story scene",
+      "narrationText": "तभी, एक डाल पर बैठे एक बुद्धिमान उल्लू ने उसे देखा।  उल्लू का नाम हूटी था और वह जंगल का सबसे समझदार प्राणी था।",
+      "sceneIndex": 3,
+      "startTime": 32.1252446183953,
+      "visualPrompt": "2D animated explainer. Style: Realistic. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Realistic. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: तभी, एक डाल पर बैठे एक बुद्धिमान उल्लू ने उसे देखा।  उल्लू का नाम हूटी था और वह जंगल का सबसे समझदार प्राणी था।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 5",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 7.1859099804305275,
+      "emotion": "neutral",
+      "endTime": 49.455968688845395,
+      "environment": "story scene",
+      "narrationText": "हूटी ने गोलू से पूछा, \"गोलू, तुम इतने परेशान क्यों दिख रहे हो?  तुम्हें क्या मिला है?",
+      "sceneIndex": 4,
+      "startTime": 42.270058708414865,
+      "visualPrompt": "2D animated explainer. Style: Realistic. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Realistic. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: हूटी ने गोलू से पूछा, \"गोलू, तुम इतने परेशान क्यों दिख रहे हो?  तुम्हें क्या मिला है?. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 6",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 10.990215264187865,
+      "emotion": "neutral",
+      "endTime": 60.44618395303326,
+      "environment": "story scene",
+      "narrationText": "\"\n\nगोलू ने पहले तो झिझका, फिर उसने हूटी को चमकदार अखरोट दिखाया।  हूटी ने मुस्कुराते हुए कहा, \"गोलू, यह तो बहुत ही सुंदर अखरोट है।",
+      "sceneIndex": 5,
+      "startTime": 49.455968688845395,
+      "visualPrompt": "2D animated explainer. Style: Realistic. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Realistic. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: \"\n\nगोलू ने पहले तो झिझका, फिर उसने हूटी को चमकदार अखरोट दिखाया।  हूटी ने मुस्कुराते हुए कहा, \"गोलू, यह तो बहुत ही सुंदर अखरोट है।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 7",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 7.608610567514676,
+      "emotion": "neutral",
+      "endTime": 68.05479452054794,
+      "environment": "story scene",
+      "narrationText": "क्या तुम जानते हो कि सबसे ज्यादा खुशी कब मिलती है? \" गोलू ने ना में सिर हिलाया।",
+      "sceneIndex": 6,
+      "startTime": 60.44618395303326,
+      "visualPrompt": "2D animated explainer. Style: Realistic. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Realistic. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: क्या तुम जानते हो कि सबसे ज्यादा खुशी कब मिलती है? \" गोलू ने ना में सिर हिलाया।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 8",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 17.753424657534243,
+      "emotion": "neutral",
+      "endTime": 85.80821917808218,
+      "environment": "story scene",
+      "narrationText": "हूटी ने समझाया, \"खुशी तब मिलती है जब हम अपनी अच्छी चीजें दूसरों के साथ साझा करते हैं।  इस अखरोट को अकेले खाने से तुम्हें थोड़ी देर की खुशी मिलेगी, लेकिन इसे दोस्तों के साथ बांटने से तुम्हें बहुत ज्यादा खुशी मिलेगी।",
+      "sceneIndex": 7,
+      "startTime": 68.05479452054794,
+      "visualPrompt": "2D animated explainer. Style: Realistic. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Realistic. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: हूटी ने समझाया, \"खुशी तब मिलती है जब हम अपनी अच्छी चीजें दूसरों के साथ साझा करते हैं।  इस अखरोट को अकेले खाने से तुम्हें थोड़ी देर की खुशी मिलेगी, लेकिन इसे दोस्तों के साथ बांटने से तुम्हें बहुत ज्याद. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 9",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 6.763209393346378,
+      "emotion": "neutral",
+      "endTime": 92.57142857142856,
+      "environment": "story scene",
+      "narrationText": "\"\n\nगोलू ने हूटी की बात ध्यान से सुनी।  उसे हूटी की बात समझ आ गई।",
+      "sceneIndex": 8,
+      "startTime": 85.80821917808218,
+      "visualPrompt": "2D animated explainer. Style: Realistic. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Realistic. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: \"\n\nगोलू ने हूटी की बात ध्यान से सुनी।  उसे हूटी की बात समझ आ गई।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 10",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 10.990215264187865,
+      "emotion": "neutral",
+      "endTime": 103.56164383561642,
+      "environment": "story scene",
+      "narrationText": "उसने तुरंत अखरोट को नीचे गिराया और अपने दोस्तों को आवाज दी।  जब उसके दोस्त आए, तो गोलू ने खुशी-खुशी अखरोट को उनके साथ बांट लिया।",
+      "sceneIndex": 9,
+      "startTime": 92.57142857142856,
+      "visualPrompt": "2D animated explainer. Style: Realistic. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Realistic. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: उसने तुरंत अखरोट को नीचे गिराया और अपने दोस्तों को आवाज दी।  जब उसके दोस्त आए, तो गोलू ने खुशी-खुशी अखरोट को उनके साथ बांट लिया।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 11",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 7.1859099804305275,
+      "emotion": "neutral",
+      "endTime": 110.74755381604695,
+      "environment": "story scene",
+      "narrationText": "सबने मिलकर अखरोट खाया और खूब मस्ती की।  गोलू ने महसूस किया कि हूटी बिल्कुल सही था।",
+      "sceneIndex": 10,
+      "startTime": 103.56164383561642,
+      "visualPrompt": "2D animated explainer. Style: Realistic. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Realistic. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: सबने मिलकर अखरोट खाया और खूब मस्ती की।  गोलू ने महसूस किया कि हूटी बिल्कुल सही था।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    },
+    {
+      "action": "story moment",
+      "beatTitle": "Beat 12",
+      "characters": [
+        "नायक"
+      ],
+      "duration": 12.68101761252446,
+      "emotion": "neutral",
+      "endTime": 123.4285714285714,
+      "environment": "story scene",
+      "narrationText": "साझा करने में ही सच्ची खुशी है।  उस दिन के बाद, गोलू हमेशा अपने दोस्तों के साथ अपनी चीजें बांटता था और जंगल में सब उसे बहुत पसंद करते थे।",
+      "sceneIndex": 11,
+      "startTime": 110.74755381604695,
+      "visualPrompt": "2D animated explainer. Style: Realistic. नायक: 2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Realistic. Presenter facing camera, talking to viewer, mid-speech mouth, explaining with hands. Topic moment: साझा करने में ही सच्ची खुशी है।  उस दिन के बाद, गोलू हमेशा अपने दोस्तों के साथ अपनी चीजें बांटता था और जंगल में सब उसे बहुत पसंद करते थे।. Background: setting related to Kids Story, cinematic lighting. Supporting visuals beside presenter: diagram-style graphics and topic-related imagery. Emotion: neutral. Narrator same face and outfit, only background and graphics change. No text, no watermark."
+    }
+  ],
+  "captionJson": [],
+  "characters": [
+    {
+      "appearance": "friendly professional presenter, neutral expression",
+      "clothing": "modern smart-casual outfit",
+      "colorPalette": "neutral warm tones",
+      "id": "c_44d5d5c",
+      "name": "नायक",
+      "personality": "engaging, clear, professional",
+      "referencePrompt": "2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Realistic.",
+      "species": "human presenter"
+    }
+  ],
+  "createdAt": 1780197798473,
+  "emotions": [
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral",
+    "neutral"
+  ],
+  "index": "full",
+  "language": "hi",
+  "legacyCharacters": [
+    "2D animated story. नायक: friendly professional presenter, neutral expression, wearing modern smart-casual outfit, facing camera directly, mid-speech explaining pose, engaging hand gestures, same face body and outfit in every scene, professional presenter. Style: Realistic."
+  ],
+  "narration": "एक घने जंगल में, एक नटखट गिलहरी रहती थी जिसका नाम गोलू था। गोलू बहुत फुर्तीला और हमेशा कुछ नया खोजने में लगा रहता था। एक दिन, जंगल में घूमते हुए, गोलू को एक बहुत ही खास और चमकदार अखरोट मिला। वह इतना सुंदर था कि गोलू ने सोचा, \"मैं इसे किसी के साथ साझा नहीं करूँगा। यह मेरा है!\"\n\nगोलू अखरोट लेकर अपने पेड़ पर चढ़ गया और उसे छिपाने की जगह सोचने लगा। तभी, एक डाल पर बैठे एक बुद्धिमान उल्लू ने उसे देखा। उल्लू का नाम हूटी था और वह जंगल का सबसे समझदार प्राणी था। हूटी ने गोलू से पूछा, \"गोलू, तुम इतने परेशान क्यों दिख रहे हो? तुम्हें क्या मिला है?\"\n\nगोलू ने पहले तो झिझका, फिर उसने हूटी को चमकदार अखरोट दिखाया। हूटी ने मुस्कुराते हुए कहा, \"गोलू, यह तो बहुत ही सुंदर अखरोट है। क्या तुम जानते हो कि सबसे ज्यादा खुशी कब मिलती है?\" गोलू ने ना में सिर हिलाया। हूटी ने समझाया, \"खुशी तब मिलती है जब हम अपनी अच्छी चीजें दूसरों के साथ साझा करते हैं। इस अखरोट को अकेले खाने से तुम्हें थोड़ी देर की खुशी मिलेगी, लेकिन इसे दोस्तों के साथ बांटने से तुम्हें बहुत ज्यादा खुशी मिलेगी।\"\n\nगोलू ने हूटी की बात ध्यान से सुनी। उसे हूटी की बात समझ आ गई। उसने तुरंत अखरोट को नीचे गिराया और अपने दोस्तों को आवाज दी। जब उसके दोस्त आए, तो गोलू ने खुशी-खुशी अखरोट को उनके साथ बांट लिया। सबने मिलकर अखरोट खाया और खूब मस्ती की। गोलू ने महसूस किया कि हूटी बिल्कुल सही था। साझा करने में ही सच्ची खुशी है। उस दिन के बाद, गोलू हमेशा अपने दोस्तों के साथ अपनी चीजें बांटता था और जंगल में सब उसे बहुत पसंद करते थे।",
+  "narratorMode": true,
+  "recordId": "j579476ekzr24c5ggaaknh7gpx87rx4n",
+  "topic": "Kids Story",
+  "type": "full_video",
+  "version": 2,
+  "videoConfig": {
+    "fps": 24,
+    "height": 720,
+    "maxDurationSec": 1800,
+    "minDurationSec": 15,
+    "narratorMode": true,
+    "videoStyle": "Realistic",
+    "width": 1280
+  },
+  "videoStyle": "Realistic",
+  "voice": "af_sarah"
+}
