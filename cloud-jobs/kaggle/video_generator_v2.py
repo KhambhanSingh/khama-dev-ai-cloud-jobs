@@ -198,7 +198,6 @@ def process_job_legacy(job_data):
         "video": video,
         "audio": audio_path,
         "audioDuration": duration,
-        "captionJson": job_data.get("captionJson") or [],
     }
 
 
