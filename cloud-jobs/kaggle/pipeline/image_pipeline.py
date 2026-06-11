@@ -16,8 +16,10 @@ _IMG2IMG_PIPE = None
 
 DEFAULT_GEN_MAX_W = int(os.environ.get("KAGGLE_GEN_MAX_WIDTH", "768"))
 DEFAULT_GEN_MAX_H = int(os.environ.get("KAGGLE_GEN_MAX_HEIGHT", "432"))
-SCENE_GEN_STEPS = int(os.environ.get("KAGGLE_SCENE_STEPS", "6"))
-SCENE_GEN_STEPS_RETRY = int(os.environ.get("KAGGLE_SCENE_STEPS_RETRY", "10"))
+SCENE_GEN_STEPS = int(os.environ.get("KAGGLE_SCENE_STEPS", "12"))
+SCENE_GEN_STEPS_RETRY = int(os.environ.get("KAGGLE_SCENE_STEPS_RETRY", "16"))
+SCENE_PROMPT_MAX_WORDS = int(os.environ.get("KAGGLE_SCENE_PROMPT_WORDS", "110"))
+REF_PROMPT_MAX_WORDS = int(os.environ.get("KAGGLE_REF_PROMPT_WORDS", "70"))
 
 # BUG 7: Always pass a negative prompt to prevent cloned background characters and shelf clutter
 DEFAULT_NEGATIVE_PROMPT = (
@@ -25,8 +27,16 @@ DEFAULT_NEGATIVE_PROMPT = (
     "no clones, no shelf figures, crowded shelves, cluttered store interior, "
     "shop shelves with dolls, background faces, repeated character copies, "
     "multiple identical characters, character grid, sticker sheet, "
+    "character model sheet, turnaround sheet, pose reference sheet, "
+    "crowd of characters, many copies, tiled pattern, collage, "
     "toy store, plush toys on shelves, collection of figures, "
     "blurry, bad anatomy, deformed, distorted, watermark, text, logo"
+)
+
+REFERENCE_NEGATIVE_PROMPT = (
+    DEFAULT_NEGATIVE_PROMPT
+    + ", multiple poses, multiple views, character lineup, sprite sheet, "
+    "contact sheet, ensemble cast, group shot, scattered figures"
 )
 
 # BUG 4 + BUG 10: Emotion → visual pose keywords injected into every scene prompt
@@ -81,6 +91,77 @@ def _detect_emotion(text):
             if k in raw or k.lower() in low:
                 return emotion
     return ""
+
+
+# Script action verbs (Hindi + English) -> frozen-moment pose for SDXL.
+# Mirrors lib/videoPipeline/actionPose.js.
+_ACTION_VOCAB = [
+    ("hugging warmly, arms wrapped around the other character, emotional embrace",
+     ["गले लग", "आलिंगन", "गले मिल", "hug", "hugging", "embrace", "embracing"]),
+    ("running fast, legs in full motion, body leaning forward urgently",
+     ["दौड़", "भाग", "दौड़ा", "भागा", "run", "running", "chase", "chasing", "race", "escape", "flee", "sprint"]),
+    ("jumping mid-air, dynamic leap, body stretched in motion",
+     ["कूद", "छलांग", "उछल", "jump", "jumping", "leap", "leaping", "hop", "vault"]),
+    ("walking along a path, mid-stride, natural forward movement",
+     ["चल", "चला", "चली", "walk", "walking", "stroll", "wander"]),
+    ("climbing upward, gripping with paws or hands, determined upward motion",
+     ["चढ़", "चढ़ा", "climb", "climbing", "ascend"]),
+    ("flying through the air, wings or body lifted, soaring motion",
+     ["उड़", "उड़ा", "fly", "flying", "soar", "soaring", "glide"]),
+    ("playing joyfully, mid-bounce or mid-game, lively playful motion",
+     ["खेल", "खेला", "खेली", "play", "playing", "frolic"]),
+    ("talking expressively, mouth open, one hand gesturing outward",
+     ["कहा", "बोल", "बोला", "talk", "talking", "said", "says", "speak", "shout"]),
+    ("looking around cautiously, head turned, alert scanning motion",
+     ["देख", "देखा", "निहार", "look", "looking", "watch", "watching", "peek", "peering"]),
+    ("hiding behind an object, partially concealed, peeking out nervously",
+     ["छिप", "छुप", "hide", "hiding", "hidden", "conceal"]),
+    ("crying with tears visible, hands near face, sorrowful moment",
+     ["रोया", "रोई", "रोने", "cry", "crying", "weep", "sob", "tears"]),
+    ("laughing openly, mouth wide, joyful mid-laugh expression",
+     ["हँस", "हंस", "laugh", "laughing", "giggle", "chuckle"]),
+    ("dancing with rhythmic motion, arms raised, celebratory movement",
+     ["नाच", "नाचा", "dance", "dancing", "twirl"]),
+]
+
+_GENERIC_ACTIONS = {"", "story moment", "narration", "story scene", "neutral"}
+
+
+def _detect_action_pose(text):
+    raw = str(text or "")
+    if not raw.strip():
+        return ""
+    low = raw.lower()
+    for pose, keys in _ACTION_VOCAB:
+        for k in keys:
+            if k in raw or k.lower() in low:
+                return pose
+    return ""
+
+
+def _resolve_scene_action(beat):
+    """Pick the best script-driven action phrase for this beat."""
+    action_pose = str(beat.get("actionPose") or "").strip()
+    if action_pose and action_pose.lower() not in _GENERIC_ACTIONS:
+        return action_pose
+
+    hay = " ".join(
+        str(beat.get(k) or "")
+        for k in ("narrationText", "action", "summary", "visualPrompt")
+    )
+    detected = _detect_action_pose(hay)
+    if detected:
+        return detected
+
+    action = str(beat.get("action") or "").strip()
+    if action and action.lower() not in _GENERIC_ACTIONS:
+        return action
+
+    summary = str(beat.get("summary") or "").strip()
+    if summary and summary.lower() not in _GENERIC_ACTIONS:
+        return summary
+
+    return "key story moment, clear visible action in frame"
 
 # Camera framing keywords so scenes are not all the same flat wide shot.
 CAMERA_KEYWORDS = {
@@ -263,9 +344,11 @@ def _run_generation(
     guidance=2.0,
     negative_prompt=None,
     seed=None,
+    max_prompt_words=55,
 ):
     steps = steps or SCENE_GEN_STEPS
-    prompt = _trim_prompt(prompt)
+    if max_prompt_words and max_prompt_words > 0:
+        prompt = _trim_prompt(prompt, max_words=max_prompt_words)
     neg = negative_prompt or DEFAULT_NEGATIVE_PROMPT
     generator = _make_generator(seed)
     with torch.inference_mode():
@@ -294,17 +377,21 @@ def _run_generation(
         return out.images[0]
 
 
-# Reference anchors must be the character ALONE on a clean backdrop, otherwise
-# SDXL invents a setting (e.g. toy-store shelves) that then bleeds into every
-# scene through img2img. This suffix is applied to reference prompts only.
+# Reference = ONE character portrait on a plain backdrop for identity locking in
+# the text prompt. Never use "model sheet" — that triggers clone-grid output.
 REFERENCE_PROMPT_SUFFIX = (
-    "full body, single character, centered, plain solid neutral background, "
-    "character model sheet, no other characters, no scenery, no background objects"
+    "full body portrait, single character only, one pose, centered, "
+    "plain solid white background, no other characters, no scenery, "
+    "no background objects, no multiple poses"
 )
 
 
 def generate_reference_image(pipe, prompt, gen_w, gen_h, out_w, out_h, out_path, negative_prompt=None, seed=None):
-    ref_prompt = _trim_prompt(f"{prompt}. {REFERENCE_PROMPT_SUFFIX}", max_words=80)
+    ref_prompt = _trim_prompt(
+        f"{prompt}. {REFERENCE_PROMPT_SUFFIX}",
+        max_words=REF_PROMPT_MAX_WORDS,
+    )
+    neg = negative_prompt or REFERENCE_NEGATIVE_PROMPT
     last_err = None
     for attempt in range(1, 4):
         try:
@@ -318,8 +405,9 @@ def generate_reference_image(pipe, prompt, gen_w, gen_h, out_w, out_h, out_path,
                 strength=0.85,
                 steps=steps,
                 guidance=2.0,
-                negative_prompt=negative_prompt,
+                negative_prompt=neg,
                 seed=seed,
+                max_prompt_words=REF_PROMPT_MAX_WORDS,
             )
             image = _upscale_image(image, out_w, out_h)
             image.save(out_path)
@@ -346,7 +434,6 @@ def generate_scene_image(
     scene_path = os.path.join(scenes_dir, f"scene_{idx:03d}.png")
 
     beat_chars = _beat_character_entries(beat, characters)
-    narrator_mode = bool(video_config.get("narratorMode"))
     style = str(video_config.get("style", "2D kids animation, cartoon, high detail"))
 
     # BUG 3: Resolve a specific environment description (never default to generic interior).
@@ -367,9 +454,10 @@ def generate_scene_image(
         )
         if detected:
             emotion = detected
-    pose_kw = EMOTION_POSE_KEYWORDS.get(emotion, EMOTION_POSE_KEYWORDS["neutral"])
-
-    action = str(beat.get("action", "")).strip()
+    action_pose = _resolve_scene_action(beat)
+    pose_kw = action_pose or EMOTION_POSE_KEYWORDS.get(
+        emotion, EMOTION_POSE_KEYWORDS["neutral"]
+    )
 
     # Camera framing (varies per scene), emotion-driven lighting, and a weather
     # motion cue so scenes feel cinematic instead of static and repetitive.
@@ -413,45 +501,45 @@ def generate_scene_image(
 
     char_anchor = "; ".join(_anchor(c) for c in render_chars)
     solo_hint = (
-        "exactly one character in frame"
+        "exactly one character in frame, no crowd, no duplicates"
         if len(render_chars) <= 1
-        else "exactly two characters interacting"
+        else "exactly two characters interacting, no crowd, no duplicates"
     )
 
-    # Use the Gemini-generated English visualPrompt as the primary scene description.
-    # It was written by the LLM explicitly for SDXL and is always in English.
-    # DO NOT inject beat.narrationText — it is in Hindi and SDXL ignores it.
     visual_from_planner = str(beat.get("visualPrompt") or "").strip()
 
+    # Action-first prompt: frozen story moment + setting + character identity.
+    # Scenes use text-only generation (no ref/previous img2img) to avoid clone grids.
     if char_anchor and visual_from_planner:
-        # Best case: lead with the story SETTING so the background follows the
-        # script, then add the character anchor, pose, camera and lighting.
         full_prompt = (
-            f"{style}. "
+            f"{style}. Single story scene, one frozen moment. "
+            f"Action: {pose_kw}. "
+            f"Setting: {environment}. "
             f"Scene: {visual_from_planner}. "
             f"Featuring {char_anchor}. "
-            f"{solo_hint}. Pose: {pose_kw}. "
+            f"{solo_hint}. "
             f"{cinematic_tail}"
         )
     elif char_anchor:
-        # No visualPrompt: lead with environment + action (both English from planner)
         full_prompt = (
-            f"{style}. "
+            f"{style}. Single story scene, one frozen moment. "
+            f"Action: {pose_kw}. "
             f"Setting: {environment}. "
-            + (f"{action}. " if action else "")
-            + f"Featuring {char_anchor}. "
-            + f"{solo_hint}. Pose: {pose_kw}. "
-            + f"{cinematic_tail}"
+            f"Featuring {char_anchor}. "
+            f"{solo_hint}. "
+            f"{cinematic_tail}"
         )
     else:
-        # No characters matched: use visualPrompt or environment/action
         full_prompt = (
-            f"{style}. "
-            f"{visual_from_planner or f'{environment}, {action}'}. "
-            f"{pose_kw}. {cinematic_tail}"
+            f"{style}. Single story scene, one frozen moment. "
+            f"Action: {pose_kw}. "
+            f"Setting: {environment}. "
+            f"{visual_from_planner or 'cinematic story illustration'}. "
+            f"{solo_hint}. "
+            f"{cinematic_tail}"
         )
 
-    full_prompt = _trim_prompt(full_prompt, max_words=90)
+    full_prompt = _trim_prompt(full_prompt, max_words=SCENE_PROMPT_MAX_WORDS)
 
     os.makedirs(refs_dir, exist_ok=True)
     os.makedirs(scenes_dir, exist_ok=True)
@@ -459,17 +547,8 @@ def generate_scene_image(
     if pipe is None:
         pipe = load_img2img_model()
 
-    init_image = None
-    # Strength must be high enough that the SCENE background follows the script
-    # instead of cloning the reference image's backdrop. Too low (0.42) baked the
-    # reference's setting into every scene. img2img still preserves identity here.
-    strength_with_ref = 0.50 if narrator_mode else 0.62
-    strength_with_prev = 0.55 if narrator_mode else 0.60
-    strength_no_ref = 0.85  # full generation when no reference exists
-
-    strength = strength_no_ref
-
-    ref_path = None
+    # Ensure reference PNG exists for logging/consistency, but do NOT use it as
+    # img2img init for scenes — that was cloning model-sheet grids into every frame.
     primary = beat_chars[0] if beat_chars else None
     if primary:
         cid = primary.get("id") or primary.get("name", "")
@@ -477,39 +556,34 @@ def generate_scene_image(
         ref_path = os.path.join(refs_dir, f"ref_{ref_file}.png")
         if not os.path.isfile(ref_path):
             log_stage("image", record_id, beat=idx, message=f"ref gen {cid}")
-            generate_reference_image(
-                pipe,
-                primary.get("referencePrompt", primary.get("name", "")),
-                gen_w,
-                gen_h,
-                out_w,
-                out_h,
-                ref_path,
-                seed=_char_seed(primary),
-            )
+            try:
+                generate_reference_image(
+                    pipe,
+                    primary.get("referencePrompt", primary.get("name", "")),
+                    gen_w,
+                    gen_h,
+                    out_w,
+                    out_h,
+                    ref_path,
+                    seed=_char_seed(primary),
+                )
+            except Exception as ref_err:
+                log_stage(
+                    "image",
+                    record_id,
+                    beat=idx,
+                    message=f"ref gen skipped: {ref_err}",
+                    level="ERROR",
+                )
 
-    if ref_path and os.path.isfile(ref_path):
-        try:
-            validate_scene_png(ref_path)
-            init_image = Image.open(ref_path).convert("RGB")
-            strength = strength_with_ref
-        except (ValueError, OSError):
-            init_image = None
-            ref_path = None
-
-    if init_image is None and previous_scene_path and os.path.isfile(previous_scene_path):
-        try:
-            validate_scene_png(previous_scene_path)
-            init_image = Image.open(previous_scene_path).convert("RGB")
-            strength = strength_with_prev
-        except (ValueError, OSError):
-            init_image = None
+    init_image = None
+    strength = 0.85
 
     log_stage(
         "image",
         record_id,
         beat=idx,
-        message=f"gen={gen_w}x{gen_h} out={out_w}x{out_h} strength={strength:.2f} {full_prompt[:80]}",
+        message=f"gen={gen_w}x{gen_h} out={out_w}x{out_h} txt2img action={pose_kw[:40]} {full_prompt[:60]}",
     )
 
     scene_seed = _char_seed(primary) if primary else None
@@ -528,6 +602,7 @@ def generate_scene_image(
                 steps=steps,
                 guidance=3.0,
                 seed=scene_seed,
+                max_prompt_words=SCENE_PROMPT_MAX_WORDS,
             )
             image = _upscale_image(image, out_w, out_h)
             image.save(scene_path)
@@ -589,12 +664,7 @@ def generate_all_scenes(record_id, beats, characters, video_config, work_dirs):
                 )
 
     paths = []
-    prev = None
     for beat in beats:
-        # When the script moves to a new location, do not seed img2img from the
-        # previous scene — that clones the old background instead of following
-        # the new beat's environment/visualPrompt.
-        use_prev_scene = not bool(beat.get("locationChanged"))
         path = generate_scene_image(
             record_id,
             beat,
@@ -602,11 +672,10 @@ def generate_all_scenes(record_id, beats, characters, video_config, work_dirs):
             video_config,
             refs_dir,
             scenes_dir,
-            previous_scene_path=prev if use_prev_scene else None,
+            previous_scene_path=None,
             pipe=pipe,
         )
         paths.append(path)
-        prev = path
 
     validate_scene_images(paths)
     log_stage("image", record_id, message=f"images_done count={len(paths)}")
