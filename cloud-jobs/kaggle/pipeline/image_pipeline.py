@@ -18,34 +18,32 @@ DEFAULT_GEN_MAX_W = int(os.environ.get("KAGGLE_GEN_MAX_WIDTH", "1024"))
 DEFAULT_GEN_MAX_H = int(os.environ.get("KAGGLE_GEN_MAX_HEIGHT", "576"))
 SCENE_GEN_STEPS = int(os.environ.get("KAGGLE_SCENE_STEPS", "20"))
 SCENE_GEN_STEPS_RETRY = int(os.environ.get("KAGGLE_SCENE_STEPS_RETRY", "28"))
-SCENE_PROMPT_MAX_WORDS = int(os.environ.get("KAGGLE_SCENE_PROMPT_WORDS", "120"))
-REF_PROMPT_MAX_WORDS = int(os.environ.get("KAGGLE_REF_PROMPT_WORDS", "80"))
+# SDXL CLIP text encoder hard limit — longer prompts are silently truncated.
+CLIP_MAX_TOKENS = int(os.environ.get("KAGGLE_CLIP_MAX_TOKENS", "77"))
 
-ANATOMY_POSITIVE = (
-    "proportional anatomy, correct hands and fingers, clear symmetrical face, "
-    "sharp crisp lines, well-defined body shape"
-)
-
-# BUG 7: Always pass a negative prompt to prevent cloned background characters and shelf clutter
-DEFAULT_NEGATIVE_PROMPT = (
-    "no background people, no duplicate characters, no miniature figures, "
-    "no clones, no shelf figures, crowded shelves, cluttered store interior, "
-    "shop shelves with dolls, background faces, repeated character copies, "
-    "multiple identical characters, character grid, sticker sheet, "
-    "character model sheet, turnaround sheet, pose reference sheet, "
-    "crowd of characters, many copies, tiled pattern, collage, "
-    "more than two people, family group, dinner party, ensemble cast, "
-    "disney, frozen, princess, elsa, anna, copyrighted characters, "
-    "toy store, plush toys on shelves, collection of figures, "
-    "bad anatomy, extra limbs, missing limbs, deformed hands, melted hands, "
-    "asymmetric eyes, cross-eyed, blurry face, mangled fingers, "
-    "blurry, deformed, distorted, watermark, text, logo"
+# Compact negatives that fit inside the CLIP 77-token window.
+SCENE_NEGATIVE_PROMPT = (
+    "duplicate characters, crowd, character sheet, clones, bad anatomy, "
+    "deformed hands, extra limbs, blurry, watermark, text, disney, frozen"
 )
 
 REFERENCE_NEGATIVE_PROMPT = (
-    DEFAULT_NEGATIVE_PROMPT
-    + ", multiple poses, multiple views, character lineup, sprite sheet, "
-    "contact sheet, ensemble cast, group shot, scattered figures"
+    "duplicate characters, crowd, character sheet, multiple poses, sprite sheet, "
+    "bad anatomy, deformed hands, blurry, watermark, text"
+)
+
+DEFAULT_NEGATIVE_PROMPT = SCENE_NEGATIVE_PROMPT
+
+_CLIP_TOKENIZER = None
+
+_VISUAL_PROMPT_STRIP_PHRASES = (
+    "2D animated story scene, single frozen moment, sharp crisp lines.",
+    "Proportional anatomy, correct hands, clear face.",
+    "Original characters only, not Disney.",
+    "Animated storytelling, cinematic composition, high detail, sharp focus.",
+    "No text, no watermark.",
+    "Exactly one character in frame.",
+    "Exactly two characters interacting.",
 )
 
 # BUG 4 + BUG 10: Emotion → visual pose keywords injected into every scene prompt
@@ -276,6 +274,100 @@ def _trim_prompt(prompt, max_words=55):
     return " ".join(str(prompt or "").split()[:max_words])
 
 
+def _get_clip_tokenizer(pipe=None):
+    """Lazy-load CLIP tokenizer (same family SDXL uses for the 77-token limit)."""
+    global _CLIP_TOKENIZER
+    if _CLIP_TOKENIZER is not None:
+        return _CLIP_TOKENIZER
+    if pipe is not None and getattr(pipe, "tokenizer", None) is not None:
+        _CLIP_TOKENIZER = pipe.tokenizer
+        return _CLIP_TOKENIZER
+    try:
+        from transformers import CLIPTokenizer
+
+        _CLIP_TOKENIZER = CLIPTokenizer.from_pretrained(
+            "stabilityai/stable-diffusion-xl-base-1.0",
+            subfolder="tokenizer",
+        )
+    except Exception:
+        _CLIP_TOKENIZER = None
+    return _CLIP_TOKENIZER
+
+
+def _clip_token_count(text, pipe=None):
+    tok = _get_clip_tokenizer(pipe)
+    if tok is None:
+        return len(str(text or "").split())
+    return len(tok.encode(str(text or ""), truncation=False))
+
+
+def _clip_trim(text, max_tokens=None, pipe=None):
+    """Trim prompt to SDXL CLIP limit so nothing important is silently dropped."""
+    max_tokens = max_tokens or CLIP_MAX_TOKENS
+    cleaned = " ".join(str(text or "").split()).strip()
+    if not cleaned:
+        return ""
+    tok = _get_clip_tokenizer(pipe)
+    if tok is None:
+        return _trim_prompt(cleaned, max_words=max(1, max_tokens - 5))
+    ids = tok.encode(cleaned, truncation=False)
+    if len(ids) <= max_tokens:
+        return cleaned
+    return tok.decode(ids[:max_tokens], skip_special_tokens=True).strip()
+
+
+def _sanitize_visual_prompt(visual):
+    """Remove JS boilerplate and cap length before Python scene assembly."""
+    text = " ".join(str(visual or "").split()).strip()
+    for phrase in _VISUAL_PROMPT_STRIP_PHRASES:
+        text = text.replace(phrase, " ")
+    return " ".join(text.split())[:220]
+
+
+def _short_char_label(char):
+    """One tight character line for CLIP-budget prompts."""
+    name = str(char.get("name", "")).strip()
+    species = str(char.get("species", "")).strip()
+    appearance = str(char.get("appearance", "")).strip()[:50]
+    body = str(char.get("bodyShape", "")).strip()
+    clothing = str(char.get("clothing", "")).strip()[:40]
+
+    label = f"{name} the {species}" if species and species.lower() != "character" else name
+    bits = [b for b in [body and f"{body} body", appearance, clothing and f"wearing {clothing}"] if b]
+    if bits:
+        return f"{label}, {', '.join(bits[:2])}"
+    return label
+
+
+def _build_compact_scene_prompt(
+    style,
+    pose_kw,
+    environment,
+    visual_from_planner,
+    render_chars,
+    camera_kw,
+):
+    """Single-layer scene prompt — no duplicate JS + Python stacking."""
+    solo = "one character only" if len(render_chars) <= 1 else "two characters only"
+    char_line = ", ".join(_short_char_label(c) for c in render_chars[:2])
+    visual = _sanitize_visual_prompt(visual_from_planner)
+
+    if visual and len(visual) > 30:
+        if pose_kw[:24].lower() not in visual.lower():
+            visual = f"{pose_kw}, {visual}"
+        core = f"{style}, {visual}"
+        if char_line and char_line.lower() not in visual.lower():
+            core = f"{core}, {char_line}"
+    else:
+        env_short = str(environment or "")[:80]
+        cam = str(camera_kw or "medium shot")[:30]
+        core = f"{style}, {pose_kw}, {env_short}, {char_line}, {solo}, {cam}"
+
+    if solo not in core:
+        core = f"{core}, {solo}"
+    return core
+
+
 def _norm_name(value):
     return str(value or "").strip().casefold()
 
@@ -353,12 +445,15 @@ def _run_generation(
     guidance=2.0,
     negative_prompt=None,
     seed=None,
-    max_prompt_words=55,
+    max_prompt_words=0,
+    pipe=None,
 ):
     steps = steps or SCENE_GEN_STEPS
     if max_prompt_words and max_prompt_words > 0:
         prompt = _trim_prompt(prompt, max_words=max_prompt_words)
-    neg = negative_prompt or DEFAULT_NEGATIVE_PROMPT
+    else:
+        prompt = _clip_trim(prompt, pipe=pipe)
+    neg = _clip_trim(negative_prompt or SCENE_NEGATIVE_PROMPT, pipe=pipe)
     generator = _make_generator(seed)
     with torch.inference_mode():
         if init_image is not None:
@@ -396,9 +491,9 @@ REFERENCE_PROMPT_SUFFIX = (
 
 
 def generate_reference_image(pipe, prompt, gen_w, gen_h, out_w, out_h, out_path, negative_prompt=None, seed=None):
-    ref_prompt = _trim_prompt(
-        f"{prompt}. {REFERENCE_PROMPT_SUFFIX}",
-        max_words=REF_PROMPT_MAX_WORDS,
+    ref_prompt = _clip_trim(
+        f"{_trim_prompt(prompt, max_words=35)}. {REFERENCE_PROMPT_SUFFIX}",
+        pipe=pipe,
     )
     neg = negative_prompt or REFERENCE_NEGATIVE_PROMPT
     last_err = None
@@ -416,7 +511,7 @@ def generate_reference_image(pipe, prompt, gen_w, gen_h, out_w, out_h, out_path,
                 guidance=2.0,
                 negative_prompt=neg,
                 seed=seed,
-                max_prompt_words=REF_PROMPT_MAX_WORDS,
+                pipe=pipe,
             )
             image = _upscale_image(image, out_w, out_h)
             image.save(out_path)
@@ -442,9 +537,13 @@ def generate_scene_image(
     idx = beat.get("sceneIndex", 0)
     scene_path = os.path.join(scenes_dir, f"scene_{idx:03d}.png")
 
+    if pipe is None:
+        pipe = load_img2img_model()
+
     beat_chars = _beat_character_entries(beat, characters)
-    style = str(video_config.get("style", "2D kids animation, cartoon, high detail"))
-    style = f"{style}, original characters only, not Disney, not Frozen"
+    style = _trim_prompt(
+        str(video_config.get("style", "2D cartoon")), max_words=6
+    )
 
     # BUG 3: Resolve a specific environment description (never default to generic interior).
     # Shared vocabulary lives in environments.py (mirrors lib/videoPipeline/environment.js).
@@ -469,106 +568,24 @@ def generate_scene_image(
         emotion, EMOTION_POSE_KEYWORDS["neutral"]
     )
 
-    # Camera framing (varies per scene), emotion-driven lighting, and a weather
-    # motion cue so scenes feel cinematic instead of static and repetitive.
     camera_style = str(beat.get("cameraStyle", "")).strip().lower()
     camera_kw = CAMERA_KEYWORDS.get(camera_style, DEFAULT_CAMERA)
-    mood = str(beat.get("mood", "")).strip().lower()
-    lighting_kw = MOOD_LIGHTING.get(emotion) or MOOD_LIGHTING.get(mood) or DEFAULT_LIGHTING
-    env_hay = f"{beat.get('environment', '')} {beat.get('visualPrompt', '')}".lower()
-    motion_kw = ""
-    for _w, _cue in WEATHER_MOTION.items():
-        if _w in env_hay:
-            motion_kw = _cue
-            break
-    cinematic_tail = (
-        f"Camera: {camera_kw}. Lighting: {lighting_kw}."
-        + (f" Atmosphere: {motion_kw}." if motion_kw else "")
-        + f" {ANATOMY_POSITIVE}."
-        + " Animated storytelling, cinematic composition, high detail, sharp focus."
-    )
-
-    # Render the primary character only by default. A 2nd is included solely when
-    # the beat genuinely lists 2+ distinct characters (a real interaction). Drawing
-    # more than this is what produced the "wall of clones" output.
     render_chars = beat_chars[:2]
-
-    def _anchor(c):
-        tags = ", ".join(
-            t
-            for t in (
-                str(c.get("species", "")).strip()
-                if str(c.get("species", "")).strip().lower() not in ("", "character")
-                else "",
-                str(c.get("role", "")).strip(),
-            )
-            if t
-        )
-        head = f"{c.get('name')} ({tags})" if tags else str(c.get("name"))
-        colors = str(c.get("colorPalette", "")).strip()
-        body = str(c.get("bodyShape", "")).strip()
-        face = str(c.get("facialFeatures", "")).strip()
-        eyes = str(c.get("eyes", "")).strip()
-        appearance = str(c.get("appearance", "")).strip()[:90]
-        clothing = str(c.get("clothing", "")).strip()[:70]
-        visual_bits = [b for b in [appearance, clothing] if b]
-        if body:
-            visual_bits.append(f"{body} body")
-        if face:
-            visual_bits.append(face)
-        if eyes:
-            visual_bits.append(f"{eyes} eyes")
-        visual = ", ".join(visual_bits) if visual_bits else str(c.get("referencePrompt", ""))[:160]
-        extra = f" colors: {colors}." if colors else ""
-        return f"{head}: {visual}{extra}"
-
-    char_anchor = "; ".join(_anchor(c) for c in render_chars)
-    solo_hint = (
-        "exactly one character in frame, no crowd, no duplicates"
-        if len(render_chars) <= 1
-        else "exactly two characters interacting, no crowd, no duplicates"
-    )
-
     visual_from_planner = str(beat.get("visualPrompt") or "").strip()
 
-    # Action-first prompt: frozen story moment + setting + character identity.
-    # Scenes use text-only generation (no ref/previous img2img) to avoid clone grids.
-    if char_anchor and visual_from_planner:
-        full_prompt = (
-            f"{style}. Single story scene, one frozen moment. "
-            f"Action: {pose_kw}. "
-            f"Setting: {environment}. "
-            f"Scene: {visual_from_planner}. "
-            f"Featuring {char_anchor}. "
-            f"{solo_hint}. "
-            f"{cinematic_tail}"
-        )
-    elif char_anchor:
-        full_prompt = (
-            f"{style}. Single story scene, one frozen moment. "
-            f"Action: {pose_kw}. "
-            f"Setting: {environment}. "
-            f"Featuring {char_anchor}. "
-            f"{solo_hint}. "
-            f"{cinematic_tail}"
-        )
-    else:
-        full_prompt = (
-            f"{style}. Single story scene, one frozen moment. "
-            f"Action: {pose_kw}. "
-            f"Setting: {environment}. "
-            f"{visual_from_planner or 'cinematic story illustration'}. "
-            f"{solo_hint}. "
-            f"{cinematic_tail}"
-        )
-
-    full_prompt = _trim_prompt(full_prompt, max_words=SCENE_PROMPT_MAX_WORDS)
+    raw_prompt = _build_compact_scene_prompt(
+        style,
+        pose_kw,
+        environment,
+        visual_from_planner,
+        render_chars,
+        camera_kw,
+    )
+    full_prompt = _clip_trim(raw_prompt, pipe=pipe)
+    token_count = _clip_token_count(full_prompt, pipe=pipe)
 
     os.makedirs(refs_dir, exist_ok=True)
     os.makedirs(scenes_dir, exist_ok=True)
-
-    if pipe is None:
-        pipe = load_img2img_model()
 
     # Ensure reference PNG exists for logging/consistency, but do NOT use it as
     # img2img init for scenes — that was cloning model-sheet grids into every frame.
@@ -606,7 +623,10 @@ def generate_scene_image(
         "image",
         record_id,
         beat=idx,
-        message=f"gen={gen_w}x{gen_h} out={out_w}x{out_h} txt2img action={pose_kw[:40]} {full_prompt[:60]}",
+        message=(
+            f"gen={gen_w}x{gen_h} out={out_w}x{out_h} tokens={token_count}/{CLIP_MAX_TOKENS} "
+            f"txt2img {full_prompt[:70]}"
+        ),
     )
 
     scene_seed = _char_seed(primary) if primary else None
@@ -625,7 +645,7 @@ def generate_scene_image(
                 steps=steps,
                 guidance=3.0,
                 seed=scene_seed,
-                max_prompt_words=SCENE_PROMPT_MAX_WORDS,
+                pipe=pipe,
             )
             image = _upscale_image(image, out_w, out_h)
             image.save(scene_path)
