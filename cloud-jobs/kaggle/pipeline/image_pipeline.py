@@ -510,7 +510,6 @@ def generate_reference_image(pipe, prompt, gen_w, gen_h, out_w, out_h, out_path,
                 guidance=2.0,
                 negative_prompt=neg,
                 seed=seed,
-                pipe=pipe,
             )
             image = _upscale_image(image, out_w, out_h)
             image.save(out_path)
@@ -644,7 +643,6 @@ def generate_scene_image(
                 steps=steps,
                 guidance=3.0,
                 seed=scene_seed,
-                pipe=pipe,
             )
             image = _upscale_image(image, out_w, out_h)
             image.save(scene_path)
