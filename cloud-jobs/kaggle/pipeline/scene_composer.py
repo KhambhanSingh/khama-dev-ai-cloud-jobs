@@ -48,17 +48,145 @@ def _video_encode_args(fps):
     ]
 
 
-def _zoompan_vf(width, height, fps, duration_sec):
+def _zoompan_vf(width, height, fps, duration_sec, motion="default"):
+    """Ken Burns / pan filter matched to script action (still-image video motion)."""
     duration_sec = max(0.5, float(duration_sec))
     frames = max(2, int(duration_sec * fps))
+    scale = f"scale={width}:{height}"
+    tail = f"s={width}x{height}:fps={fps}"
+
+    motion = str(motion or "default").lower()
+
+    if motion == "pan_right":
+        # Tracking / running — pan left-to-right across the scene
+        return (
+            f"{scale},"
+            f"zoompan=z='1.12':d={frames}:"
+            f"x='(iw-iw/zoom)*on/{frames}':"
+            f"y='ih/2-(ih/zoom/2)':{tail}"
+        )
+    if motion == "pan_left":
+        return (
+            f"{scale},"
+            f"zoompan=z='1.12':d={frames}:"
+            f"x='(iw-iw/zoom)*(1-on/{frames})':"
+            f"y='ih/2-(ih/zoom/2)':{tail}"
+        )
+    if motion == "zoom_in":
+        # Jump / excitement / close-up — push into the action
+        return (
+            f"{scale},"
+            f"zoompan=z='min(zoom+0.0025,1.22)':d={frames}:"
+            f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':{tail}"
+        )
+    if motion == "zoom_out":
+        # Scared / reveal / establishing — pull back
+        return (
+            f"{scale},"
+            f"zoompan=z='if(lte(on,1),1.18,max(zoom-0.0018,1.0))':d={frames}:"
+            f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':{tail}"
+        )
+    if motion == "static":
+        # Dialogue / calm — minimal drift
+        return (
+            f"{scale},"
+            f"zoompan=z='1.05':d={frames}:"
+            f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':{tail}"
+        )
+
+    # default — gentle center zoom
     return (
-        f"scale={width}:{height},"
+        f"{scale},"
         f"zoompan=z='min(zoom+0.001,1.12)':d={frames}:"
-        f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={width}x{height}:fps={fps}"
+        f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':{tail}"
     )
 
 
-def _encode_scene_clip(image_path, out_path, duration_sec, width, height, fps):
+def _classify_scene_motion(timing_entry):
+    """Map beat action/camera/emotion to FFmpeg motion style."""
+    hay = " ".join(
+        str(timing_entry.get(k) or "")
+        for k in ("actionPose", "action", "cameraStyle", "emotion", "narrationText")
+    ).lower()
+
+    if any(
+        k in hay
+        for k in (
+            "running",
+            "run",
+            "chase",
+            "sprint",
+            "legs in motion",
+            "tracking shot",
+            "tracking",
+            "दौड़",
+            "भाग",
+        )
+    ):
+        return "pan_right"
+
+    if any(
+        k in hay
+        for k in (
+            "jump",
+            "leap",
+            "mid-air",
+            "excited",
+            "close-up",
+            "closeup",
+            "कूद",
+            "छलांग",
+        )
+    ):
+        return "zoom_in"
+
+    if any(
+        k in hay
+        for k in (
+            "scared",
+            "cowering",
+            "hiding",
+            "peek",
+            "wide shot",
+            "wide establishing",
+            "zoom out",
+            "डर",
+            "छिप",
+        )
+    ):
+        return "zoom_out"
+
+    if any(
+        k in hay
+        for k in (
+            "slow pan",
+            "pan",
+            "walking",
+            "walk",
+            "चल",
+        )
+    ):
+        return "pan_left"
+
+    if any(
+        k in hay
+        for k in (
+            "talking",
+            "gesturing",
+            "calm",
+            "sitting",
+            "neutral",
+            "thinking",
+            "बोल",
+            "कहा",
+        )
+    ):
+        return "static"
+
+    return "default"
+
+
+def _encode_scene_clip(image_path, out_path, duration_sec, width, height, fps, motion="default"):
     """Encode one scene clip with fixed params for concat compatibility."""
     duration_sec = max(0.5, float(duration_sec))
     fps = max(1, int(fps))
@@ -70,7 +198,7 @@ def _encode_scene_clip(image_path, out_path, duration_sec, width, height, fps):
         "-i",
         image_path,
         "-vf",
-        _zoompan_vf(width, height, fps, duration_sec),
+        _zoompan_vf(width, height, fps, duration_sec, motion=motion),
         "-t",
         str(duration_sec),
     ] + _video_encode_args(fps) + [out_path]
@@ -78,9 +206,13 @@ def _encode_scene_clip(image_path, out_path, duration_sec, width, height, fps):
     return out_path
 
 
-def render_scene_clip(image_path, out_path, duration_sec, fps=24, width=1280, height=720):
-    """Ken Burns zoom on still image for exact duration."""
-    return _encode_scene_clip(image_path, out_path, duration_sec, width, height, fps)
+def render_scene_clip(
+    image_path, out_path, duration_sec, fps=24, width=1280, height=720, motion="default"
+):
+    """Ken Burns / action-matched motion on still image for exact duration."""
+    return _encode_scene_clip(
+        image_path, out_path, duration_sec, width, height, fps, motion=motion
+    )
 
 
 def _write_concat_list(list_path, clip_paths):
@@ -271,6 +403,8 @@ def compose_video(
         base = os.path.basename(img)
         idx = int(base.replace("scene_", "").replace(".png", ""))
         dur = float(timing_by_idx.get(idx, {}).get("duration", 3.0))
+        timing_entry = timing_by_idx.get(idx, {})
+        motion = _classify_scene_motion(timing_entry)
         clip_out = os.path.join(clips_dir, f"clip_{idx:03d}.mp4")
 
         if reuse_clips and os.path.isfile(clip_out):
@@ -278,8 +412,13 @@ def compose_video(
             clip_paths.append(clip_out)
             continue
 
-        log_stage("compose", record_id, beat=idx, message=f"duration={dur:.2f}s")
-        _encode_scene_clip(img, clip_out, dur, width, height, fps)
+        log_stage(
+            "compose",
+            record_id,
+            beat=idx,
+            message=f"duration={dur:.2f}s motion={motion}",
+        )
+        _encode_scene_clip(img, clip_out, dur, width, height, fps, motion=motion)
         clip_paths.append(clip_out)
 
     validate_scene_clips(clip_paths)
