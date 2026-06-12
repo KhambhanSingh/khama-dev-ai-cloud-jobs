@@ -4,6 +4,8 @@ import copy
 import math
 import re
 
+from .beat_metadata import refresh_beat_from_narration
+
 
 def _split_to_n_parts(text, n):
     """
@@ -77,6 +79,7 @@ def subdivide_long_beats(beats, timings, max_sec=4.5):
             # For n == 1 the original visualPrompt is preserved.
             if n > 1:
                 sub["visualPrompt"] = ""
+                refresh_beat_from_narration(sub)
 
             if part > 0:
                 sub["beatTitle"] = f"{beat.get('beatTitle', 'Beat')} ({part + 1}/{n})"
@@ -95,6 +98,8 @@ def subdivide_long_beats(beats, timings, max_sec=4.5):
                     "actionPose": str(sub.get("actionPose") or sub.get("action", "")).strip(),
                     "cameraStyle": str(sub.get("cameraStyle", "")).strip(),
                     "emotion": str(sub.get("emotion", "neutral")).strip(),
+                    "environment": str(sub.get("environment", "")).strip(),
+                    "propsInFrame": sub.get("propsInFrame") or [],
                 }
             )
             new_idx += 1
