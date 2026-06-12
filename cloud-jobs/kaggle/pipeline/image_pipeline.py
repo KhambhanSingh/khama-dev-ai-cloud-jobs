@@ -446,7 +446,6 @@ def _run_generation(
     negative_prompt=None,
     seed=None,
     max_prompt_words=0,
-    pipe=None,
 ):
     steps = steps or SCENE_GEN_STEPS
     if max_prompt_words and max_prompt_words > 0:
