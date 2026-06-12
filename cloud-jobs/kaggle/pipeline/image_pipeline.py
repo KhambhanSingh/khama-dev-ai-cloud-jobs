@@ -346,11 +346,13 @@ def _build_compact_scene_prompt(
     visual_from_planner,
     render_chars,
     camera_kw,
+    props_in_frame=None,
 ):
     """Single-layer scene prompt — no duplicate JS + Python stacking."""
     solo = "one character only" if len(render_chars) <= 1 else "two characters only"
     char_line = ", ".join(_short_char_label(c) for c in render_chars[:2])
     visual = _sanitize_visual_prompt(visual_from_planner)
+    props = ", ".join(str(p) for p in (props_in_frame or [])[:3] if str(p).strip())
 
     if visual and len(visual) > 30:
         if pose_kw[:24].lower() not in visual.lower():
@@ -362,6 +364,9 @@ def _build_compact_scene_prompt(
         env_short = str(environment or "")[:80]
         cam = str(camera_kw or "medium shot")[:30]
         core = f"{style}, {pose_kw}, {env_short}, {char_line}, {solo}, {cam}"
+
+    if props and props.lower() not in core.lower():
+        core = f"{core}, with {props}"
 
     if solo not in core:
         core = f"{core}, {solo}"
@@ -578,6 +583,7 @@ def generate_scene_image(
         visual_from_planner,
         render_chars,
         camera_kw,
+        props_in_frame=beat.get("propsInFrame"),
     )
     full_prompt = _clip_trim(raw_prompt, pipe=pipe)
     token_count = _clip_token_count(full_prompt, pipe=pipe)
