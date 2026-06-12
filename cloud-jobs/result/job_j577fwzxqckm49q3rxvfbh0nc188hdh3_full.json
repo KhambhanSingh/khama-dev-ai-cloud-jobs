@@ -1,5 +1,0 @@
-{
-  "status": "FAILED",
-  "recordId": "j577fwzxqckm49q3rxvfbh0nc188hdh3",
-  "error": "duplicate argument 'pipe' in function definition (image_pipeline.py, line 449)"
-}
