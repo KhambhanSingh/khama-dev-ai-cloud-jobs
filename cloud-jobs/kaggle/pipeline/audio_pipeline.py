@@ -163,6 +163,10 @@ def build_narration_audio(record_id, beats, lang, audio_dir, max_duration_sec=18
                 "end": end,
                 "duration": duration,
                 "narrationText": text,
+                "action": str(beat.get("action", "")).strip(),
+                "actionPose": str(beat.get("actionPose") or beat.get("action", "")).strip(),
+                "cameraStyle": str(beat.get("cameraStyle", "")).strip(),
+                "emotion": str(beat.get("emotion", "neutral")).strip(),
             }
         )
 
