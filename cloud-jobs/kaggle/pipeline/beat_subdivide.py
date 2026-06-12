@@ -91,6 +91,10 @@ def subdivide_long_beats(beats, timings, max_sec=4.5):
                     "end": end,
                     "duration": sub_dur,
                     "narrationText": text_parts[part],
+                    "action": str(sub.get("action", "")).strip(),
+                    "actionPose": str(sub.get("actionPose") or sub.get("action", "")).strip(),
+                    "cameraStyle": str(sub.get("cameraStyle", "")).strip(),
+                    "emotion": str(sub.get("emotion", "neutral")).strip(),
                 }
             )
             new_idx += 1
