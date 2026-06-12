@@ -14,12 +14,17 @@ from .environments import infer_environment
 # One img2img pipeline in VRAM (built from txt2img components once).
 _IMG2IMG_PIPE = None
 
-DEFAULT_GEN_MAX_W = int(os.environ.get("KAGGLE_GEN_MAX_WIDTH", "768"))
-DEFAULT_GEN_MAX_H = int(os.environ.get("KAGGLE_GEN_MAX_HEIGHT", "432"))
-SCENE_GEN_STEPS = int(os.environ.get("KAGGLE_SCENE_STEPS", "12"))
-SCENE_GEN_STEPS_RETRY = int(os.environ.get("KAGGLE_SCENE_STEPS_RETRY", "16"))
-SCENE_PROMPT_MAX_WORDS = int(os.environ.get("KAGGLE_SCENE_PROMPT_WORDS", "110"))
-REF_PROMPT_MAX_WORDS = int(os.environ.get("KAGGLE_REF_PROMPT_WORDS", "70"))
+DEFAULT_GEN_MAX_W = int(os.environ.get("KAGGLE_GEN_MAX_WIDTH", "1024"))
+DEFAULT_GEN_MAX_H = int(os.environ.get("KAGGLE_GEN_MAX_HEIGHT", "576"))
+SCENE_GEN_STEPS = int(os.environ.get("KAGGLE_SCENE_STEPS", "20"))
+SCENE_GEN_STEPS_RETRY = int(os.environ.get("KAGGLE_SCENE_STEPS_RETRY", "28"))
+SCENE_PROMPT_MAX_WORDS = int(os.environ.get("KAGGLE_SCENE_PROMPT_WORDS", "120"))
+REF_PROMPT_MAX_WORDS = int(os.environ.get("KAGGLE_REF_PROMPT_WORDS", "80"))
+
+ANATOMY_POSITIVE = (
+    "proportional anatomy, correct hands and fingers, clear symmetrical face, "
+    "sharp crisp lines, well-defined body shape"
+)
 
 # BUG 7: Always pass a negative prompt to prevent cloned background characters and shelf clutter
 DEFAULT_NEGATIVE_PROMPT = (
@@ -29,8 +34,12 @@ DEFAULT_NEGATIVE_PROMPT = (
     "multiple identical characters, character grid, sticker sheet, "
     "character model sheet, turnaround sheet, pose reference sheet, "
     "crowd of characters, many copies, tiled pattern, collage, "
+    "more than two people, family group, dinner party, ensemble cast, "
+    "disney, frozen, princess, elsa, anna, copyrighted characters, "
     "toy store, plush toys on shelves, collection of figures, "
-    "blurry, bad anatomy, deformed, distorted, watermark, text, logo"
+    "bad anatomy, extra limbs, missing limbs, deformed hands, melted hands, "
+    "asymmetric eyes, cross-eyed, blurry face, mangled fingers, "
+    "blurry, deformed, distorted, watermark, text, logo"
 )
 
 REFERENCE_NEGATIVE_PROMPT = (
@@ -435,6 +444,7 @@ def generate_scene_image(
 
     beat_chars = _beat_character_entries(beat, characters)
     style = str(video_config.get("style", "2D kids animation, cartoon, high detail"))
+    style = f"{style}, original characters only, not Disney, not Frozen"
 
     # BUG 3: Resolve a specific environment description (never default to generic interior).
     # Shared vocabulary lives in environments.py (mirrors lib/videoPipeline/environment.js).
@@ -473,8 +483,9 @@ def generate_scene_image(
             break
     cinematic_tail = (
         f"Camera: {camera_kw}. Lighting: {lighting_kw}."
-        + (f" Motion: {motion_kw}." if motion_kw else "")
-        + " Animated storytelling, cinematic composition, high detail."
+        + (f" Atmosphere: {motion_kw}." if motion_kw else "")
+        + f" {ANATOMY_POSITIVE}."
+        + " Animated storytelling, cinematic composition, high detail, sharp focus."
     )
 
     # Render the primary character only by default. A 2nd is included solely when
@@ -495,9 +506,21 @@ def generate_scene_image(
         )
         head = f"{c.get('name')} ({tags})" if tags else str(c.get("name"))
         colors = str(c.get("colorPalette", "")).strip()
-        ref = str(c.get("referencePrompt", ""))[:130]
+        body = str(c.get("bodyShape", "")).strip()
+        face = str(c.get("facialFeatures", "")).strip()
+        eyes = str(c.get("eyes", "")).strip()
+        appearance = str(c.get("appearance", "")).strip()[:90]
+        clothing = str(c.get("clothing", "")).strip()[:70]
+        visual_bits = [b for b in [appearance, clothing] if b]
+        if body:
+            visual_bits.append(f"{body} body")
+        if face:
+            visual_bits.append(face)
+        if eyes:
+            visual_bits.append(f"{eyes} eyes")
+        visual = ", ".join(visual_bits) if visual_bits else str(c.get("referencePrompt", ""))[:160]
         extra = f" colors: {colors}." if colors else ""
-        return f"{head}: {ref}{extra}"
+        return f"{head}: {visual}{extra}"
 
     char_anchor = "; ".join(_anchor(c) for c in render_chars)
     solo_hint = (
