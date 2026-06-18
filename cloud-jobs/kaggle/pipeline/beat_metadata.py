@@ -1,6 +1,7 @@
 """Refresh beat action/emotion/environment from a narration slice (no torch)."""
 
 from .environments import infer_environment
+from .story_action import resolve_scene_action, _is_generic_action
 
 _EMOTION_VOCAB = [
     ("scared", ["डर", "भय", "घबरा", "scared", "afraid", "fear", "terrified", "frightened"]),
@@ -13,35 +14,6 @@ _EMOTION_VOCAB = [
     ("calm", ["शांत", "सुकून", "calm", "peaceful", "serene", "relaxed"]),
 ]
 
-_ACTION_VOCAB = [
-    ("hugging warmly, arms wrapped around the other character, emotional embrace",
-     ["गले लग", "आलिंगन", "hug", "hugging", "embrace"]),
-    ("running fast, legs in full motion, body leaning forward urgently",
-     ["दौड़", "भाग", "run", "running", "chase", "sprint"]),
-    ("jumping mid-air, dynamic leap, body stretched in motion",
-     ["कूद", "छलांग", "jump", "jumping", "leap"]),
-    ("walking along a path, mid-stride, natural forward movement",
-     ["चल", "चला", "walk", "walking", "stroll"]),
-    ("climbing upward, gripping with paws or hands, determined upward motion",
-     ["चढ़", "climb", "climbing"]),
-    ("flying through the air, wings or body lifted, soaring motion",
-     ["उड़", "fly", "flying", "soar"]),
-    ("playing joyfully, mid-bounce or mid-game, lively playful motion",
-     ["खेल", "play", "playing"]),
-    ("talking expressively, mouth open, one hand gesturing outward",
-     ["कहा", "बोल", "talk", "talking", "said", "speak", "shout"]),
-    ("looking around cautiously, head turned, alert scanning motion",
-     ["देख", "look", "looking", "watch", "watching"]),
-    ("hiding behind an object, partially concealed, peeking out nervously",
-     ["छिप", "छुप", "hide", "hiding"]),
-    ("crying with tears visible, hands near face, sorrowful moment",
-     ["रोया", "रोई", "cry", "crying", "weep", "tears"]),
-    ("laughing openly, mouth wide, joyful mid-laugh expression",
-     ["हँस", "हंस", "laugh", "laughing"]),
-    ("dancing with rhythmic motion, arms raised, celebratory movement",
-     ["नाच", "dance", "dancing"]),
-]
-
 _PROP_VOCAB = [
     ("ball", ["गेंद", "ball"]),
     ("bicycle", ["साइकिल", "bicycle", "cycle"]),
@@ -51,9 +23,9 @@ _PROP_VOCAB = [
     ("basket", ["टोकरी", "basket"]),
     ("tree", ["पेड़", "tree"]),
     ("flower", ["फूल", "flower"]),
+    ("mango", ["आम", "mango"]),
+    ("sword", ["तलवार", "sword"]),
 ]
-
-_GENERIC_ACTIONS = {"", "story moment", "narration", "story scene", "neutral"}
 
 
 def _detect_emotion(text):
@@ -65,18 +37,6 @@ def _detect_emotion(text):
         for k in keys:
             if k in raw or k.lower() in low:
                 return emotion
-    return ""
-
-
-def _detect_action_pose(text):
-    raw = str(text or "")
-    if not raw.strip():
-        return ""
-    low = raw.lower()
-    for pose, keys in _ACTION_VOCAB:
-        for k in keys:
-            if k in raw or k.lower() in low:
-                return pose
     return ""
 
 
@@ -94,7 +54,7 @@ def _detect_props_in_text(text):
     return found
 
 
-def refresh_beat_from_narration(beat):
+def refresh_beat_from_narration(beat, previous_beat=None):
     """Re-derive metadata from narrationText after beat subdivision."""
     text = str(beat.get("narrationText", "") or "").strip()
     if not text:
@@ -104,15 +64,11 @@ def refresh_beat_from_narration(beat):
     if detected_emotion:
         beat["emotion"] = detected_emotion
 
-    detected_action = _detect_action_pose(text)
-    if detected_action:
-        beat["action"] = detected_action
-        beat["actionPose"] = detected_action
-    else:
-        action = str(beat.get("action") or "").strip()
-        if not action or action.lower() in _GENERIC_ACTIONS:
-            beat["action"] = "key story moment, clear visible action in frame"
-            beat["actionPose"] = beat["action"]
+    existing = str(beat.get("actionPose") or beat.get("action") or "").strip()
+    if not existing or _is_generic_action(existing):
+        action = resolve_scene_action(beat, previous_beat)
+        beat["action"] = action
+        beat["actionPose"] = action
 
     env = infer_environment(
         text,
