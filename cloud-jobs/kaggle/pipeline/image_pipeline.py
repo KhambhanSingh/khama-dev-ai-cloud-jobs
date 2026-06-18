@@ -100,75 +100,7 @@ def _detect_emotion(text):
     return ""
 
 
-# Script action verbs (Hindi + English) -> frozen-moment pose for SDXL.
-# Mirrors lib/videoPipeline/actionPose.js.
-_ACTION_VOCAB = [
-    ("hugging warmly, arms wrapped around the other character, emotional embrace",
-     ["गले लग", "आलिंगन", "गले मिल", "hug", "hugging", "embrace", "embracing"]),
-    ("running fast, legs in full motion, body leaning forward urgently",
-     ["दौड़", "भाग", "दौड़ा", "भागा", "run", "running", "chase", "chasing", "race", "escape", "flee", "sprint"]),
-    ("jumping mid-air, dynamic leap, body stretched in motion",
-     ["कूद", "छलांग", "उछल", "jump", "jumping", "leap", "leaping", "hop", "vault"]),
-    ("walking along a path, mid-stride, natural forward movement",
-     ["चल", "चला", "चली", "walk", "walking", "stroll", "wander"]),
-    ("climbing upward, gripping with paws or hands, determined upward motion",
-     ["चढ़", "चढ़ा", "climb", "climbing", "ascend"]),
-    ("flying through the air, wings or body lifted, soaring motion",
-     ["उड़", "उड़ा", "fly", "flying", "soar", "soaring", "glide"]),
-    ("playing joyfully, mid-bounce or mid-game, lively playful motion",
-     ["खेल", "खेला", "खेली", "play", "playing", "frolic"]),
-    ("talking expressively, mouth open, one hand gesturing outward",
-     ["कहा", "बोल", "बोला", "talk", "talking", "said", "says", "speak", "shout"]),
-    ("looking around cautiously, head turned, alert scanning motion",
-     ["देख", "देखा", "निहार", "look", "looking", "watch", "watching", "peek", "peering"]),
-    ("hiding behind an object, partially concealed, peeking out nervously",
-     ["छिप", "छुप", "hide", "hiding", "hidden", "conceal"]),
-    ("crying with tears visible, hands near face, sorrowful moment",
-     ["रोया", "रोई", "रोने", "cry", "crying", "weep", "sob", "tears"]),
-    ("laughing openly, mouth wide, joyful mid-laugh expression",
-     ["हँस", "हंस", "laugh", "laughing", "giggle", "chuckle"]),
-    ("dancing with rhythmic motion, arms raised, celebratory movement",
-     ["नाच", "नाचा", "dance", "dancing", "twirl"]),
-]
-
-_GENERIC_ACTIONS = {"", "story moment", "narration", "story scene", "neutral"}
-
-
-def _detect_action_pose(text):
-    raw = str(text or "")
-    if not raw.strip():
-        return ""
-    low = raw.lower()
-    for pose, keys in _ACTION_VOCAB:
-        for k in keys:
-            if k in raw or k.lower() in low:
-                return pose
-    return ""
-
-
-def _resolve_scene_action(beat):
-    """Pick the best script-driven action phrase for this beat."""
-    action_pose = str(beat.get("actionPose") or "").strip()
-    if action_pose and action_pose.lower() not in _GENERIC_ACTIONS:
-        return action_pose
-
-    hay = " ".join(
-        str(beat.get(k) or "")
-        for k in ("narrationText", "action", "summary", "visualPrompt")
-    )
-    detected = _detect_action_pose(hay)
-    if detected:
-        return detected
-
-    action = str(beat.get("action") or "").strip()
-    if action and action.lower() not in _GENERIC_ACTIONS:
-        return action
-
-    summary = str(beat.get("summary") or "").strip()
-    if summary and summary.lower() not in _GENERIC_ACTIONS:
-        return summary
-
-    return "key story moment, clear visible action in frame"
+from .story_action import resolve_scene_action
 
 # Camera framing keywords so scenes are not all the same flat wide shot.
 CAMERA_KEYWORDS = {
@@ -566,7 +498,7 @@ def generate_scene_image(
         )
         if detected:
             emotion = detected
-    action_pose = _resolve_scene_action(beat)
+    action_pose = resolve_scene_action(beat)
     pose_kw = action_pose or EMOTION_POSE_KEYWORDS.get(
         emotion, EMOTION_POSE_KEYWORDS["neutral"]
     )
