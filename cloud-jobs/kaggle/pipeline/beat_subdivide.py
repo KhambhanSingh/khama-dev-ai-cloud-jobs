@@ -79,7 +79,8 @@ def subdivide_long_beats(beats, timings, max_sec=4.5):
             # For n == 1 the original visualPrompt is preserved.
             if n > 1:
                 sub["visualPrompt"] = ""
-                refresh_beat_from_narration(sub)
+                prev_sub = new_beats[-1] if part > 0 and new_beats else beat
+                refresh_beat_from_narration(sub, previous_beat=prev_sub if part > 0 else None)
 
             if part > 0:
                 sub["beatTitle"] = f"{beat.get('beatTitle', 'Beat')} ({part + 1}/{n})"
