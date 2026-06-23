@@ -8,8 +8,17 @@ import torch
 from PIL import Image
 
 from .logging_util import log_stage
-from .validator import validate_scene_png, validate_scene_images
+from .validator import validate_scene_png, validate_reference_png, validate_scene_images
 from .environments import infer_environment
+from .prompt_sanitize import (
+    pick_english_beat_line,
+    format_scene_character_labels,
+    strip_forbidden_prompt_words,
+    build_reference_portrait_prompt,
+    is_english_prompt_text,
+    contains_devanagari,
+    validate_sdxl_prompt,
+)
 
 # One img2img pipeline in VRAM (built from txt2img components once).
 _IMG2IMG_PIPE = None
@@ -37,8 +46,9 @@ SCENE_NEGATIVE_PROMPT = (
 )
 
 REFERENCE_NEGATIVE_PROMPT = (
-    "duplicate characters, crowd, character sheet, multiple poses, sprite sheet, "
-    "bad anatomy, deformed hands, blurry, watermark, text"
+    "duplicate characters, crowd, character sheet, model sheet, turnaround sheet, "
+    "multiple poses, sprite sheet, lineup, group, family, many people, clones, "
+    "bad anatomy, deformed hands, extra limbs, blurry, watermark, text"
 )
 
 DEFAULT_NEGATIVE_PROMPT = SCENE_NEGATIVE_PROMPT
@@ -338,16 +348,125 @@ def _character_identity_block(char, max_len=100):
 
 
 def _scene_identity_block(render_chars, beat=None, max_len=180):
-    """Prefer precomputed JS block; fall back to registry fields."""
+    """Character A / Character B labels — never pipe-separated blocks."""
     precomputed = ""
     if beat is not None:
         precomputed = str(beat.get("characterIdentityBlock") or "").strip()
-    if precomputed:
+    if precomputed and "|" not in precomputed:
         return precomputed[:max_len]
+    if precomputed and "|" in precomputed:
+        precomputed = ""
 
-    parts = [_character_identity_block(c, max_len // 2) for c in (render_chars or [])[:2]]
-    parts = [p for p in parts if p]
-    return " | ".join(parts)[:max_len]
+    return format_scene_character_labels(render_chars or [], max_len)
+
+
+def _build_scene_prompt_for_attempt(
+    beat,
+    render_chars,
+    environment,
+    style,
+    camera_kw,
+    props_in_frame=None,
+    attempt=1,
+    pipe=None,
+):
+    """Story event → action → characters → environment → camera. Rebuilt each retry."""
+    chars = list(render_chars or [])[:2]
+    if attempt >= 2:
+        chars = chars[:1]
+
+    story_event = pick_english_beat_line(
+        beat,
+        ("scriptEvent", "actionPose", "action", "summary", "visualPrompt", "beatTitle"),
+    )
+    action = pick_english_beat_line(beat, ("action", "scriptEvent", "summary"))
+
+    identity = _scene_identity_block(chars, beat=beat)
+    solo = (
+        "single character solo shot, no crowd, no clones"
+        if len(chars) <= 1
+        else "two characters only, no crowd, no duplicates"
+    )
+
+    env_short = str(environment or "")[:60]
+    cam = str(camera_kw or "medium shot")[:25]
+    props = ", ".join(str(p) for p in (props_in_frame or [])[:2] if str(p).strip())
+
+    visual = _sanitize_visual_prompt(beat.get("visualPrompt") or "")
+    if contains_devanagari(visual) or not is_english_prompt_text(visual):
+        visual = ""
+
+    if attempt >= 3:
+        parts = [p for p in [story_event[:70] or action[:70], f"in {env_short}", solo, cam] if p]
+    elif attempt >= 2:
+        parts = [p for p in [story_event[:80] or action[:80], action[:50] if action else "", solo, f"in {env_short}", cam] if p]
+    else:
+        parts = [p for p in [story_event, action if action and action != story_event else "", identity, f"in {env_short}", cam, solo] if p]
+        if props and attempt == 1:
+            parts.insert(-1, f"with {props}")
+        if visual and len(visual) > 20 and attempt == 1:
+            parts.insert(1, visual[:100])
+
+    if attempt >= 2:
+        parts.insert(0, "simple composition, one clear subject")
+
+    raw = strip_forbidden_prompt_words(f"{style}, " + ", ".join(parts))
+    issues = validate_sdxl_prompt(raw)
+    if issues and story_event:
+        raw = strip_forbidden_prompt_words(f"{style}, {story_event[:80]}, {solo}, {cam}")
+
+    trimmed = _clip_trim(raw, pipe=pipe)
+    if solo[:15] not in trimmed:
+        trimmed = _clip_trim(f"{solo}, {trimmed}", pipe=pipe)
+    return trimmed
+
+
+def _build_compact_scene_prompt(
+    style,
+    pose_kw,
+    environment,
+    visual_from_planner,
+    render_chars,
+    camera_kw,
+    props_in_frame=None,
+    identity_block="",
+    attempt=1,
+    pipe=None,
+    beat=None,
+):
+    """Legacy wrapper — prefer _build_scene_prompt_for_attempt when beat is available."""
+    if beat is not None:
+        if identity_block and "|" not in identity_block:
+            beat = {**beat, "characterIdentityBlock": identity_block}
+        return _build_scene_prompt_for_attempt(
+            beat,
+            render_chars,
+            environment,
+            style,
+            camera_kw,
+            props_in_frame=props_in_frame,
+            attempt=attempt,
+            pipe=pipe,
+        )
+
+    event_lead = str(pose_kw or "")[:120]
+    if contains_devanagari(event_lead) or not is_english_prompt_text(event_lead):
+        event_lead = pick_english_beat_line({"visualPrompt": visual_from_planner}) or ""
+
+    solo = (
+        "single character solo shot, no crowd, no clones"
+        if len(render_chars or []) <= 1
+        else "two characters only, no crowd, no duplicates"
+    )
+    env_short = str(environment or "")[:60]
+    cam = str(camera_kw or "medium shot")[:25]
+    visual = _sanitize_visual_prompt(visual_from_planner)
+    if contains_devanagari(visual):
+        visual = ""
+
+    parts = [p for p in [event_lead, visual[:80] if visual else "", f"in {env_short}", cam, solo] if p]
+    raw = strip_forbidden_prompt_words(f"{style}, " + ", ".join(parts))
+    return _clip_trim(raw, pipe=pipe)
 
 
 def _short_char_label(char):
@@ -363,61 +482,6 @@ def _short_char_label(char):
     if bits:
         return f"{label}, {', '.join(bits[:2])}"
     return label
-
-
-def _build_compact_scene_prompt(
-    style,
-    pose_kw,
-    environment,
-    visual_from_planner,
-    render_chars,
-    camera_kw,
-    props_in_frame=None,
-    identity_block="",
-):
-    """Story event first, then solo + scene body; identity appended when tokens allow."""
-    solo = (
-        "single character solo shot, no crowd, no clones"
-        if len(render_chars) <= 1
-        else "two characters only, no crowd, no duplicates"
-    )
-    identity = str(identity_block or "").strip()
-    if not identity:
-        identity = _scene_identity_block(render_chars)
-    char_line = ", ".join(_short_char_label(c) for c in render_chars[:2])
-    visual = _sanitize_visual_prompt(visual_from_planner)
-    props = ", ".join(str(p) for p in (props_in_frame or [])[:3] if str(p).strip())
-
-    env_short = str(environment or "")[:80]
-    cam = str(camera_kw or "medium shot")[:30]
-    event_lead = str(pose_kw or "")[:120]
-
-    if visual and len(visual) > 30:
-        if event_lead and event_lead[:24].lower() not in visual.lower():
-            visual = f"{event_lead}, {visual}"
-        scene_body = f"{style}, {visual}, in {env_short}, {cam}"
-    else:
-        scene_body = f"{style}, {event_lead}, in {env_short}, {cam}"
-
-    if props and props.lower() not in scene_body.lower():
-        scene_body = f"{scene_body}, with {props}"
-
-    scene_tail = f"{solo}, {scene_body}"
-
-    head = event_lead
-    if identity:
-        head = f"{event_lead}, [{identity}]" if event_lead else f"[{identity}]"
-    elif char_line and not event_lead:
-        head = char_line
-
-    if head:
-        core = _clip_trim_priority(head, scene_tail)
-    else:
-        core = scene_tail
-
-    if solo[:20] not in core:
-        core = f"{solo}, {core}"
-    return core
 
 
 def _norm_name(value):
@@ -535,9 +599,9 @@ def _run_generation(
 # Reference = ONE character portrait on a plain backdrop for identity locking in
 # the text prompt. Never use "model sheet" — that triggers clone-grid output.
 REFERENCE_PROMPT_SUFFIX = (
-    "full body portrait, single character only, one pose, centered, "
-    "plain solid white background, no other characters, no scenery, "
-    "no background objects, no multiple poses"
+    "ONE character only, full body portrait, standing alone, centered, "
+    "plain solid white background, single pose, front-facing, entire body visible, "
+    "no duplicate characters, no crowd, no character sheet, no turnaround, no lineup"
 )
 
 
@@ -577,12 +641,13 @@ def _ensure_reference_image(
     try:
         generate_reference_image(
             pipe,
-            char.get("referencePrompt", char.get("name", "")),
+            char,
             gen_w,
             gen_h,
             out_w,
             out_h,
             ref_path,
+            video_style=str(char.get("videoStyle") or "2D cartoon"),
             seed=_char_seed(char),
         )
         return ref_path
@@ -597,16 +662,40 @@ def _ensure_reference_image(
         return None
 
 
-def generate_reference_image(pipe, prompt, gen_w, gen_h, out_w, out_h, out_path, negative_prompt=None, seed=None):
-    ref_prompt = _clip_trim(
-        f"{_trim_prompt(prompt, max_words=35)}. {REFERENCE_PROMPT_SUFFIX}",
-        pipe=pipe,
+def generate_reference_image(
+    pipe,
+    char,
+    gen_w,
+    gen_h,
+    out_w,
+    out_h,
+    out_path,
+    video_style="2D cartoon",
+    negative_prompt=None,
+    seed=None,
+):
+    custom = strip_forbidden_prompt_words(str(char.get("referencePrompt") or "").strip())
+    if custom and is_english_prompt_text(custom) and "character sheet" not in custom.lower():
+        base = custom
+    else:
+        base = build_reference_portrait_prompt(char, video_style)
+
+    recovery_suffixes = (
+        "",
+        ", isolated single figure, empty white backdrop, no other subjects",
+        ", ONE character only centered, minimalist portrait, plain background",
     )
     neg = negative_prompt or REFERENCE_NEGATIVE_PROMPT
     last_err = None
     for attempt in range(1, 4):
+        suffix = recovery_suffixes[min(attempt - 1, len(recovery_suffixes) - 1)]
+        ref_prompt = _clip_trim(
+            strip_forbidden_prompt_words(f"{base}{suffix}. {REFERENCE_PROMPT_SUFFIX}"),
+            pipe=pipe,
+        )
         try:
             steps = SCENE_GEN_STEPS if attempt == 1 else SCENE_GEN_STEPS_RETRY
+            attempt_seed = (seed + attempt * 7919) if seed is not None else None
             image = _run_generation(
                 pipe,
                 ref_prompt,
@@ -615,17 +704,25 @@ def generate_reference_image(pipe, prompt, gen_w, gen_h, out_w, out_h, out_path,
                 init_image=None,
                 strength=0.85,
                 steps=steps,
-                guidance=2.0,
+                guidance=2.0 if attempt == 1 else 2.5,
                 negative_prompt=neg,
-                seed=seed,
+                seed=attempt_seed,
             )
             image = _upscale_image(image, out_w, out_h)
             image.save(out_path)
-            validate_scene_png(out_path)
+            validate_reference_png(out_path)
+            log_stage(
+                "image",
+                message=f"ref gen ok attempt={attempt} prompt={ref_prompt[:120]}",
+            )
             return out_path
         except Exception as e:
             last_err = e
-            log_stage("image", message=f"ref gen attempt {attempt} failed: {e}", level="ERROR")
+            log_stage(
+                "image",
+                message=f"ref gen attempt {attempt} failed: {e}",
+                level="ERROR",
+            )
     raise last_err
 
 
