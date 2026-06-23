@@ -375,7 +375,7 @@ def _build_compact_scene_prompt(
     props_in_frame=None,
     identity_block="",
 ):
-    """Identity block first, then solo + action/env — solo constraint is never truncated."""
+    """Story event first, then solo + scene body; identity appended when tokens allow."""
     solo = (
         "single character solo shot, no crowd, no clones"
         if len(render_chars) <= 1
@@ -390,23 +390,28 @@ def _build_compact_scene_prompt(
 
     env_short = str(environment or "")[:80]
     cam = str(camera_kw or "medium shot")[:30]
+    event_lead = str(pose_kw or "")[:120]
 
     if visual and len(visual) > 30:
-        if pose_kw[:24].lower() not in visual.lower():
-            visual = f"{pose_kw}, {visual}"
+        if event_lead and event_lead[:24].lower() not in visual.lower():
+            visual = f"{event_lead}, {visual}"
         scene_body = f"{style}, {visual}, in {env_short}, {cam}"
     else:
-        scene_body = f"{style}, {pose_kw}, in {env_short}, {cam}"
+        scene_body = f"{style}, {event_lead}, in {env_short}, {cam}"
 
     if props and props.lower() not in scene_body.lower():
         scene_body = f"{scene_body}, with {props}"
 
     scene_tail = f"{solo}, {scene_body}"
 
+    head = event_lead
     if identity:
-        core = _clip_trim_priority(f"[{identity}]", scene_tail)
-    elif char_line:
-        core = _clip_trim_priority(char_line, scene_tail)
+        head = f"{event_lead}, [{identity}]" if event_lead else f"[{identity}]"
+    elif char_line and not event_lead:
+        head = char_line
+
+    if head:
+        core = _clip_trim_priority(head, scene_tail)
     else:
         core = scene_tail
 
@@ -667,9 +672,8 @@ def generate_scene_image(
         if detected:
             emotion = detected
     action_pose = resolve_scene_action(beat)
-    pose_kw = action_pose or EMOTION_POSE_KEYWORDS.get(
-        emotion, EMOTION_POSE_KEYWORDS["neutral"]
-    )
+    script_event = str(beat.get("scriptEvent") or "").strip()
+    pose_kw = script_event or action_pose or str(beat.get("narrationText") or "").strip()
 
     camera_style = str(beat.get("cameraStyle", "")).strip().lower()
     camera_kw = CAMERA_KEYWORDS.get(camera_style, DEFAULT_CAMERA)
