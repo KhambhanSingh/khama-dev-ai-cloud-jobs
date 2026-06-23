@@ -12,6 +12,52 @@ MIN_SCENE_STD_DEV = 12.0
 GREY_RGB = (128, 128, 128)
 
 
+def _color_close(a, b, threshold=28):
+    return all(abs(int(a[i]) - int(b[i])) <= threshold for i in range(3))
+
+
+def looks_like_crowd_or_clones(path, grid_cols=6, grid_rows=4, min_face_cells=5):
+    """Heuristic: reject images with many repeating face-like regions (crowd / clone grid)."""
+    try:
+        from PIL import Image, ImageFilter, ImageStat
+    except ImportError:
+        return False
+
+    img = Image.open(path).convert("RGB").resize((384, 216))
+    w, h = img.size
+    cells = []
+    for row in range(grid_rows):
+        for col in range(grid_cols):
+            x0 = col * w // grid_cols
+            x1 = (col + 1) * w // grid_cols
+            y0 = row * h // grid_rows
+            y1 = (row + 1) * h // grid_rows
+            cell = img.crop((x0, y0, x1, y1)).resize((32, 32))
+            stat = ImageStat.Stat(cell)
+            mean = tuple(int(x) for x in stat.mean)
+            edges = cell.convert("L").filter(ImageFilter.FIND_EDGES)
+            edge_std = ImageStat.Stat(edges).stddev[0]
+            cells.append((mean, edge_std, row))
+
+    upper = [c for c in cells if c[2] < grid_rows * 0.75]
+    face_like = sum(1 for _, edge_std, _ in upper if edge_std > 15)
+    if face_like >= min_face_cells:
+        clone_matches = 0
+        for i, (mean, edge_std, _) in enumerate(upper):
+            if edge_std <= 12:
+                continue
+            matches = sum(
+                1
+                for j, (mean2, edge_std2, _) in enumerate(upper)
+                if i != j and edge_std2 > 12 and _color_close(mean, mean2)
+            )
+            if matches >= 3:
+                clone_matches += 1
+        if clone_matches >= 3 or face_like >= min_face_cells + 2:
+            return True
+    return False
+
+
 def retry_stage(fn, stage, record_id, max_attempts=3, delay_sec=2.0):
     last_err = None
     for attempt in range(1, max_attempts + 1):
@@ -68,6 +114,8 @@ def validate_scene_png(path, min_bytes=MIN_SCENE_PNG_BYTES, min_std=MIN_SCENE_ST
         mean = tuple(int(x) for x in stat.mean)
         if all(abs(m - GREY_RGB[i]) < 8 for i, m in enumerate(mean)) and stddev < 20:
             raise ValueError(f"scene image is uniform grey canvas: {path}")
+        if looks_like_crowd_or_clones(path):
+            raise ValueError(f"scene image looks like crowd or clone grid: {path}")
     except ImportError:
         pass
     return path
