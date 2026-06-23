@@ -20,7 +20,7 @@ SCENE_GEN_STEPS = int(os.environ.get("KAGGLE_SCENE_STEPS", "20"))
 SCENE_GEN_STEPS_RETRY = int(os.environ.get("KAGGLE_SCENE_STEPS_RETRY", "28"))
 # Low strength keeps locked face/body from reference portrait while replacing white backdrop.
 SCENE_REF_STRENGTH = float(os.environ.get("KAGGLE_SCENE_REF_STRENGTH", "0.40"))
-USE_REF_INIT = os.environ.get("KAGGLE_USE_REF_INIT", "true").lower() not in (
+USE_REF_INIT = os.environ.get("KAGGLE_USE_REF_INIT", "false").lower() not in (
     "0",
     "false",
     "no",
@@ -375,8 +375,12 @@ def _build_compact_scene_prompt(
     props_in_frame=None,
     identity_block="",
 ):
-    """Identity block first, then action/env — identity is never truncated."""
-    solo = "one character only" if len(render_chars) <= 1 else "two characters only"
+    """Identity block first, then solo + action/env — solo constraint is never truncated."""
+    solo = (
+        "single character solo shot, no crowd, no clones"
+        if len(render_chars) <= 1
+        else "two characters only, no crowd, no duplicates"
+    )
     identity = str(identity_block or "").strip()
     if not identity:
         identity = _scene_identity_block(render_chars)
@@ -390,12 +394,14 @@ def _build_compact_scene_prompt(
     if visual and len(visual) > 30:
         if pose_kw[:24].lower() not in visual.lower():
             visual = f"{pose_kw}, {visual}"
-        scene_tail = f"{style}, {visual}, in {env_short}, {solo}, {cam}"
+        scene_body = f"{style}, {visual}, in {env_short}, {cam}"
     else:
-        scene_tail = f"{style}, {pose_kw}, in {env_short}, {solo}, {cam}"
+        scene_body = f"{style}, {pose_kw}, in {env_short}, {cam}"
 
-    if props and props.lower() not in scene_tail.lower():
-        scene_tail = f"{scene_tail}, with {props}"
+    if props and props.lower() not in scene_body.lower():
+        scene_body = f"{scene_body}, with {props}"
+
+    scene_tail = f"{solo}, {scene_body}"
 
     if identity:
         core = _clip_trim_priority(f"[{identity}]", scene_tail)
@@ -404,8 +410,8 @@ def _build_compact_scene_prompt(
     else:
         core = scene_tail
 
-    if solo not in core:
-        core = f"{core}, {solo}"
+    if solo[:20] not in core:
+        core = f"{solo}, {core}"
     return core
 
 
@@ -636,6 +642,8 @@ def generate_scene_image(
         pipe = load_img2img_model()
 
     beat_chars = _beat_character_entries(beat, characters)
+    if not beat_chars and characters:
+        beat_chars = sorted(characters, key=_character_priority)[:1]
     style = _trim_prompt(
         str(video_config.get("style", "2D cartoon")), max_words=6
     )
@@ -721,7 +729,7 @@ def generate_scene_image(
         beat=idx,
         message=(
             f"gen={gen_w}x{gen_h} out={out_w}x{out_h} tokens={token_count}/{CLIP_MAX_TOKENS} "
-            f"{gen_mode} {full_prompt[:70]}"
+            f"{gen_mode} prompt={full_prompt[:240]}"
         ),
     )
 
@@ -731,6 +739,10 @@ def generate_scene_image(
     for attempt in range(1, 4):
         try:
             steps = SCENE_GEN_STEPS if attempt == 1 else SCENE_GEN_STEPS_RETRY
+            if attempt >= 2:
+                init_image = None
+                strength = SCENE_TXT2IMG_STRENGTH
+                gen_mode = "txt2img-retry"
             image = _run_generation(
                 pipe,
                 full_prompt,
@@ -739,8 +751,8 @@ def generate_scene_image(
                 init_image=init_image,
                 strength=strength,
                 steps=steps,
-                guidance=3.0,
-                seed=scene_seed,
+                guidance=3.0 if attempt == 1 else 3.5,
+                seed=(scene_seed + attempt * 9973) if scene_seed is not None else None,
             )
             image = _upscale_image(image, out_w, out_h)
             image.save(scene_path)
@@ -753,10 +765,12 @@ def generate_scene_image(
                 "image",
                 record_id,
                 beat=idx,
-                message=f"attempt {attempt}/3 failed: {e}",
+                message=f"attempt {attempt}/3 failed ({gen_mode}): {e}",
                 level="ERROR",
             )
-            strength = min(SCENE_REF_STRENGTH + 0.06, 0.55) if init_image is not None else min(0.75, strength + 0.08)
+            init_image = None
+            strength = SCENE_TXT2IMG_STRENGTH
+            gen_mode = "txt2img-retry"
 
     clear_gpu_memory()
     raise last_err or RuntimeError(f"scene generation failed for beat {idx}")
