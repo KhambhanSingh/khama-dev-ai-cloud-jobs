@@ -5,6 +5,8 @@ rich background descriptions so each scene gets a distinct, script-driven
 setting instead of a repeated generic background. Keep aligned with the JS side.
 """
 
+import re
+
 # Hindi (Devanagari) location keyword -> background description.
 HINDI_LOCATION_MAP = {
     "बारिश": "rainy scene, dark clouds, wet ground, puddles with reflections, falling rain",
@@ -25,8 +27,8 @@ HINDI_LOCATION_MAP = {
     "घर": "warm Indian home interior, cozy living room with family furniture, soft lighting",
     "कमरा": "indoor room with furniture, window light, lived-in details",
     "स्कूल": "Indian school classroom, green blackboard, wooden desks, bright windows",
-    "बाजार": "busy colorful Indian street market, outdoor stalls, signs, daytime sunshine",
-    "बाज़ार": "busy colorful Indian street market, outdoor stalls, signs, daytime sunshine",
+    "बाजार": "colorful Indian street market, outdoor stalls, signs, empty path, daytime sunshine",
+    "बाज़ार": "colorful Indian street market, outdoor stalls, signs, empty path, daytime sunshine",
     "जंगल": "dense lush green jungle, large ancient trees, leaves, dappled forest sunlight",
     "नदी": "peaceful river bank, flowing clear water with reflections, green surroundings",
     "रात": "night scene, star-filled sky, soft moonlight, street lamps, peaceful outdoor setting",
@@ -67,7 +69,7 @@ ENGLISH_LOCATION_MAP = {
     "classroom": "school classroom, blackboard, wooden desks, bright windows",
     "school": "school classroom, blackboard, wooden desks, bright windows",
     "river": "peaceful river bank, flowing water with reflections, green surroundings",
-    "market": "outdoor street market, colorful stalls, signs, bustling daytime crowd",
+    "market": "outdoor street market, colorful stalls, signs, empty path, daytime sunshine",
     "palace": "royal palace interior, grand architecture, ornate decor",
     "temple": "traditional temple, spiritual stone architecture, peaceful courtyard",
     "mountain": "mountain landscape, rocky terrain, vast blue sky",
@@ -92,12 +94,25 @@ ENGLISH_LOCATION_MAP = {
     "barn": "rustic farm barn, wooden beams, hay, soft natural light",
     "kitchen": "home kitchen interior, stove and utensils, warm cooking light",
     "sky": "open sky with clouds, birds in flight, soft daylight",
-    "home": "warm home interior, comfortable living room, family setting, soft light",
-    "house": "warm home interior, comfortable living room, family setting, soft light",
+    "home": "warm home interior, cozy living room, soft warm light",
+    "house": "warm home interior, cozy living room, soft warm light",
     "room": "indoor room with furniture and window light",
 }
 
 _GENERIC_ENV = ("story scene", "scene", "background", "")
+
+_CROWD_WORD_RE = re.compile(
+    r"\b(crowd|crowds|bustling|masses|many people|group of people|packed|busy street|family group)\b",
+    re.I,
+)
+
+
+def sanitize_environment(text):
+    """Strip crowd-inducing vocabulary from an environment string."""
+    cleaned = _CROWD_WORD_RE.sub("", str(text or ""))
+    cleaned = re.sub(r"\s{2,}", " ", cleaned)
+    cleaned = re.sub(r",\s*,", ",", cleaned).strip().strip(",")
+    return cleaned or "quiet story setting, clear background"
 
 
 def _lookup_env(text):
@@ -138,14 +153,16 @@ def infer_environment(narration_text, visual_prompt, environment_field=""):
     """
     field = _lookup_env(environment_field)
     if field:
-        return field
+        return sanitize_environment(field)
 
     text = _lookup_env(f"{narration_text} {visual_prompt}")
     if text:
-        return text
+        return sanitize_environment(text)
 
     env = str(environment_field or "").strip()
     if env and env.lower() not in _GENERIC_ENV:
-        return env
+        return sanitize_environment(env)
 
-    return "natural outdoor setting with clear sky, story-appropriate surroundings"
+    return sanitize_environment(
+        "natural outdoor setting with clear sky, story-appropriate surroundings"
+    )
