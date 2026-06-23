@@ -58,6 +58,34 @@ def looks_like_crowd_or_clones(path, grid_cols=6, grid_rows=4, min_face_cells=5)
     return False
 
 
+def validate_reference_png(path, min_bytes=MIN_SCENE_PNG_BYTES, min_std=MIN_SCENE_STD_DEV):
+    """Reference portrait: flat/grey check only — stricter grid threshold for clone sheets."""
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"reference image missing: {path}")
+    size = os.path.getsize(path)
+    if size < min_bytes:
+        raise ValueError(f"reference image too small ({size} bytes): {path}")
+
+    try:
+        from PIL import Image, ImageStat
+
+        img = Image.open(path).convert("RGB")
+        stat = ImageStat.Stat(img)
+        stddev = sum(stat.stddev) / 3.0
+        if stddev < min_std:
+            raise ValueError(
+                f"reference image appears flat/grey (stddev={stddev:.1f}): {path}"
+            )
+        mean = tuple(int(x) for x in stat.mean)
+        if all(abs(m - GREY_RGB[i]) < 8 for i, m in enumerate(mean)) and stddev < 20:
+            raise ValueError(f"reference image is uniform grey canvas: {path}")
+        if looks_like_crowd_or_clones(path, min_face_cells=7):
+            raise ValueError(f"reference image looks like crowd or clone grid: {path}")
+    except ImportError:
+        pass
+    return path
+
+
 def retry_stage(fn, stage, record_id, max_attempts=3, delay_sec=2.0):
     last_err = None
     for attempt in range(1, max_attempts + 1):
