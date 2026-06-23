@@ -18,13 +18,22 @@ DEFAULT_GEN_MAX_W = int(os.environ.get("KAGGLE_GEN_MAX_WIDTH", "1024"))
 DEFAULT_GEN_MAX_H = int(os.environ.get("KAGGLE_GEN_MAX_HEIGHT", "576"))
 SCENE_GEN_STEPS = int(os.environ.get("KAGGLE_SCENE_STEPS", "20"))
 SCENE_GEN_STEPS_RETRY = int(os.environ.get("KAGGLE_SCENE_STEPS_RETRY", "28"))
+# Low strength keeps locked face/body from reference portrait while replacing white backdrop.
+SCENE_REF_STRENGTH = float(os.environ.get("KAGGLE_SCENE_REF_STRENGTH", "0.40"))
+USE_REF_INIT = os.environ.get("KAGGLE_USE_REF_INIT", "true").lower() not in (
+    "0",
+    "false",
+    "no",
+)
+SCENE_TXT2IMG_STRENGTH = float(os.environ.get("KAGGLE_SCENE_TXT2IMG_STRENGTH", "0.85"))
 # SDXL CLIP text encoder hard limit — longer prompts are silently truncated.
 CLIP_MAX_TOKENS = int(os.environ.get("KAGGLE_CLIP_MAX_TOKENS", "77"))
 
 # Compact negatives that fit inside the CLIP 77-token window.
 SCENE_NEGATIVE_PROMPT = (
-    "duplicate characters, crowd, character sheet, clones, bad anatomy, "
-    "deformed hands, extra limbs, blurry, watermark, text, disney, frozen"
+    "duplicate characters, crowd, character sheet, clones, model sheet, sprite sheet, "
+    "multiple poses, white background, bad anatomy, deformed hands, extra limbs, "
+    "blurry, watermark, text, disney, frozen"
 )
 
 REFERENCE_NEGATIVE_PROMPT = (
@@ -256,6 +265,91 @@ def _sanitize_visual_prompt(visual):
     return " ".join(text.split())[:220]
 
 
+def _clip_trim_priority(identity, rest, max_tokens=None, pipe=None):
+    """Trim scene tail first so Character Identity Block is never dropped."""
+    max_tokens = max_tokens or CLIP_MAX_TOKENS
+    identity = " ".join(str(identity or "").split()).strip()
+    rest = " ".join(str(rest or "").split()).strip()
+    if not identity:
+        return _clip_trim(rest, max_tokens=max_tokens, pipe=pipe)
+    if not rest:
+        return _clip_trim(identity, max_tokens=max_tokens, pipe=pipe)
+
+    tok = _get_clip_tokenizer(pipe)
+    if tok is None:
+        combined = f"{identity}, {rest}"
+        id_words = identity.split()
+        if len(combined.split()) <= max_tokens:
+            return combined
+        budget = max(len(id_words) + 1, max_tokens - 5)
+        rest_trim = _trim_prompt(rest, max_words=max(1, budget - len(id_words)))
+        return f"{identity}, {rest_trim}".strip(", ")
+
+    id_ids = tok.encode(identity, truncation=False)
+    if len(id_ids) >= max_tokens:
+        return tok.decode(id_ids[:max_tokens], skip_special_tokens=True).strip()
+
+    rest_budget = max_tokens - len(id_ids) - 1
+    rest_ids = tok.encode(rest, truncation=False)
+    if len(rest_ids) <= rest_budget:
+        return f"{identity}, {rest}"
+    rest_trim = tok.decode(rest_ids[:rest_budget], skip_special_tokens=True).strip()
+    if rest_trim.endswith(","):
+        rest_trim = rest_trim[:-1].strip()
+    return f"{identity}, {rest_trim}".strip(", ")
+
+
+def _character_identity_block(char, max_len=100):
+    """Locked identity line — mirrors buildCharacterIdentityBlock in JS."""
+    name = str(char.get("name", "")).strip()
+    if not name:
+        return ""
+
+    species = str(char.get("species", "")).strip()
+    bits = [name]
+    if species and species.lower() != "character":
+        bits.append(species)
+    age = str(char.get("age", "")).strip()
+    if age:
+        bits.append(f"age {age}")
+    body = str(char.get("bodyShape", "")).strip()
+    if body:
+        bits.append(f"{body} body")
+    appearance = str(char.get("appearance", "")).strip()[:55]
+    if appearance:
+        bits.append(appearance)
+    facial = str(char.get("facialFeatures", "")).strip()[:40]
+    if facial:
+        bits.append(facial)
+    eyes = str(char.get("eyes", "")).strip()
+    if eyes:
+        bits.append(f"{eyes} eyes")
+    hair = str(char.get("hairstyle", "")).strip()
+    if hair:
+        bits.append(f"{hair} hair")
+    clothing = str(char.get("clothing", "")).strip()
+    if clothing:
+        bits.append(f"wearing {clothing[:40]}")
+    colors = str(char.get("colorPalette", "")).strip()
+    if colors:
+        bits.append(f"{colors} colors")
+
+    return ", ".join(bits)[:max_len]
+
+
+def _scene_identity_block(render_chars, beat=None, max_len=180):
+    """Prefer precomputed JS block; fall back to registry fields."""
+    precomputed = ""
+    if beat is not None:
+        precomputed = str(beat.get("characterIdentityBlock") or "").strip()
+    if precomputed:
+        return precomputed[:max_len]
+
+    parts = [_character_identity_block(c, max_len // 2) for c in (render_chars or [])[:2]]
+    parts = [p for p in parts if p]
+    return " | ".join(parts)[:max_len]
+
+
 def _short_char_label(char):
     """One tight character line for CLIP-budget prompts."""
     name = str(char.get("name", "")).strip()
@@ -279,26 +373,36 @@ def _build_compact_scene_prompt(
     render_chars,
     camera_kw,
     props_in_frame=None,
+    identity_block="",
 ):
-    """Single-layer scene prompt — no duplicate JS + Python stacking."""
+    """Identity block first, then action/env — identity is never truncated."""
     solo = "one character only" if len(render_chars) <= 1 else "two characters only"
+    identity = str(identity_block or "").strip()
+    if not identity:
+        identity = _scene_identity_block(render_chars)
     char_line = ", ".join(_short_char_label(c) for c in render_chars[:2])
     visual = _sanitize_visual_prompt(visual_from_planner)
     props = ", ".join(str(p) for p in (props_in_frame or [])[:3] if str(p).strip())
 
+    env_short = str(environment or "")[:80]
+    cam = str(camera_kw or "medium shot")[:30]
+
     if visual and len(visual) > 30:
         if pose_kw[:24].lower() not in visual.lower():
             visual = f"{pose_kw}, {visual}"
-        core = f"{style}, {visual}"
-        if char_line and char_line.lower() not in visual.lower():
-            core = f"{core}, {char_line}"
+        scene_tail = f"{style}, {visual}, in {env_short}, {solo}, {cam}"
     else:
-        env_short = str(environment or "")[:80]
-        cam = str(camera_kw or "medium shot")[:30]
-        core = f"{style}, {pose_kw}, {env_short}, {char_line}, {solo}, {cam}"
+        scene_tail = f"{style}, {pose_kw}, in {env_short}, {solo}, {cam}"
 
-    if props and props.lower() not in core.lower():
-        core = f"{core}, with {props}"
+    if props and props.lower() not in scene_tail.lower():
+        scene_tail = f"{scene_tail}, with {props}"
+
+    if identity:
+        core = _clip_trim_priority(f"[{identity}]", scene_tail)
+    elif char_line:
+        core = _clip_trim_priority(char_line, scene_tail)
+    else:
+        core = scene_tail
 
     if solo not in core:
         core = f"{core}, {solo}"
@@ -426,6 +530,62 @@ REFERENCE_PROMPT_SUFFIX = (
 )
 
 
+def _ref_path_for_char(char, refs_dir):
+    cid = char.get("id") or char.get("name", "")
+    ref_file = _safe_ref_filename(cid)
+    ref_path = os.path.join(refs_dir, f"ref_{ref_file}.png")
+    return ref_path if os.path.isfile(ref_path) else None
+
+
+def _ensure_reference_image(
+    pipe,
+    char,
+    refs_dir,
+    gen_w,
+    gen_h,
+    out_w,
+    out_h,
+    record_id,
+    beat_idx=None,
+):
+    """Generate portrait ref if missing; return path or None."""
+    if not char:
+        return None
+    cid = char.get("id") or char.get("name", "")
+    ref_file = _safe_ref_filename(cid)
+    ref_path = os.path.join(refs_dir, f"ref_{ref_file}.png")
+    if os.path.isfile(ref_path):
+        return ref_path
+
+    log_stage(
+        "image",
+        record_id,
+        beat=beat_idx,
+        message=f"ref gen {cid}",
+    )
+    try:
+        generate_reference_image(
+            pipe,
+            char.get("referencePrompt", char.get("name", "")),
+            gen_w,
+            gen_h,
+            out_w,
+            out_h,
+            ref_path,
+            seed=_char_seed(char),
+        )
+        return ref_path
+    except Exception as ref_err:
+        log_stage(
+            "image",
+            record_id,
+            beat=beat_idx,
+            message=f"ref gen skipped: {ref_err}",
+            level="ERROR",
+        )
+        return None
+
+
 def generate_reference_image(pipe, prompt, gen_w, gen_h, out_w, out_h, out_path, negative_prompt=None, seed=None):
     ref_prompt = _clip_trim(
         f"{_trim_prompt(prompt, max_words=35)}. {REFERENCE_PROMPT_SUFFIX}",
@@ -507,6 +667,7 @@ def generate_scene_image(
     camera_kw = CAMERA_KEYWORDS.get(camera_style, DEFAULT_CAMERA)
     render_chars = beat_chars[:2]
     visual_from_planner = str(beat.get("visualPrompt") or "").strip()
+    identity_block = _scene_identity_block(render_chars, beat=beat)
 
     raw_prompt = _build_compact_scene_prompt(
         style,
@@ -516,6 +677,7 @@ def generate_scene_image(
         render_chars,
         camera_kw,
         props_in_frame=beat.get("propsInFrame"),
+        identity_block=identity_block,
     )
     full_prompt = _clip_trim(raw_prompt, pipe=pipe)
     token_count = _clip_token_count(full_prompt, pipe=pipe)
@@ -523,37 +685,35 @@ def generate_scene_image(
     os.makedirs(refs_dir, exist_ok=True)
     os.makedirs(scenes_dir, exist_ok=True)
 
-    # Ensure reference PNG exists for logging/consistency, but do NOT use it as
-    # img2img init for scenes — that was cloning model-sheet grids into every frame.
     primary = beat_chars[0] if beat_chars else None
-    if primary:
-        cid = primary.get("id") or primary.get("name", "")
-        ref_file = _safe_ref_filename(cid)
-        ref_path = os.path.join(refs_dir, f"ref_{ref_file}.png")
-        if not os.path.isfile(ref_path):
-            log_stage("image", record_id, beat=idx, message=f"ref gen {cid}")
-            try:
-                generate_reference_image(
-                    pipe,
-                    primary.get("referencePrompt", primary.get("name", "")),
-                    gen_w,
-                    gen_h,
-                    out_w,
-                    out_h,
-                    ref_path,
-                    seed=_char_seed(primary),
-                )
-            except Exception as ref_err:
-                log_stage(
-                    "image",
-                    record_id,
-                    beat=idx,
-                    message=f"ref gen skipped: {ref_err}",
-                    level="ERROR",
-                )
+    ref_path = _ensure_reference_image(
+        pipe,
+        primary,
+        refs_dir,
+        gen_w,
+        gen_h,
+        out_w,
+        out_h,
+        record_id,
+        beat_idx=idx,
+    ) if primary else None
 
     init_image = None
-    strength = 0.85
+    strength = SCENE_TXT2IMG_STRENGTH
+    gen_mode = "txt2img"
+    if USE_REF_INIT and ref_path:
+        try:
+            init_image = Image.open(ref_path).convert("RGB")
+            strength = SCENE_REF_STRENGTH
+            gen_mode = f"ref-img2img@{strength:.2f}"
+        except Exception as ref_load_err:
+            log_stage(
+                "image",
+                record_id,
+                beat=idx,
+                message=f"ref load failed, txt2img fallback: {ref_load_err}",
+                level="ERROR",
+            )
 
     log_stage(
         "image",
@@ -561,7 +721,7 @@ def generate_scene_image(
         beat=idx,
         message=(
             f"gen={gen_w}x{gen_h} out={out_w}x{out_h} tokens={token_count}/{CLIP_MAX_TOKENS} "
-            f"txt2img {full_prompt[:70]}"
+            f"{gen_mode} {full_prompt[:70]}"
         ),
     )
 
@@ -596,7 +756,7 @@ def generate_scene_image(
                 message=f"attempt {attempt}/3 failed: {e}",
                 level="ERROR",
             )
-            strength = min(0.75, strength + 0.08)
+            strength = min(SCENE_REF_STRENGTH + 0.06, 0.55) if init_image is not None else min(0.75, strength + 0.08)
 
     clear_gpu_memory()
     raise last_err or RuntimeError(f"scene generation failed for beat {idx}")
@@ -617,29 +777,16 @@ def generate_all_scenes(record_id, beats, characters, video_config, work_dirs):
     # BUG 2: Pre-generate reference images for ALL characters before scene loop.
     # This ensures every character has a locked visual anchor from the first scene.
     for char in characters or []:
-        cid = char.get("id") or char.get("name", "")
-        ref_file = _safe_ref_filename(cid)
-        ref_path = os.path.join(refs_dir, f"ref_{ref_file}.png")
-        if not os.path.isfile(ref_path):
-            log_stage("image", record_id, message=f"pre-gen ref for character: {cid}")
-            try:
-                generate_reference_image(
-                    pipe,
-                    char.get("referencePrompt", char.get("name", "")),
-                    gen_w,
-                    gen_h,
-                    out_w,
-                    out_h,
-                    ref_path,
-                    seed=_char_seed(char),
-                )
-            except Exception as ref_err:
-                log_stage(
-                    "image",
-                    record_id,
-                    message=f"ref pre-gen failed for {cid}: {ref_err}",
-                    level="ERROR",
-                )
+        _ensure_reference_image(
+            pipe,
+            char,
+            refs_dir,
+            gen_w,
+            gen_h,
+            out_w,
+            out_h,
+            record_id,
+        )
 
     paths = []
     for beat in beats:
