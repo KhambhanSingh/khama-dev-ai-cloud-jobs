@@ -12,12 +12,12 @@ from .validator import validate_scene_png, validate_reference_png, validate_scen
 from .environments import infer_environment
 from .prompt_sanitize import (
     pick_english_beat_line,
+    pick_english_story_event,
     format_scene_character_labels,
     strip_forbidden_prompt_words,
     build_reference_portrait_prompt,
     is_english_prompt_text,
     contains_devanagari,
-    validate_sdxl_prompt,
 )
 
 # One img2img pipeline in VRAM (built from txt2img components once).
@@ -359,6 +359,18 @@ def _scene_identity_block(render_chars, beat=None, max_len=180):
     return format_scene_character_labels(render_chars or [], max_len)
 
 
+def _solo_composition_hint(char_count):
+    """Positive solo constraint — anti-clone/crowd lives in SCENE_NEGATIVE_PROMPT."""
+    if char_count <= 1:
+        return "solo shot, one character only"
+    return "two characters only"
+
+
+def _sanitize_prompt_part(text):
+    """Sanitize a single prompt segment before assembly."""
+    return strip_forbidden_prompt_words(str(text or "").strip())
+
+
 def _build_scene_prompt_for_attempt(
     beat,
     render_chars,
@@ -374,50 +386,56 @@ def _build_scene_prompt_for_attempt(
     if attempt >= 2:
         chars = chars[:1]
 
-    story_event = pick_english_beat_line(
-        beat,
-        ("scriptEvent", "actionPose", "action", "summary", "visualPrompt", "beatTitle"),
-    )
+    story_event = pick_english_story_event(beat)
     action = pick_english_beat_line(beat, ("action", "scriptEvent", "summary"))
 
-    identity = _scene_identity_block(chars, beat=beat)
-    solo = (
-        "single character solo shot, no crowd, no clones"
-        if len(chars) <= 1
-        else "two characters only, no crowd, no duplicates"
-    )
+    identity = _sanitize_prompt_part(_scene_identity_block(chars, beat=beat))
+    solo = _solo_composition_hint(len(chars))
 
-    env_short = str(environment or "")[:60]
-    cam = str(camera_kw or "medium shot")[:25]
-    props = ", ".join(str(p) for p in (props_in_frame or [])[:2] if str(p).strip())
+    env_short = _sanitize_prompt_part(str(environment or "")[:50])
+    cam = _sanitize_prompt_part(str(camera_kw or "medium shot")[:25])
+    props = ", ".join(
+        _sanitize_prompt_part(p)
+        for p in (props_in_frame or [])[:2]
+        if str(p).strip()
+    )
 
     visual = _sanitize_visual_prompt(beat.get("visualPrompt") or "")
     if contains_devanagari(visual) or not is_english_prompt_text(visual):
         visual = ""
-
-    if attempt >= 3:
-        parts = [p for p in [story_event[:70] or action[:70], f"in {env_short}", solo, cam] if p]
-    elif attempt >= 2:
-        parts = [p for p in [story_event[:80] or action[:80], action[:50] if action else "", solo, f"in {env_short}", cam] if p]
     else:
-        parts = [p for p in [story_event, action if action and action != story_event else "", identity, f"in {env_short}", cam, solo] if p]
-        if props and attempt == 1:
-            parts.insert(-1, f"with {props}")
-        if visual and len(visual) > 20 and attempt == 1:
-            parts.insert(1, visual[:100])
+        visual = strip_forbidden_prompt_words(visual)
 
+    event_lead = _sanitize_prompt_part(story_event or action)
+    action_bit = _sanitize_prompt_part(action if action and action != story_event else "")
+
+    if not event_lead:
+        return ""
+
+    parts = []
     if attempt >= 2:
-        parts.insert(0, "simple composition, one clear subject")
+        parts.append("simple composition, one clear subject")
 
-    raw = strip_forbidden_prompt_words(f"{style}, " + ", ".join(parts))
-    issues = validate_sdxl_prompt(raw)
-    if issues and story_event:
-        raw = strip_forbidden_prompt_words(f"{style}, {story_event[:80]}, {solo}, {cam}")
+    parts.append(_sanitize_prompt_part(style))
+    parts.append(event_lead[:80] if attempt >= 2 else event_lead[:100])
 
-    trimmed = _clip_trim(raw, pipe=pipe)
-    if solo[:15] not in trimmed:
-        trimmed = _clip_trim(f"{solo}, {trimmed}", pipe=pipe)
-    return trimmed
+    if action_bit and attempt == 1:
+        parts.append(action_bit[:60])
+
+    if identity and attempt == 1:
+        parts.append(identity[:90])
+
+    if env_short:
+        parts.append(f"in {env_short}")
+
+    if props and attempt == 1:
+        parts.append(f"with {props[:40]}")
+
+    parts.append(solo)
+    parts.append(cam)
+
+    raw = ", ".join(p for p in parts if p)
+    return _clip_trim(raw, pipe=pipe)
 
 
 def _build_compact_scene_prompt(
@@ -452,11 +470,7 @@ def _build_compact_scene_prompt(
     if contains_devanagari(event_lead) or not is_english_prompt_text(event_lead):
         event_lead = pick_english_beat_line({"visualPrompt": visual_from_planner}) or ""
 
-    solo = (
-        "single character solo shot, no crowd, no clones"
-        if len(render_chars or []) <= 1
-        else "two characters only, no crowd, no duplicates"
-    )
+    solo = _solo_composition_hint(len(render_chars or []))
     env_short = str(environment or "")[:60]
     cam = str(camera_kw or "medium shot")[:25]
     visual = _sanitize_visual_prompt(visual_from_planner)
@@ -464,7 +478,7 @@ def _build_compact_scene_prompt(
         visual = ""
 
     parts = [p for p in [event_lead, visual[:80] if visual else "", f"in {env_short}", cam, solo] if p]
-    raw = strip_forbidden_prompt_words(f"{style}, " + ", ".join(parts))
+    raw = ", ".join(parts)
     return _clip_trim(raw, pipe=pipe)
 
 
@@ -598,9 +612,7 @@ def _run_generation(
 # Reference = ONE character portrait on a plain backdrop for identity locking in
 # the text prompt. Never use "model sheet" — that triggers clone-grid output.
 REFERENCE_PROMPT_SUFFIX = (
-    "ONE character only, full body portrait, standing alone, centered, "
-    "plain solid white background, single pose, front-facing, entire body visible, "
-    "no duplicate characters, no crowd, no character sheet, no turnaround, no lineup"
+    "ONE character, full body, white background, front view, centered"
 )
 
 
@@ -673,25 +685,27 @@ def generate_reference_image(
     negative_prompt=None,
     seed=None,
 ):
-    custom = strip_forbidden_prompt_words(str(char.get("referencePrompt") or "").strip())
-    if custom and is_english_prompt_text(custom) and "character sheet" not in custom.lower():
-        base = custom
+    custom = str(char.get("referencePrompt") or "").strip()
+    if (
+        custom
+        and is_english_prompt_text(custom)
+        and "character sheet" not in custom.lower()
+        and len(custom.split()) <= 45
+    ):
+        base = strip_forbidden_prompt_words(custom)
     else:
         base = build_reference_portrait_prompt(char, video_style)
 
-    recovery_suffixes = (
+    recovery_tails = (
         "",
-        ", isolated single figure, empty white backdrop, no other subjects",
-        ", ONE character only centered, minimalist portrait, plain background",
+        ", centered",
+        ", plain white bg",
     )
     neg = negative_prompt or REFERENCE_NEGATIVE_PROMPT
     last_err = None
     for attempt in range(1, 4):
-        suffix = recovery_suffixes[min(attempt - 1, len(recovery_suffixes) - 1)]
-        ref_prompt = _clip_trim(
-            strip_forbidden_prompt_words(f"{base}{suffix}. {REFERENCE_PROMPT_SUFFIX}"),
-            pipe=pipe,
-        )
+        tail = recovery_tails[min(attempt - 1, len(recovery_tails) - 1)]
+        ref_prompt = _clip_trim(f"{base}{tail}", pipe=pipe, max_tokens=70)
         try:
             steps = SCENE_GEN_STEPS if attempt == 1 else SCENE_GEN_STEPS_RETRY
             attempt_seed = (seed + attempt * 7919) if seed is not None else None
@@ -757,11 +771,11 @@ def generate_scene_image(
         beat.get("environment", ""),
     )
 
-    english_line = pick_english_beat_line(beat)
-    if not english_line:
+    story_event = pick_english_story_event(beat)
+    if not story_event:
         raise ValueError(
-            f"beat {idx}: no English action/scriptEvent/visualPrompt for SDXL — "
-            "regenerate video plan with English production fields"
+            f"beat {idx}: missing English scriptEvent/action for SDXL — "
+            "regenerate video plan with English action and scriptEvent fields"
         )
 
     camera_style = str(beat.get("cameraStyle", "")).strip().lower()
@@ -816,8 +830,10 @@ def generate_scene_image(
                 attempt=attempt,
                 pipe=pipe,
             )
-            if not full_prompt or contains_devanagari(full_prompt):
-                raise ValueError(f"beat {idx}: SDXL prompt must be English only")
+            if not full_prompt:
+                raise ValueError(
+                    f"beat {idx}: could not build English scene prompt on attempt {attempt}"
+                )
 
             token_count = _clip_token_count(full_prompt, pipe=pipe)
             steps = SCENE_GEN_STEPS if attempt == 1 else SCENE_GEN_STEPS_RETRY
