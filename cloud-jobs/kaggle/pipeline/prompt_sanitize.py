@@ -4,34 +4,38 @@ import re
 
 DEVANAGARI_RE = re.compile(r"[\u0900-\u097F]")
 
-FORBIDDEN_PROMPT_WORDS = (
+FORBIDDEN_PROMPT_PHRASES = (
     "character sheet",
     "reference sheet",
     "model sheet",
     "sprite sheet",
     "multiple poses",
     "pose variations",
-    "turnaround",
+    "turnaround sheet",
     "front side back",
     "lineup",
     "character lineup",
     "group shot",
-    "group of",
-    "crowd",
+    "group of people",
     "many characters",
     "many rabbits",
     "rabbit family",
     "family group",
     "duplicate characters",
-    "clone",
-    "clones",
 )
+
+POSITIVE_ONLY_WORDS = ("crowd", "clones", "clone")
 
 _GENERIC_ACTION_MARKERS = (
     "story moment",
     "key story moment",
     "clear frozen story moment",
     "story scene",
+)
+
+_NEGATION_PROTECT_RE = re.compile(
+    r"\bno\s+(crowd|clones?|duplicate\s+\w+|extra\s+people|character\s+sheet)\b",
+    re.I,
 )
 
 
@@ -56,14 +60,42 @@ def _is_generic_action(value):
 
 
 def strip_forbidden_prompt_words(text):
+    """Strip forbidden vocabulary; preserve 'no crowd' / 'no clones' negation phrases."""
     out = str(text or "")
-    for word in FORBIDDEN_PROMPT_WORDS:
-        out = re.sub(re.escape(word), " ", out, flags=re.I)
-    return re.sub(r"\s{2,}", " ", out).strip()
+    protected = []
+
+    def _protect(m):
+        key = f"__NEG{len(protected)}__"
+        protected.append((key, m.group(0)))
+        return key
+
+    out = _NEGATION_PROTECT_RE.sub(_protect, out)
+
+    for phrase in FORBIDDEN_PROMPT_PHRASES:
+        out = re.sub(re.escape(phrase), " ", out, flags=re.I)
+
+    for word in POSITIVE_ONLY_WORDS:
+        out = re.sub(rf"(?<!no\s)\b{re.escape(word)}\b", " ", out, flags=re.I)
+
+    for key, original in protected:
+        out = out.replace(key, original)
+
+    out = re.sub(r"\s{2,}", " ", out)
+    out = re.sub(r",\s*,", ",", out).strip().strip(",")
+    return out
+
+
+def pick_english_story_event(beat):
+    """Story event from action/scriptEvent fields only — not environment-only visualPrompt."""
+    for key in ("scriptEvent", "action", "actionPose", "summary"):
+        val = strip_forbidden_prompt_words(str(beat.get(key) or "").strip())
+        if val and is_english_prompt_text(val) and not _is_generic_action(val):
+            return val
+    return ""
 
 
 def pick_english_beat_line(beat, fields=None):
-    """English production fields only — never narrationText."""
+    """English production fields — never narrationText."""
     if fields is None:
         fields = (
             "action",
@@ -88,21 +120,9 @@ def describe_character_for_prompt(char, max_len=90):
     bits = []
     if species and species.lower() != "character":
         bits.append(species)
-    age = str(char.get("age") or "").strip()
-    if age:
-        bits.append(f"age {age}")
-    body = str(char.get("bodyShape") or "").strip()
-    if body:
-        bits.append(f"{body} body")
-    appearance = str(char.get("appearance") or "").strip()[:50]
+    appearance = str(char.get("appearance") or "").strip()[:45]
     if appearance:
         bits.append(appearance)
-    eyes = str(char.get("eyes") or "").strip()
-    if eyes:
-        bits.append(f"{eyes} eyes")
-    hair = str(char.get("hairstyle") or "").strip()
-    if hair:
-        bits.append(f"{hair} hair")
     clothing = str(char.get("clothing") or "").strip()
     if clothing:
         bits.append(f"wearing {clothing}")
@@ -121,14 +141,11 @@ def format_scene_character_labels(chars, max_len=180):
 
 
 def build_reference_portrait_prompt(char, video_style="2D cartoon"):
-    desc = describe_character_for_prompt(char, 100)
+    """Compact CLIP-safe portrait prompt (~35 words). Anti-clone is in negative prompt."""
+    desc = describe_character_for_prompt(char, 55)
     style = str(video_style or "2D cartoon").strip()
     return strip_forbidden_prompt_words(
-        "Full body portrait of ONE character standing alone, centered composition, "
-        "plain solid white background, single pose, front-facing, entire body visible, "
-        f"{desc}, {style} style, "
-        "no duplicate characters, no crowd, no extra people, no character sheet, "
-        "no turnaround sheet, no multiple poses"
+        f"{style}, ONE character full body portrait, white background, front view, centered, {desc}"
     )
 
 
@@ -140,7 +157,7 @@ def validate_sdxl_prompt(prompt):
     if contains_devanagari(text):
         issues.append("contains Hindi/Devanagari")
     lower = text.lower()
-    for word in FORBIDDEN_PROMPT_WORDS:
-        if word.lower() in lower:
-            issues.append(f"forbidden: {word}")
+    for phrase in FORBIDDEN_PROMPT_PHRASES:
+        if phrase.lower() in lower:
+            issues.append(f"forbidden: {phrase}")
     return issues
