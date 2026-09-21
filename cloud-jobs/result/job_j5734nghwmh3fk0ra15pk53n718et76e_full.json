@@ -1,0 +1,5 @@
+{
+  "status": "FAILED",
+  "recordId": "j5734nghwmh3fk0ra15pk53n718et76e",
+  "error": "beat 0: missing English scriptEvent/action for SDXL — regenerate video plan with English action and scriptEvent fields"
+}
