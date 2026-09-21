@@ -15,7 +15,7 @@ try:
 except ImportError:
     Version = None  # type: ignore[misc, assignment]
 
-DEPS_POLICY = "v3.1"
+DEPS_POLICY = "v3.2"
 
 PINNED = {
     "diffusers": "0.30.3",
@@ -180,32 +180,39 @@ def _torch_base_version(torch_ver):
     return torch_ver.split("+")[0].strip()
 
 
+def _torch_major_minor(torch_ver):
+    base = _torch_base_version(torch_ver) or ""
+    m = re.match(r"^(\d+)\.(\d+)", base)
+    if not m:
+        return None, None, base
+    return int(m.group(1)), int(m.group(2)), base
+
+
 def _torchvision_spec_for_torch(torch_ver):
     """Pick torchvision wheel compatible with Kaggle preinstalled torch (do not reinstall torch)."""
-    base = _torch_base_version(torch_ver)
-    if not base:
+    major, minor, base = _torch_major_minor(torch_ver)
+    if major is None:
         return "torchvision"
-    if Version is None:
-        return "torchvision"
-    try:
-        v = Version(base)
-    except Exception:
-        return "torchvision"
-    if v >= Version("2.12.0"):
+    # torchvision minor ~= torch.minor + 15 (2.12→0.27, 2.14→0.29)
+    if major == 2 and minor >= 14:
+        spec = "torchvision==0.29.0"
+    elif major == 2 and minor >= 13:
+        spec = "torchvision==0.28.0"
+    elif major == 2 and minor >= 12:
         spec = "torchvision==0.27.0"
-    elif v >= Version("2.5.0"):
+    elif major == 2 and minor >= 5:
         spec = "torchvision==0.20.1"
-    elif v >= Version("2.4.0"):
+    elif major == 2 and minor >= 4:
         spec = "torchvision==0.19.1"
-    elif v >= Version("2.3.0"):
+    elif major == 2 and minor >= 3:
         spec = "torchvision==0.18.1"
-    elif v >= Version("2.2.0"):
+    elif major == 2 and minor >= 2:
         spec = "torchvision==0.17.2"
-    elif v >= Version("2.1.0"):
+    elif major == 2 and minor >= 1:
         spec = "torchvision==0.16.2"
     else:
         spec = "torchvision"
-    print(f"   torchvision map: torch {base} (parsed {v}) -> {spec}")
+    print(f"   torchvision map: torch {base} ({major}.{minor}) -> {spec}")
     return spec
 
 
@@ -243,14 +250,16 @@ print("OK")
     return False
 
 
-def _pip_install_torchvision_compat():
-    torch_ver = _torch_version_subprocess()
-    if not torch_ver:
-        print("   torch not available (GPU image required)")
-        return False
-    spec = _torchvision_spec_for_torch(torch_ver)
-    index_url = _pytorch_index_url_for_torch(torch_ver)
-    print(f"   Installing {spec} for torch {torch_ver} (index {index_url}, --no-deps)...")
+def _pip_install_one_torchvision(spec, index_url):
+    print(f"   Installing {spec} (index {index_url}, --no-deps)...")
+    subprocess.run(
+        [
+            sys.executable, "-m", "pip", "uninstall", "-y", "torchvision",
+            *pip_extra_args(),
+        ],
+        capture_output=True,
+        text=True,
+    )
     r = subprocess.run(
         [
             sys.executable, "-m", "pip", "install", spec,
@@ -264,9 +273,24 @@ def _pip_install_torchvision_compat():
     if r.returncode != 0:
         print(f"   torchvision install failed:\n{(r.stderr or r.stdout or '')[-800:]}")
         return False
-    if not _verify_torchvision_nms_subprocess():
+    return _verify_torchvision_nms_subprocess()
+
+
+def _pip_install_torchvision_compat():
+    torch_ver = _torch_version_subprocess()
+    if not torch_ver:
+        print("   torch not available (GPU image required)")
         return False
-    return _reassert_pinned_ml()
+    spec = _torchvision_spec_for_torch(torch_ver)
+    index_url = _pytorch_index_url_for_torch(torch_ver)
+    print(f"   Matching torchvision to torch {torch_ver}")
+    candidates = [spec]
+    if spec != "torchvision":
+        candidates.append("torchvision")
+    for candidate in candidates:
+        if _pip_install_one_torchvision(candidate, index_url):
+            return _reassert_pinned_ml()
+    return False
 
 
 def _ensure_torchvision():
