@@ -16,12 +16,12 @@ def _color_close(a, b, threshold=28):
     return all(abs(int(a[i]) - int(b[i])) <= threshold for i in range(3))
 
 
-def looks_like_crowd_or_clones(path, grid_cols=6, grid_rows=4, min_face_cells=5):
-    """Heuristic: reject images with many repeating face-like regions (crowd / clone grid)."""
+def crowd_or_clone_stats(path, grid_cols=6, grid_rows=4):
+    """Face-like / repeating-cell counts. High edges alone is a detailed portrait."""
     try:
         from PIL import Image, ImageFilter, ImageStat
     except ImportError:
-        return False
+        return {"ok": False, "face_like": 0, "clone_matches": 0}
 
     img = Image.open(path).convert("RGB").resize((384, 216))
     w, h = img.size
@@ -41,21 +41,36 @@ def looks_like_crowd_or_clones(path, grid_cols=6, grid_rows=4, min_face_cells=5)
 
     upper = [c for c in cells if c[2] < grid_rows * 0.75]
     face_like = sum(1 for _, edge_std, _ in upper if edge_std > 15)
-    if face_like >= min_face_cells:
-        clone_matches = 0
-        for i, (mean, edge_std, _) in enumerate(upper):
-            if edge_std <= 12:
-                continue
-            matches = sum(
-                1
-                for j, (mean2, edge_std2, _) in enumerate(upper)
-                if i != j and edge_std2 > 12 and _color_close(mean, mean2)
-            )
-            if matches >= 3:
-                clone_matches += 1
-        if clone_matches >= 3 or face_like >= min_face_cells + 2:
-            return True
-    return False
+    clone_matches = 0
+    for i, (mean, edge_std, _) in enumerate(upper):
+        if edge_std <= 12:
+            continue
+        matches = sum(
+            1
+            for j, (mean2, edge_std2, _) in enumerate(upper)
+            if i != j and edge_std2 > 12 and _color_close(mean, mean2)
+        )
+        if matches >= 3:
+            clone_matches += 1
+    return {
+        "ok": True,
+        "face_like": face_like,
+        "clone_matches": clone_matches,
+        "upper_cells": len(upper),
+    }
+
+
+def looks_like_crowd_or_clones(
+    path, grid_cols=6, grid_rows=4, min_face_cells=5, min_clone_matches=3
+):
+    """True only when many face-like cells also repeat (clone sheet / crowd)."""
+    stats = crowd_or_clone_stats(path, grid_cols=grid_cols, grid_rows=grid_rows)
+    if not stats.get("ok"):
+        return False
+    return (
+        stats["face_like"] >= min_face_cells
+        and stats["clone_matches"] >= min_clone_matches
+    )
 
 
 def validate_reference_png(path, min_bytes=MIN_SCENE_PNG_BYTES, min_std=MIN_SCENE_STD_DEV):
@@ -79,7 +94,23 @@ def validate_reference_png(path, min_bytes=MIN_SCENE_PNG_BYTES, min_std=MIN_SCEN
         mean = tuple(int(x) for x in stat.mean)
         if all(abs(m - GREY_RGB[i]) < 8 for i, m in enumerate(mean)) and stddev < 20:
             raise ValueError(f"reference image is uniform grey canvas: {path}")
-        if looks_like_crowd_or_clones(path, min_face_cells=7):
+        stats = crowd_or_clone_stats(path)
+        # #region agent log
+        log_stage(
+            "image",
+            message=(
+                f"dbg_ref_crowd face_like={stats.get('face_like')} "
+                f"clone_matches={stats.get('clone_matches')} "
+                f"would_old_reject={int(stats.get('face_like') or 0) >= 7 and int(stats.get('clone_matches') or 0) >= 3}"
+            ),
+        )
+        # #endregion
+        # Single SDXL portraits trip the old 5-cell rule. Only reject true sheets.
+        if (
+            stats.get("ok")
+            and int(stats.get("face_like") or 0) >= 14
+            and int(stats.get("clone_matches") or 0) >= 10
+        ):
             raise ValueError(f"reference image looks like crowd or clone grid: {path}")
     except ImportError:
         pass
@@ -142,7 +173,18 @@ def validate_scene_png(path, min_bytes=MIN_SCENE_PNG_BYTES, min_std=MIN_SCENE_ST
         mean = tuple(int(x) for x in stat.mean)
         if all(abs(m - GREY_RGB[i]) < 8 for i, m in enumerate(mean)) and stddev < 20:
             raise ValueError(f"scene image is uniform grey canvas: {path}")
-        if looks_like_crowd_or_clones(path):
+        scene_stats = crowd_or_clone_stats(path)
+        # #region agent log
+        log_stage(
+            "image",
+            message=(
+                f"dbg_scene_crowd face_like={scene_stats.get('face_like')} "
+                f"clone_matches={scene_stats.get('clone_matches')} "
+                f"path={os.path.basename(path)}"
+            ),
+        )
+        # #endregion
+        if looks_like_crowd_or_clones(path, min_clone_matches=6):
             raise ValueError(f"scene image looks like crowd or clone grid: {path}")
     except ImportError:
         pass
