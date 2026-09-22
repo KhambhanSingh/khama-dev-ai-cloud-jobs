@@ -13,6 +13,7 @@ from .environments import infer_environment
 from .prompt_sanitize import (
     pick_english_beat_line,
     pick_english_story_event,
+    resolve_english_story_event,
     format_scene_character_labels,
     strip_forbidden_prompt_words,
     build_reference_portrait_prompt,
@@ -386,8 +387,8 @@ def _build_scene_prompt_for_attempt(
     if attempt >= 2:
         chars = chars[:1]
 
-    story_event = pick_english_story_event(beat)
-    action = pick_english_beat_line(beat, ("action", "scriptEvent", "summary"))
+    story_event = resolve_english_story_event(beat)
+    action = pick_english_beat_line(beat, ("action", "scriptEvent", "summary")) or story_event
 
     identity = _sanitize_prompt_part(_scene_identity_block(chars, beat=beat))
     solo = _solo_composition_hint(len(chars))
@@ -731,6 +732,11 @@ def generate_reference_image(
             return out_path
         except Exception as e:
             last_err = e
+            if os.path.isfile(out_path):
+                try:
+                    os.remove(out_path)
+                except OSError:
+                    pass
             log_stage(
                 "image",
                 message=f"ref gen attempt {attempt} failed: {e}",
@@ -771,12 +777,22 @@ def generate_scene_image(
         beat.get("environment", ""),
     )
 
-    story_event = pick_english_story_event(beat)
-    if not story_event:
-        raise ValueError(
-            f"beat {idx}: missing English scriptEvent/action for SDXL — "
-            "regenerate video plan with English action and scriptEvent fields"
-        )
+    story_event = resolve_english_story_event(beat)
+    # #region agent log
+    log_stage(
+        "image",
+        record_id,
+        beat=idx,
+        message=(
+            f"dbg_story_event={story_event[:90]!r} "
+            f"script_en={int(is_english_prompt_text(beat.get('scriptEvent')))} "
+            f"action_en={int(is_english_prompt_text(beat.get('action')))} "
+            f"visual_en={int(is_english_prompt_text(beat.get('visualPrompt')))} "
+            f"script_len={len(str(beat.get('scriptEvent') or ''))} "
+            f"action_len={len(str(beat.get('action') or ''))}"
+        ),
+    )
+    # #endregion
 
     camera_style = str(beat.get("cameraStyle", "")).strip().lower()
     camera_kw = CAMERA_KEYWORDS.get(camera_style, DEFAULT_CAMERA)
