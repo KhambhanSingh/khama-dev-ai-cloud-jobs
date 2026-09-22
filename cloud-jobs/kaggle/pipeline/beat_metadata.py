@@ -64,11 +64,18 @@ def refresh_beat_from_narration(beat, previous_beat=None):
     if detected_emotion:
         beat["emotion"] = detected_emotion
 
+    from .prompt_sanitize import is_english_prompt_text
+
     existing = str(beat.get("actionPose") or beat.get("action") or "").strip()
-    if not existing or _is_generic_action(existing):
+    if (
+        not existing
+        or _is_generic_action(existing)
+        or not is_english_prompt_text(existing)
+    ):
         action = resolve_scene_action(beat, previous_beat)
-        beat["action"] = action
-        beat["actionPose"] = action
+        if action and is_english_prompt_text(action):
+            beat["action"] = action
+            beat["actionPose"] = action
 
     env = infer_environment(
         text,
