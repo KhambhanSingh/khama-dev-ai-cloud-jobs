@@ -57,7 +57,7 @@ def process_job_v2(job_data):
     log_stage(
         "start",
         record_id,
-        message=f"v2 beats={len(beats)} chars={len(characters)}",
+        message=f"v2 beats={len(beats)} chars={len(characters)} patch=9d55d0-eng-crowd",
     )
 
     def stage_tts():
@@ -88,11 +88,19 @@ def process_job_v2(job_data):
                 break
 
     beats, timings = subdivide_long_beats(beats, timings, max_sec=4.5)
+    b0 = beats[0] if beats else {}
+    # #region agent log
     log_stage(
         "start",
         record_id,
-        message=f"after_subdivide beats={len(beats)} clips≈{len(timings)}",
+        message=(
+            f"after_subdivide beats={len(beats)} clips≈{len(timings)} "
+            f"dbg_beat0 action={str(b0.get('action') or '')[:70]!r} "
+            f"scriptEvent={str(b0.get('scriptEvent') or '')[:70]!r} "
+            f"visual={str(b0.get('visualPrompt') or '')[:70]!r}"
+        ),
     )
+    # #endregion
 
     def stage_images():
         return generate_all_scenes(
