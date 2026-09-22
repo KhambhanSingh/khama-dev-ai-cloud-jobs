@@ -94,6 +94,30 @@ def pick_english_story_event(beat):
     return ""
 
 
+def resolve_english_story_event(beat):
+    """Never return empty — Hindi jobs still need an English SDXL line."""
+    event = pick_english_story_event(beat)
+    if event:
+        return event
+    line = pick_english_beat_line(beat)
+    if line:
+        return line
+    env = str(beat.get("environment") or "").strip()
+    if not env or not is_english_prompt_text(env):
+        env = "the story setting"
+    emotion = str(beat.get("emotion") or "").strip()
+    pose = f"looking {emotion}" if emotion and is_english_prompt_text(emotion) else "standing"
+    names = beat.get("characters") or []
+    who = "the character"
+    if names:
+        raw = names[0] if isinstance(names[0], str) else str(
+            (names[0] or {}).get("name") or ""
+        )
+        if raw and is_english_prompt_text(raw):
+            who = raw
+    return f"{who} {pose} in {env}"
+
+
 def pick_english_beat_line(beat, fields=None):
     """English production fields — never narrationText."""
     if fields is None:
