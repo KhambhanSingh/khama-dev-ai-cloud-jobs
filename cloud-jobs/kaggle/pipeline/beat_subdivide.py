@@ -74,11 +74,9 @@ def subdivide_long_beats(beats, timings, max_sec=4.5):
             # Assign the sentence slice for this sub-beat
             sub["narrationText"] = text_parts[part]
 
-            # Clear pre-computed visualPrompt for sub-beats (n > 1) so
-            # generate_scene_image builds a fresh prompt from the new slice.
-            # For n == 1 the original visualPrompt is preserved.
+            # Keep English visualPrompt/scriptEvent. Only refresh env/emotion
+            # from the narration slice so Hindi audio does not wipe SDXL fields.
             if n > 1:
-                sub["visualPrompt"] = ""
                 prev_sub = new_beats[-1] if part > 0 and new_beats else beat
                 refresh_beat_from_narration(sub, previous_beat=prev_sub if part > 0 else None)
 
