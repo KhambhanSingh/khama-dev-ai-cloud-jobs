@@ -1,9 +1,15 @@
 """
-Git Queue Processor — full_video jobs from cloud-jobs/queue.
+Git Queue Processor — full_video / scene_video jobs from cloud-jobs/queue.
 
 Kaggle (after Next.js has pushed workers + queue to GitHub):
-  !python cloud-jobs/kaggle/git_queue_processor.py once
-  !python cloud-jobs/kaggle/git_queue_processor.py continuous 30
+
+  # ALWAYS-ON (recommended) — run once, leave the cell running
+  !cd /kaggle/working && python cloud-jobs/kaggle/git_queue_processor.py continuous 20
+
+  # One-shot (only for debugging)
+  !cd /kaggle/working && python cloud-jobs/kaggle/git_queue_processor.py once
+
+Default mode is continuous. Aliases: loop | watch | daemon | always
 
 Do not run video_generator_v2.py directly; this module imports it.
 First kernel run may require Restart & Clear Output after pip installs.
@@ -270,10 +276,11 @@ def github_raw_url(rel_path):
     rel = rel_path.lstrip("/").replace("\\", "/")
     return f"https://raw.githubusercontent.com/{owner}/{name}/{GIT_BRANCH}/{rel}"
 
-def write_result(record_id, status, video_url=None, error=None):
+def write_result(record_id, status, video_url=None, image_url=None, error=None):
     os.makedirs(RESULT_DIR, exist_ok=True)
     payload = {"status": status, "recordId": str(record_id)}
     if video_url: payload["videoUrl"] = video_url
+    if image_url: payload["imageUrl"] = image_url
     if error:     payload["error"]    = str(error)[:4000]
     path = os.path.join(RESULT_DIR, f"job_{record_id}_full.json")
     with open(path, "w", encoding="utf-8") as f:
@@ -368,6 +375,69 @@ def process_scene_video_job(job_data):
     return {"recordId": record_id, "video": out, "audio": ""}
 
 
+def process_pipeline_image_job(job_data):
+    """
+    Character sheet / scene still via SDXL on Kaggle (type=pipeline_image).
+    """
+    import urllib.request
+    from PIL import Image
+
+    record_id = job_data["recordId"]
+    kind = str(job_data.get("kind") or "scene_still")
+    prompt = str(job_data.get("prompt") or "cinematic film still").strip()
+    width = int(job_data.get("width") or 1280)
+    height = int(job_data.get("height") or 720)
+    ref_urls = list(job_data.get("referenceUrls") or [])
+
+    work = os.path.join("cloud-jobs", "work", str(record_id))
+    os.makedirs(work, exist_ok=True)
+    out = os.path.join(work, f"{record_id}.png")
+
+    # Prefer shared pipeline helpers (already used by full_video)
+    runtime = worker_runtime_dir()
+    if runtime not in sys.path:
+        sys.path.insert(0, runtime)
+    try:
+        from pipeline.image_pipeline import load_img2img_model, _run_generation
+    except Exception as e:
+        raise RuntimeError(f"pipeline.image_pipeline import failed: {e}") from e
+
+    pipe = load_img2img_model()
+    gen_w = 1024 if kind == "character_sheet" else min(1280, max(768, width))
+    gen_h = 1024 if kind == "character_sheet" else min(720, max(512, height))
+    # Keep SDXL-friendly sizes
+    gen_w = max(512, (gen_w // 8) * 8)
+    gen_h = max(512, (gen_h // 8) * 8)
+
+    init_image = None
+    strength = 0.85
+    if ref_urls:
+        ref_path = os.path.join(work, "ref0.png")
+        print(f"⬇️  Downloading reference: {ref_urls[0][:120]}")
+        urllib.request.urlretrieve(ref_urls[0], ref_path)
+        if os.path.isfile(ref_path) and os.path.getsize(ref_path) > 500:
+            init_image = Image.open(ref_path).convert("RGB")
+            strength = 0.55 if kind == "scene_still" else 0.62
+
+    print(f"🖼️  Generating {kind} ({gen_w}x{gen_h})…")
+    image = _run_generation(
+        pipe,
+        prompt,
+        gen_w,
+        gen_h,
+        init_image=init_image,
+        strength=strength,
+        steps=6,
+        guidance=1.5,
+    )
+    if width != gen_w or height != gen_h:
+        image = image.resize((width, height), Image.Resampling.LANCZOS)
+    image.save(out, format="PNG")
+    if not os.path.isfile(out) or os.path.getsize(out) < 1000:
+        raise RuntimeError("pipeline_image output empty")
+    return {"recordId": record_id, "image": out}
+
+
 # ==================== MAIN LOOP ====================
 _vg_import_ok = False
 
@@ -386,24 +456,18 @@ def process_queue_once():
         print("❌ No jobs processed — fix dependencies first.\n")
         return
 
+    vg = None
     try:
         import video_generator_v2 as vg
         _vg_import_ok = True
         print("✅ video_generator_v2 imported\n")
     except ImportError as e:
-        print(f"❌ Import failed: {e}")
-        print("   video_generator_v2.py को /kaggle/working/ में रखें!")
-        return
+        print(f"⚠️  video_generator_v2 import failed: {e}")
+        print("   pipeline_image / scene_video still run; full_video skipped.")
     except SystemExit as e:
         msg = str(e) or ""
-        print(f"🔴 video_generator_v2: {msg}")
-        if "package install" in msg.lower():
-            print("   Kernel → Restart & Clear Output")
-            print("   Then: python cloud-jobs/kaggle/git_queue_processor.py once")
-        else:
-            print("   Kernel restart करें: Menu → Run → Restart & Clear Output")
-        print("❌ No jobs processed — fix dependencies first.\n")
-        return
+        print(f"⚠️  video_generator_v2: {msg}")
+        print("   pipeline_image / scene_video still run; full_video skipped.")
 
     pending = get_pending_jobs()
     if not pending:
@@ -425,7 +489,7 @@ def process_queue_once():
                 job_data = json.load(f)
 
             job_type = job_data.get("type")
-            if job_type not in ("full_video", "scene_video"):
+            if job_type not in ("full_video", "scene_video", "pipeline_image"):
                 print(f"⏭️  Skip: {job_file}")
                 continue
 
@@ -438,26 +502,40 @@ def process_queue_once():
 
             if job_type == "scene_video":
                 result = process_scene_video_job(job_data)
+                os.makedirs(VIDEO_DIR, exist_ok=True)
+                stable = os.path.join(VIDEO_DIR, f"{record_id}.mp4")
+                shutil.copy2(result["video"], stable)
+                raw_url = github_raw_url(f"cloud-jobs/video/{record_id}.mp4")
+                if not raw_url:
+                    raise RuntimeError("NEXT_GITHUB_REPO secret missing!")
+                write_result(record_id, "DONE", video_url=raw_url)
+            elif job_type == "pipeline_image":
+                result = process_pipeline_image_job(job_data)
+                img_dir = os.path.join(BASE_DIR, "images")
+                os.makedirs(img_dir, exist_ok=True)
+                stable = os.path.join(img_dir, f"{record_id}.png")
+                shutil.copy2(result["image"], stable)
+                raw_url = github_raw_url(f"cloud-jobs/images/{record_id}.png")
+                if not raw_url:
+                    raise RuntimeError("NEXT_GITHUB_REPO secret missing!")
+                write_result(record_id, "DONE", image_url=raw_url)
             else:
+                if vg is None:
+                    raise RuntimeError(
+                        "full_video needs video_generator_v2 — fix import / deps"
+                    )
                 result = vg.process_job(job_data)
-
-            os.makedirs(VIDEO_DIR, exist_ok=True)
-            stable = os.path.join(VIDEO_DIR, f"{record_id}.mp4")
-            shutil.copy2(result["video"], stable)
-
-            raw_url = github_raw_url(f"cloud-jobs/video/{record_id}.mp4")
-            if not raw_url:
-                raise RuntimeError("NEXT_GITHUB_REPO secret missing!")
-
-            write_result(
-                record_id,
-                "DONE",
-                video_url=raw_url,
-            )
-            need_push = True
-            if job_type == "full_video":
+                os.makedirs(VIDEO_DIR, exist_ok=True)
+                stable = os.path.join(VIDEO_DIR, f"{record_id}.mp4")
+                shutil.copy2(result["video"], stable)
+                raw_url = github_raw_url(f"cloud-jobs/video/{record_id}.mp4")
+                if not raw_url:
+                    raise RuntimeError("NEXT_GITHUB_REPO secret missing!")
+                write_result(record_id, "DONE", video_url=raw_url)
                 backup_locally(result)
                 cleanup_work_dir(record_id)
+
+            need_push = True
             clear_job(job_file)
             ok += 1
             print(f"✅ Done: {record_id}\n")
@@ -491,16 +569,26 @@ def run_once():
         print("❌ Exiting — worker did not load; queue was not processed.")
         sys.exit(1)
     print("✅ Done! (check logs for Processing / Queue empty)")
+    print("💡 Tip: leave the worker running with:")
+    print("   python cloud-jobs/kaggle/git_queue_processor.py continuous 20")
 
-def run_continuous(interval=30):
-    print("\n" + "="*60 + f"\n🚀 CONTINUOUS ({interval}s)\n" + "="*60 + "\n")
+def run_continuous(interval=20):
+    print("\n" + "="*60)
+    print(f"🚀 ALWAYS-ON WORKER — polls every {interval}s")
+    print("   Leave this cell RUNNING. Do not re-run manually.")
+    print("   Stop: interrupt/stop the notebook cell.")
+    print("="*60 + "\n")
     i = 0
     try:
         while True:
             i += 1
             print(f"\n{'='*60}\n🔄 #{i} — {datetime.now().strftime('%H:%M:%S')}\n{'='*60}")
-            process_queue_once()
-            print(f"\n⏳ {interval}s wait...")
+            try:
+                process_queue_once()
+            except Exception as e:
+                # Keep the loop alive — next poll retries after pull
+                print(f"⚠️  Poll error (will retry): {e}")
+            print(f"\n⏳ Next poll in {interval}s… (cell stays alive)")
             time.sleep(interval)
     except KeyboardInterrupt:
         print("\n⏹️  Stopped.")
@@ -517,13 +605,18 @@ if __name__ == "__main__":
         a for a in sys.argv[1:]
         if not a.startswith("/") and not a.endswith(".json")
     ]
-    mode = clean_args[0] if clean_args else "once"
+    # Default = continuous so you don't re-execute the cell for every job
+    mode = (clean_args[0] if clean_args else "continuous").lower()
     try:
-        interval = int(clean_args[1]) if len(clean_args) > 1 else 30
+        interval = int(clean_args[1]) if len(clean_args) > 1 else 20
     except (ValueError, IndexError):
-        interval = 30
+        interval = 20
+    interval = max(10, min(300, interval))
 
-    if mode == "continuous":
+    if mode in ("continuous", "loop", "watch", "daemon", "always"):
         run_continuous(interval)
-    else:
+    elif mode in ("once", "single"):
         run_once()
+    else:
+        print(f"Unknown mode {mode!r} — using continuous")
+        run_continuous(interval)
