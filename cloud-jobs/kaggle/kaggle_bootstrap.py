@@ -92,7 +92,12 @@ def main():
     sync_repo(token, repo)
     verify_workers()
     print("OK — repo synced")
-    print(f"Next: python {WORKER_PATH} once")
+    print("")
+    print("Start ALWAYS-ON worker (leave cell running — do not re-run per job):")
+    print(f"  !cd /kaggle/working && python {WORKER_PATH} continuous 20")
+    print("")
+    print("One-shot only if needed:")
+    print(f"  !cd /kaggle/working && python {WORKER_PATH} once")
 
 
 if __name__ == "__main__":
