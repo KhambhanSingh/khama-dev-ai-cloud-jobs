@@ -777,23 +777,6 @@ def generate_scene_image(
         beat.get("environment", ""),
     )
 
-    story_event = resolve_english_story_event(beat)
-    # #region agent log
-    log_stage(
-        "image",
-        record_id,
-        beat=idx,
-        message=(
-            f"dbg_story_event={story_event[:90]!r} "
-            f"script_en={int(is_english_prompt_text(beat.get('scriptEvent')))} "
-            f"action_en={int(is_english_prompt_text(beat.get('action')))} "
-            f"visual_en={int(is_english_prompt_text(beat.get('visualPrompt')))} "
-            f"script_len={len(str(beat.get('scriptEvent') or ''))} "
-            f"action_len={len(str(beat.get('action') or ''))}"
-        ),
-    )
-    # #endregion
-
     camera_style = str(beat.get("cameraStyle", "")).strip().lower()
     camera_kw = CAMERA_KEYWORDS.get(camera_style, DEFAULT_CAMERA)
     render_chars = beat_chars[:2]
