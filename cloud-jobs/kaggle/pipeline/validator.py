@@ -95,16 +95,6 @@ def validate_reference_png(path, min_bytes=MIN_SCENE_PNG_BYTES, min_std=MIN_SCEN
         if all(abs(m - GREY_RGB[i]) < 8 for i, m in enumerate(mean)) and stddev < 20:
             raise ValueError(f"reference image is uniform grey canvas: {path}")
         stats = crowd_or_clone_stats(path)
-        # #region agent log
-        log_stage(
-            "image",
-            message=(
-                f"dbg_ref_crowd face_like={stats.get('face_like')} "
-                f"clone_matches={stats.get('clone_matches')} "
-                f"would_old_reject={int(stats.get('face_like') or 0) >= 7 and int(stats.get('clone_matches') or 0) >= 3}"
-            ),
-        )
-        # #endregion
         # Single SDXL portraits trip the old 5-cell rule. Only reject true sheets.
         if (
             stats.get("ok")
@@ -173,17 +163,6 @@ def validate_scene_png(path, min_bytes=MIN_SCENE_PNG_BYTES, min_std=MIN_SCENE_ST
         mean = tuple(int(x) for x in stat.mean)
         if all(abs(m - GREY_RGB[i]) < 8 for i, m in enumerate(mean)) and stddev < 20:
             raise ValueError(f"scene image is uniform grey canvas: {path}")
-        scene_stats = crowd_or_clone_stats(path)
-        # #region agent log
-        log_stage(
-            "image",
-            message=(
-                f"dbg_scene_crowd face_like={scene_stats.get('face_like')} "
-                f"clone_matches={scene_stats.get('clone_matches')} "
-                f"path={os.path.basename(path)}"
-            ),
-        )
-        # #endregion
         if looks_like_crowd_or_clones(path, min_clone_matches=6):
             raise ValueError(f"scene image looks like crowd or clone grid: {path}")
     except ImportError:
