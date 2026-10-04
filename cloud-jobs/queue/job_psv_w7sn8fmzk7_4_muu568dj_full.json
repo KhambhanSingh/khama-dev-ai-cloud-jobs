@@ -1,0 +1,14 @@
+{
+  "type": "scene_video",
+  "version": 1,
+  "recordId": "psv_w7sn8fmzk7_4_muu568dj",
+  "index": "full",
+  "scriptId": "k17390ekg6c66xd4r081xvw7sn8fmzk7",
+  "sceneOrder": 4,
+  "imageUrl": "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/psv_w7sn8fmzk7_4_muu568dj.jpg",
+  "prompt": "सीख: दूसरों की मदद करना सबसे अच्छी बात है।",
+  "durationSec": 5.14,
+  "width": 1280,
+  "height": 720,
+  "fps": 24
+}
