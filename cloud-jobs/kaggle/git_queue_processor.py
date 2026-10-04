@@ -377,7 +377,7 @@ def process_scene_video_job(job_data):
 
 def process_pipeline_image_job(job_data):
     """
-    Character sheet / scene still via SDXL on Kaggle (type=pipeline_image).
+    Character portrait / scene still via SDXL on Kaggle (type=pipeline_image).
     """
     import urllib.request
     from PIL import Image
@@ -398,9 +398,23 @@ def process_pipeline_image_job(job_data):
     if runtime not in sys.path:
         sys.path.insert(0, runtime)
     try:
-        from pipeline.image_pipeline import load_img2img_model, _run_generation
+        from pipeline.image_pipeline import (
+            REFERENCE_NEGATIVE_PROMPT,
+            SCENE_NEGATIVE_PROMPT,
+            load_img2img_model,
+            _run_generation,
+        )
+        from pipeline.prompt_sanitize import strip_forbidden_prompt_words
     except Exception as e:
         raise RuntimeError(f"pipeline.image_pipeline import failed: {e}") from e
+
+    # Strip "character sheet" / clone vocabulary — positive "sheet" → multi-pose grids
+    prompt = strip_forbidden_prompt_words(prompt)
+    if kind == "character_sheet" and "one character" not in prompt.lower():
+        prompt = (
+            "ONE character full body portrait, plain white background, "
+            f"front view, centered. {prompt}"
+        )
 
     pipe = load_img2img_model()
     gen_w = 1024 if kind == "character_sheet" else min(1280, max(768, width))
@@ -419,7 +433,14 @@ def process_pipeline_image_job(job_data):
             init_image = Image.open(ref_path).convert("RGB")
             strength = 0.55 if kind == "scene_still" else 0.62
 
+    neg = (
+        REFERENCE_NEGATIVE_PROMPT
+        if kind == "character_sheet"
+        else SCENE_NEGATIVE_PROMPT
+    )
+    guidance = 2.0 if kind == "character_sheet" else 1.5
     print(f"🖼️  Generating {kind} ({gen_w}x{gen_h})…")
+    print(f"   prompt head: {prompt[:160]}")
     image = _run_generation(
         pipe,
         prompt,
@@ -428,7 +449,8 @@ def process_pipeline_image_job(job_data):
         init_image=init_image,
         strength=strength,
         steps=6,
-        guidance=1.5,
+        guidance=guidance,
+        negative_prompt=neg,
     )
     if width != gen_w or height != gen_h:
         image = image.resize((width, height), Image.Resampling.LANCZOS)
