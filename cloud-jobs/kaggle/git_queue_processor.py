@@ -316,6 +316,58 @@ def backup_locally(result):
     except Exception as e:
         print(f"⚠️  Backup: {e}")
 
+def process_scene_video_job(job_data):
+    """
+    Lightweight per-scene I2V: download still → Ken Burns ffmpeg clip → local mp4.
+    Used by the Next.js continuity pipeline (type=scene_video).
+    """
+    import urllib.request
+
+    record_id = job_data["recordId"]
+    image_url = job_data.get("imageUrl") or ""
+    if not image_url:
+        raise RuntimeError("scene_video job missing imageUrl")
+
+    duration = max(4, min(8, float(job_data.get("durationSec") or 6)))
+    width = int(job_data.get("width") or 1280)
+    height = int(job_data.get("height") or 720)
+    fps = int(job_data.get("fps") or 24)
+
+    work = os.path.join("cloud-jobs", "work", str(record_id))
+    os.makedirs(work, exist_ok=True)
+    still = os.path.join(work, "still.png")
+    out = os.path.join(work, f"{record_id}.mp4")
+
+    print(f"⬇️  Downloading still: {image_url[:120]}")
+    urllib.request.urlretrieve(image_url, still)
+    if not os.path.isfile(still) or os.path.getsize(still) < 500:
+        raise RuntimeError("scene_video still download empty")
+
+    frames = max(1, int(round(duration * fps)))
+    vf = (
+        f"scale={width}:{height}:force_original_aspect_ratio=increase,"
+        f"crop={width}:{height},"
+        f"zoompan=z='min(zoom+0.0008,1.12)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'"
+        f":d={frames}:s={width}x{height}:fps={fps}"
+    )
+    cmd = [
+        "ffmpeg", "-y",
+        "-loop", "1",
+        "-i", still,
+        "-vf", vf,
+        "-t", str(duration),
+        "-c:v", "libx264",
+        "-pix_fmt", "yuv420p",
+        "-movflags", "+faststart",
+        out,
+    ]
+    print("🎞️  Encoding scene_video clip…")
+    subprocess.run(cmd, check=True)
+    if not os.path.isfile(out) or os.path.getsize(out) < 1000:
+        raise RuntimeError("scene_video ffmpeg output empty")
+    return {"recordId": record_id, "video": out, "audio": ""}
+
+
 # ==================== MAIN LOOP ====================
 _vg_import_ok = False
 
@@ -372,18 +424,22 @@ def process_queue_once():
             with open(job_path, "r", encoding="utf-8") as f:
                 job_data = json.load(f)
 
-            if job_data.get("type") != "full_video":
+            job_type = job_data.get("type")
+            if job_type not in ("full_video", "scene_video"):
                 print(f"⏭️  Skip: {job_file}")
                 continue
 
             record_id = job_data["recordId"]
-            print(f"▶️  Processing: {record_id}\n")
+            print(f"▶️  Processing ({job_type}): {record_id}\n")
 
             if HF_TOKEN:
                 os.environ["HF_TOKEN"] = HF_TOKEN
                 os.environ["HUGGING_FACE_HUB_TOKEN"] = HF_TOKEN
 
-            result = vg.process_job(job_data)
+            if job_type == "scene_video":
+                result = process_scene_video_job(job_data)
+            else:
+                result = vg.process_job(job_data)
 
             os.makedirs(VIDEO_DIR, exist_ok=True)
             stable = os.path.join(VIDEO_DIR, f"{record_id}.mp4")
@@ -399,8 +455,9 @@ def process_queue_once():
                 video_url=raw_url,
             )
             need_push = True
-            backup_locally(result)
-            cleanup_work_dir(record_id)
+            if job_type == "full_video":
+                backup_locally(result)
+                cleanup_work_dir(record_id)
             clear_job(job_file)
             ok += 1
             print(f"✅ Done: {record_id}\n")
