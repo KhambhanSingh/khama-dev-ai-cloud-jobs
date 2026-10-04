@@ -1,0 +1,14 @@
+{
+  "type": "scene_video",
+  "version": 1,
+  "recordId": "psv_w7sn8fmzk7_3_muu545pw",
+  "index": "full",
+  "scriptId": "k17390ekg6c66xd4r081xvw7sn8fmzk7",
+  "sceneOrder": 3,
+  "imageUrl": "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/psv_w7sn8fmzk7_3_muu545pw.jpg",
+  "prompt": "बंदर खुश होकर बोला, “सच्चा दोस्त वही, जो मुसीबत में काम आए!",
+  "durationSec": 6.38,
+  "width": 1280,
+  "height": 720,
+  "fps": 24
+}
