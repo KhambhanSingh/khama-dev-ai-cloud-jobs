@@ -1,0 +1,14 @@
+{
+  "type": "scene_video",
+  "version": 1,
+  "recordId": "psv_q2xh8fqxgf_5_muum04ty",
+  "index": "full",
+  "scriptId": "k17ax7neqe2ctqw4atz0hwq2xh8fqxgf",
+  "sceneOrder": 5,
+  "imageUrl": "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/psv_q2xh8fqxgf_5_muum04ty.png",
+  "prompt": "Premium 2D animated children's film, clean line art, soft cel shading, consistent art direction. Close-up on the pot, water level visibly rising. कौआ watches intently, eyes widening.",
+  "durationSec": 5.71,
+  "width": 1280,
+  "height": 720,
+  "fps": 24
+}
