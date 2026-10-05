@@ -1,0 +1,5 @@
+{
+  "status": "FAILED",
+  "recordId": "pim_q2xh8fqxgf_char_1_muukjel6",
+  "error": "pipeline_image failed QA: reference image looks like crowd or clone grid: cloud-jobs/work/pim_q2xh8fqxgf_char_1_muukjel6/pim_q2xh8fqxgf_char_1_muukjel6.png"
+}
