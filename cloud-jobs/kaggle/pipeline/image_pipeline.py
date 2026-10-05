@@ -687,6 +687,7 @@ def generate_reference_image(
     video_style="2D cartoon",
     negative_prompt=None,
     seed=None,
+    validate_kwargs=None,
 ):
     custom = str(char.get("referencePrompt") or "").strip()
     if (
@@ -705,8 +706,15 @@ def generate_reference_image(
         ", plain white bg",
     )
     neg = negative_prompt or REFERENCE_NEGATIVE_PROMPT
+    qa = dict(validate_kwargs or {})
     last_err = None
     for attempt in range(1, 4):
+        # Attempt 3: ultra-minimal prompt under CLIP 77 for stubborn clone sheets
+        if attempt == 3:
+            species = str(char.get("species") or char.get("name") or "character").strip()
+            if any("\u0900" <= ch <= "\u097F" for ch in species):
+                species = "character"
+            base = f"exactly one {species}, solo, white background, cartoon"
         tail = recovery_tails[min(attempt - 1, len(recovery_tails) - 1)]
         ref_prompt = _clip_trim(f"{base}{tail}", pipe=pipe, max_tokens=70)
         try:
@@ -726,7 +734,7 @@ def generate_reference_image(
             )
             image = _upscale_image(image, out_w, out_h)
             image.save(out_path)
-            validate_reference_png(out_path)
+            validate_reference_png(out_path, **qa)
             log_stage(
                 "image",
                 message=f"ref gen ok attempt={attempt} prompt={ref_prompt[:120]}",
@@ -734,7 +742,8 @@ def generate_reference_image(
             return out_path
         except Exception as e:
             last_err = e
-            if os.path.isfile(out_path):
+            # Keep final attempt file for relaxed QA fallback in the caller
+            if attempt < 3 and os.path.isfile(out_path):
                 try:
                     os.remove(out_path)
                 except OSError:
