@@ -379,12 +379,14 @@ def process_pipeline_image_job(job_data):
     """
     Character portrait / scene still via SDXL on Kaggle (type=pipeline_image).
     """
+    import re
     import urllib.request
     from PIL import Image
 
     record_id = job_data["recordId"]
     kind = str(job_data.get("kind") or "scene_still")
     prompt = str(job_data.get("prompt") or "cinematic film still").strip()
+    species = str(job_data.get("species") or "").strip().lower()
     width = int(job_data.get("width") or 1280)
     height = int(job_data.get("height") or 720)
     ref_urls = list(job_data.get("referenceUrls") or [])
@@ -405,16 +407,27 @@ def process_pipeline_image_job(job_data):
             _run_generation,
         )
         from pipeline.prompt_sanitize import strip_forbidden_prompt_words
+        from pipeline.validator import validate_reference_png
     except Exception as e:
         raise RuntimeError(f"pipeline.image_pipeline import failed: {e}") from e
 
-    # Strip "character sheet" / clone vocabulary — positive "sheet" → multi-pose grids
+    # Strip sheet vocabulary + Devanagari (CLIP-safe English only)
     prompt = strip_forbidden_prompt_words(prompt)
-    if kind == "character_sheet" and "one character" not in prompt.lower():
-        prompt = (
-            "ONE character full body portrait, plain white background, "
-            f"front view, centered. {prompt}"
-        )
+    prompt = re.sub(r"[\u0900-\u097F]+", " ", prompt)
+    prompt = re.sub(r"\s+", " ", prompt).strip()
+
+    if kind == "character_sheet":
+        subject = species if species and species != "character" else "character"
+        # Lead with solo subject — CLIP keeps the start of the prompt
+        if not prompt.lower().startswith("exactly one"):
+            prompt = (
+                f"exactly one {subject}, solo, single subject only, "
+                f"centered front view, full body, solid white studio background, "
+                f"no border, no frame, no foliage, no branch. {prompt}"
+            )
+        words = prompt.split()
+        if len(words) > 55:
+            prompt = " ".join(words[:55])
 
     pipe = load_img2img_model()
     gen_w = 1024 if kind == "character_sheet" else min(1280, max(768, width))
@@ -425,36 +438,59 @@ def process_pipeline_image_job(job_data):
 
     init_image = None
     strength = 0.85
-    if ref_urls:
+    if ref_urls and kind != "character_sheet":
+        # Character portraits: never img2img from a prior bad sheet/ref
         ref_path = os.path.join(work, "ref0.png")
         print(f"⬇️  Downloading reference: {ref_urls[0][:120]}")
         urllib.request.urlretrieve(ref_urls[0], ref_path)
         if os.path.isfile(ref_path) and os.path.getsize(ref_path) > 500:
             init_image = Image.open(ref_path).convert("RGB")
-            strength = 0.55 if kind == "scene_still" else 0.62
+            strength = 0.55
 
     neg = (
         REFERENCE_NEGATIVE_PROMPT
         if kind == "character_sheet"
         else SCENE_NEGATIVE_PROMPT
     )
-    guidance = 2.0 if kind == "character_sheet" else 1.5
-    print(f"🖼️  Generating {kind} ({gen_w}x{gen_h})…")
-    print(f"   prompt head: {prompt[:160]}")
-    image = _run_generation(
-        pipe,
-        prompt,
-        gen_w,
-        gen_h,
-        init_image=init_image,
-        strength=strength,
-        steps=6,
-        guidance=guidance,
-        negative_prompt=neg,
-    )
-    if width != gen_w or height != gen_h:
-        image = image.resize((width, height), Image.Resampling.LANCZOS)
-    image.save(out, format="PNG")
+    attempts = 3 if kind == "character_sheet" else 1
+    last_err = None
+    for attempt in range(1, attempts + 1):
+        guidance = (2.2 + 0.3 * (attempt - 1)) if kind == "character_sheet" else 1.5
+        steps = 8 if kind == "character_sheet" else 6
+        print(f"🖼️  Generating {kind} ({gen_w}x{gen_h}) attempt={attempt}…")
+        print(f"   prompt head: {prompt[:180]}")
+        image = _run_generation(
+            pipe,
+            prompt,
+            gen_w,
+            gen_h,
+            init_image=init_image,
+            strength=strength,
+            steps=steps,
+            guidance=guidance,
+            negative_prompt=neg,
+            seed=(sum(ord(c) for c in str(record_id)) % 100000) + attempt * 7919,
+        )
+        if width != gen_w or height != gen_h:
+            image = image.resize((width, height), Image.Resampling.LANCZOS)
+        image.save(out, format="PNG")
+        if not os.path.isfile(out) or os.path.getsize(out) < 1000:
+            last_err = RuntimeError("pipeline_image output empty")
+            continue
+        if kind == "character_sheet":
+            try:
+                validate_reference_png(out)
+                last_err = None
+                break
+            except Exception as ve:
+                last_err = ve
+                print(f"   ⚠️  portrait QA failed attempt={attempt}: {ve}")
+                continue
+        last_err = None
+        break
+
+    if last_err is not None:
+        raise RuntimeError(f"pipeline_image failed QA: {last_err}") from last_err
     if not os.path.isfile(out) or os.path.getsize(out) < 1000:
         raise RuntimeError("pipeline_image output empty")
     return {"recordId": record_id, "image": out}
