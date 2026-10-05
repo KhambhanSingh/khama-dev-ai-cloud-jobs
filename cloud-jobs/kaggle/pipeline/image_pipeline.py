@@ -47,8 +47,10 @@ SCENE_NEGATIVE_PROMPT = (
 )
 
 REFERENCE_NEGATIVE_PROMPT = (
-    "duplicate characters, crowd, character sheet, model sheet, turnaround sheet, "
-    "multiple poses, sprite sheet, lineup, group, family, many people, clones, "
+    "two animals, pair, duo, couple, second character, duplicate characters, "
+    "crowd, character sheet, model sheet, turnaround sheet, multiple poses, "
+    "sprite sheet, lineup, group, border, ornate frame, foliage, leaves, flowers, "
+    "wreath, branch, perched, tree, decorative border, clones, "
     "bad anatomy, deformed hands, extra limbs, blurry, watermark, text"
 )
 
