@@ -165,12 +165,28 @@ def format_scene_character_labels(chars, max_len=180):
 
 
 def build_reference_portrait_prompt(char, video_style="2D cartoon"):
-    """Compact CLIP-safe portrait prompt (~35 words). Anti-clone is in negative prompt."""
-    desc = describe_character_for_prompt(char, 55)
-    style = str(video_style or "2D cartoon").strip()
-    return strip_forbidden_prompt_words(
-        f"{style}, ONE character full body portrait, white background, front view, centered, {desc}"
-    )
+    """Ultra-short CLIP-safe portrait (≪77 tokens). Anti-clone is in negative prompt."""
+    species = str(char.get("species") or char.get("type") or "").strip().lower()
+    name = str(char.get("name") or "").strip()
+    subject = species if species and species != "character" else (name or "character")
+    # Prefer English subject token; drop Devanagari names from the positive prompt
+    if any("\u0900" <= ch <= "\u097F" for ch in subject):
+        subject = species if species and species != "character" else "character"
+    appearance = str(char.get("appearance") or "").strip()
+    appearance = re.sub(r"[\u0900-\u097F]+", " ", appearance)
+    appearance = " ".join(appearance.split()[:6])
+    style = str(video_style or "2D cartoon").strip().split(",")[0].strip()
+    bits = [
+        f"exactly one {subject}",
+        "solo",
+        "centered",
+        "full body",
+        "white background",
+        style,
+    ]
+    if appearance:
+        bits.append(appearance)
+    return strip_forbidden_prompt_words(", ".join(bits))
 
 
 def validate_sdxl_prompt(prompt):
