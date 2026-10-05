@@ -1,0 +1,14 @@
+{
+  "type": "scene_video",
+  "version": 1,
+  "recordId": "psv_q2xh8fqxgf_7_muum54gd",
+  "index": "full",
+  "scriptId": "k17ax7neqe2ctqw4atz0hwq2xh8fqxgf",
+  "sceneOrder": 7,
+  "imageUrl": "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/psv_q2xh8fqxgf_7_muum54gd.png",
+  "prompt": "Premium 2D animated children's film, clean line art, soft cel shading, consistent art direction. कौआ flies away happily into a vibrant sunset. Text overlay of the moral appears.",
+  "durationSec": 7.06,
+  "width": 1280,
+  "height": 720,
+  "fps": 24
+}
