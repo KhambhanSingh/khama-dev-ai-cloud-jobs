@@ -73,8 +73,18 @@ def looks_like_crowd_or_clones(
     )
 
 
-def validate_reference_png(path, min_bytes=MIN_SCENE_PNG_BYTES, min_std=MIN_SCENE_STD_DEV):
-    """Reference portrait: flat/grey check only — stricter grid threshold for clone sheets."""
+def validate_reference_png(
+    path,
+    min_bytes=MIN_SCENE_PNG_BYTES,
+    min_std=MIN_SCENE_STD_DEV,
+    min_face_cells=14,
+    min_clone_matches=10,
+):
+    """Reference portrait: flat/grey check — reject only dense clone sheets.
+
+    Dark feathered animals (crow) create many similar high-edge cells; callers
+    can raise thresholds via min_face_cells / min_clone_matches.
+    """
     if not os.path.isfile(path):
         raise FileNotFoundError(f"reference image missing: {path}")
     size = os.path.getsize(path)
@@ -98,10 +108,13 @@ def validate_reference_png(path, min_bytes=MIN_SCENE_PNG_BYTES, min_std=MIN_SCEN
         # Single SDXL portraits trip the old 5-cell rule. Only reject true sheets.
         if (
             stats.get("ok")
-            and int(stats.get("face_like") or 0) >= 14
-            and int(stats.get("clone_matches") or 0) >= 10
+            and int(stats.get("face_like") or 0) >= min_face_cells
+            and int(stats.get("clone_matches") or 0) >= min_clone_matches
         ):
-            raise ValueError(f"reference image looks like crowd or clone grid: {path}")
+            raise ValueError(
+                f"reference image looks like crowd or clone grid: {path} "
+                f"(face_like={stats.get('face_like')}, clones={stats.get('clone_matches')})"
+            )
     except ImportError:
         pass
     return path
