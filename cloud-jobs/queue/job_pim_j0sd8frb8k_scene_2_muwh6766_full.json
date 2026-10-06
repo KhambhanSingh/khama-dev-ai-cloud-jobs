@@ -1,0 +1,16 @@
+{
+  "type": "pipeline_image",
+  "version": 1,
+  "recordId": "pim_j0sd8frb8k_scene_2_muwh6766",
+  "index": "full",
+  "kind": "scene_still",
+  "scriptId": "k170w9fsnt9qz7atmzf24sj0sd8frb8k",
+  "prompt": "STYLE (verbatim): 3D Pixar style, bright soft lighting, consistent art direction, family-friendly cinematic look\nVISUAL: 3D Pixar style, bright soft lighting, consistent art direction, family-friendly cinematic look. हाथी अचानक फिसलकर एक गहरे, कीचड़ भरे गड्ढे में गिर जाता है। वह हैरान दिखता है।\nCHARACTERS (verbatim):\nहाथी (elephant): Large grey elephant, friendly eyes, big ears, playful trunk, wearing a small red scarf.\nहाथी (squirrel): Fluffy brown squirrel, bushy tail, bright eyes, agile and quick.\nहाथी (rabbit): Soft white rabbit, long ears, twitching nose, gentle and helpful.",
+  "species": "",
+  "width": 1280,
+  "height": 720,
+  "referenceUrls": [
+    "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pim_j0sd8frb8k_scene_2_muwh6766_ref1.png",
+    "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pim_j0sd8frb8k_scene_2_muwh6766_ref2.png"
+  ]
+}
