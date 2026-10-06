@@ -1,0 +1,189 @@
+{
+  "type": "pipeline_image_batch",
+  "kind": "scenes",
+  "version": 1,
+  "scriptId": "k17cvgsda40qazyy22dsvjyqc98frqr5",
+  "items": [
+    {
+      "scene_number": 1,
+      "id": "jx72f1m27b81ja4zhna04bg2ns8fr2vj",
+      "final_prompt": "KEY ACTION: Hathi stops and laughs loudly at Cheenti. LOCATION: Lush Jungle Path. BACKGROUND: Tall green trees, Colorful jungle flowers, Sun-dappled path. TIME: Morning. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: हाथी, monkey, A nimble brown monkey with a long, prehensile , ACTION: Walking slowly, then stopping to look down, HOLDING: None. CHARACTER: चींटी, ant, A tiny, reddish-brown ant with six delicate legs, ACTION: Walking diligently along the path, HOLDING: Tiny green leaf on back. STYLE: 3D Pixar style, bright soft lighting. SHOT: Medium shot, ANGLE: Eye-level, then slightly",
+      "negative_prompt": "blank background, plain studio background, white void, empty backdrop, standing still with no action, character sheet, text, watermark, subtitles, logo, deformed anatomy, extra limbs",
+      "character_ids": [
+        "js72ymbq5ey4w8685xrg61fhjx8frx3b",
+        "js7cz982ch20q850d2cxh3zjc98frnf2"
+      ],
+      "character_ref_urls": [],
+      "use_previous_scene": true,
+      "seed": 9973,
+      "aspect_ratio": "16:9",
+      "width": 1280,
+      "height": 720,
+      "skip": false,
+      "story_summary": "Hathi, a large elephant, walks through the jungle and laughs at Cheenti, a tiny ant, highlighting his own size.",
+      "key_action": "Hathi stops and laughs loudly at Cheenti",
+      "location": "Lush Jungle Path"
+    },
+    {
+      "scene_number": 2,
+      "id": "jx734sfmsdrm5yyjcxajc133m58fsway",
+      "final_prompt": "KEY ACTION: Hathi falls into a deep, camouflaged pit. LOCATION: Jungle Clearing with Hidden Pit. BACKGROUND: Dense jungle foliage, Overgrown grass around pit, Fallen logs. TIME: Morning. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: हाथी, monkey, A nimble brown monkey with a long, prehensile , ACTION: Stumbling forward, then falling into a pit, HOLDING: None. STYLE: 3D Pixar style, bright soft lighting. SHOT: Full shot, ANGLE: Eye-level, then low angle from inside pi, CAMERA: Tracking Hathi, then static. CONTINUITY: Hathi's fall is sudden, emphasizing his vulnerability.. match reference character",
+      "negative_prompt": "blank background, plain studio background, white void, empty backdrop, standing still with no action, character sheet, text, watermark, subtitles, logo, deformed anatomy, extra limbs",
+      "character_ids": [
+        "js7cz982ch20q850d2cxh3zjc98frnf2"
+      ],
+      "character_ref_urls": [],
+      "use_previous_scene": true,
+      "seed": 19946,
+      "aspect_ratio": "16:9",
+      "width": 1280,
+      "height": 720,
+      "skip": false,
+      "story_summary": "Still laughing, Hathi carelessly walks and suddenly falls into a hidden pit, calling for help.",
+      "key_action": "Hathi falls into a deep, camouflaged pit",
+      "location": "Jungle Clearing with Hidden Pit"
+    },
+    {
+      "scene_number": 3,
+      "id": "jx7705tsm2rjp4j1wcynkrjf8d8fsk99",
+      "final_prompt": "KEY ACTION: Cheenti looks down into the pit at the struggling Hathi. LOCATION: Edge of the Pit. BACKGROUND: Rough pit edges, Small pebbles and dirt, Overhanging leaves. TIME: Morning. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: चींटी, ant, A tiny, reddish-brown ant with six delicate legs, ACTION: Crawling towards the pit, peering down, HOLDING: Tiny green leaf on back. CHARACTER: हाथी, monkey, A nimble brown monkey with a long, prehensile , ACTION: Struggling slightly, looking up, HOLDING: None. STYLE: 3D Pixar style, bright soft lighting. SHOT: Close-up on Cheenti,",
+      "negative_prompt": "blank background, plain studio background, white void, empty backdrop, standing still with no action, character sheet, text, watermark, subtitles, logo, deformed anatomy, extra limbs",
+      "character_ids": [
+        "js72ymbq5ey4w8685xrg61fhjx8frx3b",
+        "js7cz982ch20q850d2cxh3zjc98frnf2"
+      ],
+      "character_ref_urls": [],
+      "use_previous_scene": true,
+      "seed": 29919,
+      "aspect_ratio": "16:9",
+      "width": 1280,
+      "height": 720,
+      "skip": false,
+      "story_summary": "Cheenti, passing by, hears Hathi's cries for help and discovers him trapped in the pit.",
+      "key_action": "Cheenti looks down into the pit at the struggling Hathi",
+      "location": "Edge of the Pit"
+    },
+    {
+      "scene_number": 4,
+      "id": "jx7dqv0g4yjw21h0jyt8c69x8h8fr9hf",
+      "final_prompt": "KEY ACTION: Cheenti urgently informs Sheru about Hathi's fall. LOCATION: Dense Jungle Undergrowth. BACKGROUND: Thick bushes, Large tree roots, Sunlight filtering through leaves. TIME: Morning. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: चींटी, ant, A tiny, reddish-brown ant with six delicate legs, ACTION: Running quickly, gesturing with antennae, HOLDING: Tiny green leaf on back. CHARACTER: हाथी, monkey, A nimble brown monkey with a long, prehensile , ACTION: Relaxing under a tree, then listening attentively, HOLDING: None. STYLE: 3D Pixar style, bright soft lighting. SHOT: Medium shot, ANGLE: Eye-level, CAMERA:",
+      "negative_prompt": "blank background, plain studio background, white void, empty backdrop, standing still with no action, character sheet, text, watermark, subtitles, logo, deformed anatomy, extra limbs",
+      "character_ids": [
+        "js72ymbq5ey4w8685xrg61fhjx8frx3b",
+        "js7cz982ch20q850d2cxh3zjc98frnf2"
+      ],
+      "character_ref_urls": [],
+      "use_previous_scene": true,
+      "seed": 39892,
+      "aspect_ratio": "16:9",
+      "width": 1280,
+      "height": 720,
+      "skip": false,
+      "story_summary": "Cheenti bravely runs through the jungle to find Sheru, the lion, to explain Hathi's predicament.",
+      "key_action": "Cheenti urgently informs Sheru about Hathi's fall",
+      "location": "Dense Jungle Undergrowth"
+    },
+    {
+      "scene_number": 5,
+      "id": "jx7awwaxxg3q0zw204sm5gwpq98fs6qk",
+      "final_prompt": "KEY ACTION: Cheenti convinces Bandar to help rescue Hathi. LOCATION: Jungle Canopy. BACKGROUND: Thick tree branches, Vines hanging down, Blue sky visible through leaves. TIME: Morning. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: चींटी, ant, A tiny, reddish-brown ant with six delicate legs, ACTION: Climbing a small plant to reach Bandar's level, ca, HOLDING: Tiny green leaf on back. CHARACTER: हाथी, monkey, A nimble brown monkey with a long, prehensile , ACTION: Swinging on a vine, then stopping to listen, HOLDING: Half-eaten banana. STYLE: 3D Pixar style, bright soft",
+      "negative_prompt": "blank background, plain studio background, white void, empty backdrop, standing still with no action, character sheet, text, watermark, subtitles, logo, deformed anatomy, extra limbs",
+      "character_ids": [
+        "js72ymbq5ey4w8685xrg61fhjx8frx3b",
+        "js7cz982ch20q850d2cxh3zjc98frnf2"
+      ],
+      "character_ref_urls": [],
+      "use_previous_scene": true,
+      "seed": 49865,
+      "aspect_ratio": "16:9",
+      "width": 1280,
+      "height": 720,
+      "skip": false,
+      "story_summary": "After speaking with Sheru, Cheenti continues her mission, finding Bandar the monkey and asking for his assistance.",
+      "key_action": "Cheenti convinces Bandar to help rescue Hathi",
+      "location": "Jungle Canopy"
+    },
+    {
+      "scene_number": 6,
+      "id": "jx72ngb63zkhtc9kjd6dmj8yn58fsmqe",
+      "final_prompt": "KEY ACTION: The animals gather and devise a plan to rescue Hathi. LOCATION: Edge of the Pit. BACKGROUND: Deep pit opening, Loose dirt and rocks, Overhanging vines. TIME: Morning. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: हाथी, monkey, A nimble brown monkey with a long, prehensile , ACTION: Looking down into the pit, thoughtful, HOLDING: None. CHARACTER: हाथी, monkey, A nimble brown monkey with a long, prehensile , ACTION: Peering over the edge, pointing at a sturdy vine, HOLDING: None. CHARACTER: चींटी, ant, A tiny, reddish-brown ant with six",
+      "negative_prompt": "blank background, plain studio background, white void, empty backdrop, standing still with no action, character sheet, text, watermark, subtitles, logo, deformed anatomy, extra limbs",
+      "character_ids": [
+        "js72ymbq5ey4w8685xrg61fhjx8frx3b",
+        "js7cz982ch20q850d2cxh3zjc98frnf2"
+      ],
+      "character_ref_urls": [],
+      "use_previous_scene": true,
+      "seed": 59838,
+      "aspect_ratio": "16:9",
+      "width": 1280,
+      "height": 720,
+      "skip": false,
+      "story_summary": "Sheru, Bandar, and Cheenti arrive at the pit where Hathi is trapped, assessing the situation together.",
+      "key_action": "The animals gather and devise a plan to rescue Hathi",
+      "location": "Edge of the Pit"
+    },
+    {
+      "scene_number": 7,
+      "id": "jx717kw0yx15b5e62gwk121n1s8fsh60",
+      "final_prompt": "KEY ACTION: The animals successfully pull Hathi out of the pit. LOCATION: Pit Rescue Site. BACKGROUND: Thick jungle vines, Sturdy tree trunk (for leverage), Loose earth and dust. TIME: Morning. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: हाथी, monkey, A nimble brown monkey with a long, prehensile , ACTION: Pulling a vine with all his strength, straining, HOLDING: Thick vine. CHARACTER: हाथी, monkey, A nimble brown monkey with a long, prehensile , ACTION: Pulling the vine, using his agility to adjust, HOLDING: Thick vine. CHARACTER: चींटी, ant, A tiny,",
+      "negative_prompt": "blank background, plain studio background, white void, empty backdrop, standing still with no action, character sheet, text, watermark, subtitles, logo, deformed anatomy, extra limbs",
+      "character_ids": [
+        "js72ymbq5ey4w8685xrg61fhjx8frx3b",
+        "js7cz982ch20q850d2cxh3zjc98frnf2"
+      ],
+      "character_ref_urls": [],
+      "use_previous_scene": true,
+      "seed": 69811,
+      "aspect_ratio": "16:9",
+      "width": 1280,
+      "height": 720,
+      "skip": false,
+      "story_summary": "Working together, Sheru and Bandar use a strong vine, guided by Cheenti, to pull Hathi out of the deep pit.",
+      "key_action": "The animals successfully pull Hathi out of the pit",
+      "location": "Pit Rescue Site"
+    },
+    {
+      "scene_number": 8,
+      "id": "jx7d5mjee0b5emw4a3ma364sg18frrfb",
+      "final_prompt": "KEY ACTION: Hathi thanks his friends and apologizes to Cheenti. LOCATION: Next to the Pit. BACKGROUND: The now empty pit, Green grass, Nearby jungle trees. TIME: Morning. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: हाथी, monkey, A nimble brown monkey with a long, prehensile , ACTION: Standing tall, bowing his head slightly towards Ch, HOLDING: None. CHARACTER: चींटी, ant, A tiny, reddish-brown ant with six delicate legs, ACTION: Looking up at Hathi, accepting his apology, HOLDING: Tiny green leaf on back. CHARACTER: हाथी, monkey, A nimble brown monkey with",
+      "negative_prompt": "blank background, plain studio background, white void, empty backdrop, standing still with no action, character sheet, text, watermark, subtitles, logo, deformed anatomy, extra limbs",
+      "character_ids": [
+        "js72ymbq5ey4w8685xrg61fhjx8frx3b",
+        "js7cz982ch20q850d2cxh3zjc98frnf2"
+      ],
+      "character_ref_urls": [],
+      "use_previous_scene": true,
+      "seed": 79784,
+      "aspect_ratio": "16:9",
+      "width": 1280,
+      "height": 720,
+      "skip": false,
+      "story_summary": "Hathi is finally out of the pit, expressing immense gratitude to his rescuers, especially Cheenti, and apologizing for his earlier arrogance.",
+      "key_action": "Hathi thanks his friends and apologizes to Cheenti",
+      "location": "Next to the Pit"
+    },
+    {
+      "scene_number": 9,
+      "id": "jx7257y4y2f2rv6977sshbab9h8fsbe4",
+      "final_prompt": "KEY ACTION: Hathi delivers the moral of the story to his friends. LOCATION: Peaceful Jungle Glade. BACKGROUND: Lush green trees, Sunlight filtering through leaves, Colorful wildflowers. TIME: Morning. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: हाथी, monkey, A nimble brown monkey with a long, prehensile , ACTION: Looking thoughtfully at his friends, then at the a, HOLDING: None. CHARACTER: चींटी, ant, A tiny, reddish-brown ant with six delicate legs, ACTION: Standing proudly, nodding in agreement, HOLDING: Tiny green leaf on back. CHARACTER: हाथी, monkey, A nimble brown monkey with",
+      "negative_prompt": "blank background, plain studio background, white void, empty backdrop, standing still with no action, character sheet, text, watermark, subtitles, logo, deformed anatomy, extra limbs",
+      "character_ids": [
+        "js72ymbq5ey4w8685xrg61fhjx8frx3b",
+        "js7cz982ch20q850d2cxh3zjc98frnf2"
+      ],
+      "character_ref_urls": [],
+      "use_previous_scene": true,
+      "seed": 89757,
+      "aspect_ratio": "16:9",
+      "width": 1280,
+      "height": 720,
+      "skip": false,
+      "story_summary": "Hathi, now wise, shares the important lesson he learned: never underestimate anyone, as everyone possesses unique strengths.",
+      "key_action": "Hathi delivers the moral of the story to his friends",
+      "location": "Peaceful Jungle Glade"
+    }
+  ],
+  "chunkIndex": 0,
+  "chunkTotal": 1
+}
