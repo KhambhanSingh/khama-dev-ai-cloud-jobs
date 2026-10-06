@@ -27,8 +27,13 @@ _IMG2IMG_PIPE = None
 
 DEFAULT_GEN_MAX_W = int(os.environ.get("KAGGLE_GEN_MAX_WIDTH", "1024"))
 DEFAULT_GEN_MAX_H = int(os.environ.get("KAGGLE_GEN_MAX_HEIGHT", "576"))
-SCENE_GEN_STEPS = int(os.environ.get("KAGGLE_SCENE_STEPS", "20"))
-SCENE_GEN_STEPS_RETRY = int(os.environ.get("KAGGLE_SCENE_STEPS_RETRY", "28"))
+# SDXL-Turbo: official = 1–4 steps, guidance_scale=0 (CFG/negatives unused).
+# Old defaults (20 steps / CFG 2.0) produce extra limbs & anatomy mush.
+SCENE_GEN_STEPS = int(os.environ.get("KAGGLE_SCENE_STEPS", "4"))
+SCENE_GEN_STEPS_RETRY = int(os.environ.get("KAGGLE_SCENE_STEPS_RETRY", "4"))
+TURBO_GUIDANCE = float(os.environ.get("KAGGLE_TURBO_GUIDANCE", "0.0"))
+# Portraits: Turbo is trained at 512; upscale after. 1024 native often glitches.
+REF_GEN_SIZE = int(os.environ.get("KAGGLE_REF_GEN_SIZE", "512"))
 # Low strength keeps locked face/body from reference portrait while replacing white backdrop.
 SCENE_REF_STRENGTH = float(os.environ.get("KAGGLE_SCENE_REF_STRENGTH", "0.40"))
 USE_REF_INIT = os.environ.get("KAGGLE_USE_REF_INIT", "false").lower() not in (
@@ -36,20 +41,21 @@ USE_REF_INIT = os.environ.get("KAGGLE_USE_REF_INIT", "false").lower() not in (
     "false",
     "no",
 )
-SCENE_TXT2IMG_STRENGTH = float(os.environ.get("KAGGLE_SCENE_TXT2IMG_STRENGTH", "0.85"))
+# strength=1.0 → full denoise (txt2img-like). Must keep steps*strength >= 1.
+SCENE_TXT2IMG_STRENGTH = float(os.environ.get("KAGGLE_SCENE_TXT2IMG_STRENGTH", "1.0"))
 # SDXL CLIP text encoder hard limit — longer prompts are silently truncated.
 CLIP_MAX_TOKENS = int(os.environ.get("KAGGLE_CLIP_MAX_TOKENS", "77"))
 
-# Must stay ≤~70 CLIP tokens. Longer negatives force Compel to 2×77 (=154)
-# sequence length for BOTH pos and neg → VRAM spike / OOM on 15GB GPUs.
+# Kept short for non-Turbo / future CFG paths. Turbo ignores negatives at CFG=0.
 SCENE_NEGATIVE_PROMPT = (
     "crowd, character sheet, clones, model sheet, multiple poses, "
     "extra limbs, bad anatomy, blurry, watermark, text, disney"
 )
 
 REFERENCE_NEGATIVE_PROMPT = (
-    "crowd, character sheet, clones, multiple animals, group, "
-    "model sheet, border, foliage, extra limbs, blurry, watermark, text"
+    "extra legs, extra feet, extra tails, multiple tusks, fused limbs, "
+    "crowd, character sheet, clones, multiple animals, bad anatomy, "
+    "blurry, watermark, text"
 )
 
 DEFAULT_NEGATIVE_PROMPT = SCENE_NEGATIVE_PROMPT
@@ -583,33 +589,58 @@ def _run_generation(
     gen_w,
     gen_h,
     init_image=None,
-    strength=0.58,
+    strength=None,
     steps=None,
-    guidance=2.0,
+    guidance=None,
     negative_prompt=None,
     seed=None,
     max_prompt_words=0,
 ):
     """
-    Run SDXL img2img. Prefer Compel long-prompt embeddings so CLIP's 77-token
-    hard truncate does not drop character / action / environment / camera.
+    Run SDXL-Turbo img2img (txt2img-like when strength≈1).
+
+    Turbo must use guidance_scale=0 and 1–4 steps. Higher CFG/step counts
+    cause duplicated limbs and mushy anatomy.
     """
-    steps = steps or SCENE_GEN_STEPS
+    steps = int(steps or SCENE_GEN_STEPS)
+    steps = max(1, min(steps, 8))  # hard cap — Turbo quality collapses past ~4–8
+    guidance = float(TURBO_GUIDANCE if guidance is None else guidance)
+    turbo_mode = guidance <= 0.0
     neg = negative_prompt or SCENE_NEGATIVE_PROMPT
     if max_prompt_words and max_prompt_words > 0:
         prompt = _trim_prompt(prompt, max_words=max_prompt_words)
 
     generator = _make_generator(seed)
-    init = None
-    use_strength = strength
     if init_image is not None:
         init = init_image.convert("RGB").resize((gen_w, gen_h))
+        use_strength = float(
+            SCENE_REF_STRENGTH if strength is None else strength
+        )
     else:
+        # Full denoise from noise ≈ txt2img; keep steps*strength >= 1
         init = _noise_init(gen_w, gen_h)
-        use_strength = 0.85
+        use_strength = float(
+            SCENE_TXT2IMG_STRENGTH if strength is None else strength
+        )
+        use_strength = max(use_strength, 1.0 / max(steps, 1))
+
+    # #region agent log
+    print(
+        f"   [debug:5928f0] gen settings "
+        f'{{"steps":{steps},"guidance":{guidance},"strength":{use_strength},'
+        f'"size":[{gen_w},{gen_h}],"turbo":{str(turbo_mode).lower()},'
+        f'"words":{len(str(prompt).split())}}}'
+    )
+    # #endregion
 
     embeds = None
-    if USE_COMPEL and not (max_prompt_words and max_prompt_words > 0):
+    # Turbo ignores CFG/negatives — skip Compel dual embeds (saves VRAM, avoids 154-pad)
+    use_compel = (
+        USE_COMPEL
+        and not turbo_mode
+        and not (max_prompt_words and max_prompt_words > 0)
+    )
+    if use_compel:
         embeds = encode_sdxl_prompts(pipe, prompt, neg)
         if embeds:
             seq = int(embeds["prompt_embeds"].shape[1])
@@ -620,7 +651,6 @@ def _run_generation(
                 f"shape={tuple(embeds['prompt_embeds'].shape)} "
                 f"{'(2-chunk)' if seq > 80 else '(1-chunk)'}"
             )
-            # 154-length embeds double UNet cross-attn VRAM on 15GB cards
             if seq > 80:
                 print(
                     f"   ⚠️  Compel seq={seq} (>77) — trimming neg and re-encoding"
@@ -631,7 +661,7 @@ def _run_generation(
 
     try:
         with torch.inference_mode():
-            if embeds:
+            if embeds and not turbo_mode:
                 out = pipe(
                     prompt_embeds=embeds["prompt_embeds"],
                     pooled_prompt_embeds=embeds["pooled_prompt_embeds"],
@@ -646,41 +676,42 @@ def _run_generation(
                     generator=generator,
                 )
             else:
-                # Legacy fallback: CLIP-trim to 77 tokens
-                prompt_t = _clip_trim(prompt, pipe=pipe)
-                neg_t = _clip_trim(neg, pipe=pipe)
-                tok_n = _clip_token_count(prompt, pipe=pipe)
-                if tok_n > CLIP_MAX_TOKENS:
-                    print(
-                        f"   ⚠️  CLIP trim fallback: {tok_n}→≤{CLIP_MAX_TOKENS} tokens "
-                        f"(install compel to keep full prompt)"
-                    )
-                out = pipe(
+                # Turbo path: plain prompt, CFG off, no negative (official)
+                prompt_t = _clip_trim(prompt, pipe=pipe, max_tokens=70)
+                kwargs = dict(
                     prompt=prompt_t,
-                    negative_prompt=neg_t,
                     image=init,
                     strength=use_strength,
                     num_inference_steps=steps,
-                    guidance_scale=guidance,
+                    guidance_scale=0.0 if turbo_mode else guidance,
                     generator=generator,
                 )
+                if not turbo_mode:
+                    kwargs["negative_prompt"] = _clip_trim(
+                        neg, pipe=pipe, max_tokens=68
+                    )
+                out = pipe(**kwargs)
             image = out.images[0]
     except torch.cuda.OutOfMemoryError:
         clear_gpu_memory()
-        print("   ⚠️  CUDA OOM — retry with CLIP-trim (no long embeds)")
+        print("   ⚠️  CUDA OOM — retry Turbo minimal (512 / 2 steps)")
+        small = min(gen_w, gen_h, 512)
+        init_small = init.resize((small, small)) if init is not None else _noise_init(
+            small, small
+        )
         with torch.inference_mode():
             out = pipe(
-                prompt=_clip_trim(prompt, pipe=pipe, max_tokens=70),
-                negative_prompt=_clip_trim(neg, pipe=pipe, max_tokens=68),
-                image=init,
-                strength=use_strength,
-                num_inference_steps=max(2, int(steps or SCENE_GEN_STEPS)),
-                guidance_scale=guidance,
+                prompt=_clip_trim(prompt, pipe=pipe, max_tokens=60),
+                image=init_small,
+                strength=1.0,
+                num_inference_steps=2,
+                guidance_scale=0.0,
                 generator=generator,
             )
             image = out.images[0]
+            if (gen_w, gen_h) != (small, small):
+                image = image.resize((gen_w, gen_h), Image.Resampling.LANCZOS)
     finally:
-        # Drop embed tensors so the next portrait/job does not OOM
         if embeds:
             for k in (
                 "prompt_embeds",
@@ -766,7 +797,7 @@ def generate_reference_image(
     out_w,
     out_h,
     out_path,
-    video_style="2D cartoon",
+    video_style="3D pixar",
     negative_prompt=None,
     seed=None,
     validate_kwargs=None,
@@ -782,39 +813,45 @@ def generate_reference_image(
     else:
         base = build_reference_portrait_prompt(char, video_style)
 
+    # Turbo prefers 512 native; caller may pass 1024 — clamp for quality
+    native = max(512, min(int(REF_GEN_SIZE), 768))
+    run_w = min(int(gen_w or native), native)
+    run_h = min(int(gen_h or native), native)
+    run_w = _round8(run_w)
+    run_h = _round8(run_h)
+
     recovery_tails = (
+        ", four legs, one tail, correct anatomy",
+        ", simple clean design, centered",
         "",
-        ", centered",
-        ", plain white bg",
     )
     neg = negative_prompt or REFERENCE_NEGATIVE_PROMPT
     qa = dict(validate_kwargs or {})
     last_err = None
     for attempt in range(1, 4):
-        # Attempt 3: ultra-minimal prompt for stubborn clone sheets
+        # Attempt 3: ultra-minimal prompt for stubborn glitches
         if attempt == 3:
             species = str(char.get("species") or char.get("name") or "character").strip()
             if any("\u0900" <= ch <= "\u097F" for ch in species):
                 species = "character"
-            base = f"exactly one {species}, solo, white background, cartoon"
+            base = (
+                f"one {species}, solo, full body, white background, "
+                f"3D pixar style, four legs, correct anatomy"
+            )
         tail = recovery_tails[min(attempt - 1, len(recovery_tails) - 1)]
-        # Compel path keeps full text; legacy still trims
-        if USE_COMPEL:
-            ref_prompt = f"{base}{tail}".strip()
-        else:
-            ref_prompt = _clip_trim(f"{base}{tail}", pipe=pipe, max_tokens=70)
+        ref_prompt = f"{base}{tail}".strip()
         try:
-            steps = SCENE_GEN_STEPS if attempt == 1 else SCENE_GEN_STEPS_RETRY
             attempt_seed = (seed + attempt * 7919) if seed is not None else None
+            # Official Turbo: 4 steps, CFG=0, strength=1 (txt2img-like)
             image = _run_generation(
                 pipe,
                 ref_prompt,
-                gen_w,
-                gen_h,
+                run_w,
+                run_h,
                 init_image=None,
-                strength=0.85,
-                steps=steps,
-                guidance=2.0 if attempt == 1 else 2.5,
+                strength=1.0,
+                steps=SCENE_GEN_STEPS if attempt < 3 else 2,
+                guidance=TURBO_GUIDANCE,
                 negative_prompt=neg,
                 seed=attempt_seed,
             )
@@ -959,7 +996,7 @@ def generate_scene_image(
                 init_image=init_image,
                 strength=strength,
                 steps=steps,
-                guidance=3.0 if attempt == 1 else 3.5,
+                guidance=TURBO_GUIDANCE,
                 seed=(scene_seed + attempt * 9973) if scene_seed is not None else None,
             )
             image = _upscale_image(image, out_w, out_h)
