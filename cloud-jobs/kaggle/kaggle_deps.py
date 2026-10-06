@@ -15,7 +15,7 @@ try:
 except ImportError:
     Version = None  # type: ignore[misc, assignment]
 
-DEPS_POLICY = "v3.2"
+DEPS_POLICY = "v3.3"
 
 PINNED = {
     "diffusers": "0.30.3",
@@ -35,6 +35,8 @@ OPTIONAL_PACKAGES = [
 OPTIONAL_PIP_NAMES = {
     "gtts": "gTTS",
     "Pillow": "Pillow",
+    # CompelForSDXL (fixes EmbeddingsProviderMulti.empty_z) needs >=2.3
+    "compel": "compel>=2.3.0",
 }
 
 
@@ -136,15 +138,28 @@ def _optional_import_ok(pkg):
     return r.returncode == 0 and (r.stdout or "").strip().startswith("OK")
 
 
+def _compel_ready():
+    """True only if CompelForSDXL is importable (old compel dual-list API is broken)."""
+    r = _run_python_script(
+        "from compel import CompelForSDXL\nprint('OK')\n"
+    )
+    return r.returncode == 0 and (r.stdout or "").strip().startswith("OK")
+
+
 def _pip_install_optional():
     for pkg in OPTIONAL_PACKAGES:
         pip_name = OPTIONAL_PIP_NAMES.get(pkg, pkg)
-        if _optional_import_ok(pkg):
+        if pkg == "compel":
+            if _compel_ready():
+                continue
+            print(f"   optional {pip_name} (CompelForSDXL)...")
+        elif _optional_import_ok(pkg):
             continue
-        print(f"   optional {pip_name}...")
+        else:
+            print(f"   optional {pip_name}...")
         subprocess.run(
             [
-                sys.executable, "-m", "pip", "install", "-q", pip_name,
+                sys.executable, "-m", "pip", "install", "-q", "-U", pip_name,
                 *pip_extra_args(),
             ],
             capture_output=True,
