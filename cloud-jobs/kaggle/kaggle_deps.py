@@ -343,10 +343,14 @@ def _ensure_runtime_imports():
     return True
 
 
+_RUNTIME_IMPORTS_OK = False
+
+
 def ensure_pinned_deps(force=False):
     """
     Install pinned ML stack if needed. Returns True when versions match and imports OK.
     """
+    global _RUNTIME_IMPORTS_OK
     print(
         f"Kaggle deps policy {DEPS_POLICY} "
         "(diffusers+transformers+accelerate; no huggingface-hub downgrade)"
@@ -356,7 +360,13 @@ def ensure_pinned_deps(force=False):
         print(f"✅ deps OK (skip install): {diagnose_versions()}")
         _touch_marker()
         _pip_install_optional()
-        return _ensure_runtime_imports()
+        # Skip repeated SDXL import probe once it succeeded this session
+        if _RUNTIME_IMPORTS_OK:
+            print("   runtime imports cached")
+            return True
+        ok = _ensure_runtime_imports()
+        _RUNTIME_IMPORTS_OK = bool(ok)
+        return ok
 
     print("\n📦 Installing pinned ML packages...")
     _pip_uninstall_conflicts()
@@ -378,4 +388,6 @@ def ensure_pinned_deps(force=False):
     print(f"✅ Pinned packages active: {diagnose_versions()}")
     _touch_marker()
     _pip_install_optional()
-    return _ensure_runtime_imports()
+    ok = _ensure_runtime_imports()
+    _RUNTIME_IMPORTS_OK = bool(ok)
+    return ok
