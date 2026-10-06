@@ -179,11 +179,18 @@ def sanitize_plain_character_appearance(text, species=""):
     )
     t = re.sub(
         r"\b(wears|wearing|adorned with|decorated with|crowned with|garland|"
-        r"flower crown|crown of|jewelry|beads)\b[^.,;!]*",
+        r"flower crown|crown of|jewelry|beads|woven crown|crown)\b[^.,;!]*",
         " ",
         t,
         flags=re.I,
     )
+    t = re.sub(
+        r"\b(colorful|colourful)\b[^.,;!]{0,40}\b(behind|ear|ears)\b[^.,;!]*",
+        " ",
+        t,
+        flags=re.I,
+    )
+    t = re.sub(r"\bbehind (his|her|its) ear\b[^.,;!]*", " ", t, flags=re.I)
     t = re.sub(
         r"\b(banana|fruit|mango|leaf|leaves|plant|rose|flower|flowers|sand|"
         r"garden|forest|jungle|bokeh|soil|pebble|outdoor|landscape)\b",
