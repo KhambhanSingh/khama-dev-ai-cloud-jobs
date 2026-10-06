@@ -1,7 +1,9 @@
 """SDXL scene images with character reference locking via img2img (single GPU pipeline)."""
 
 import gc
+import json
 import os
+import re
 
 import numpy as np
 import torch
@@ -583,6 +585,44 @@ def _noise_init(gen_w, gen_h):
     return Image.fromarray(arr, mode="RGB")
 
 
+def _action_first_prompt(text):
+    """
+    Put script VISUAL ACTION / Scene line first so CLIP 77-trim (or Turbo
+    truncation) cannot drop the story beat behind STYLE/BIBLE headers.
+    """
+    t = str(text or "").strip()
+    if not t:
+        return t
+    action = ""
+    m = re.search(
+        r"VISUAL\s*ACTION\s*:\s*(.+?)(?:\n|$)", t, flags=re.I | re.S
+    )
+    if m:
+        action = " ".join(m.group(1).split())
+    title = ""
+    m2 = re.search(r"Scene\s+\d+\s*:\s*(.+?)(?:\n|$)", t, flags=re.I)
+    if m2:
+        title = " ".join(m2.group(1).split())
+    # Flatten multiline job prompts into one SDXL-friendly line
+    flat = re.sub(
+        r"(?i)STYLE\s*\(verbatim\)\s*:", "STYLE:", t
+    )
+    flat = re.sub(
+        r"(?i)CHARACTER\s*BIBLE\s*\(verbatim[^)]*\)\s*:", "CHARACTERS:", flat
+    )
+    flat = re.sub(r"\s*\n+\s*", ". ", flat)
+    flat = re.sub(r"\s{2,}", " ", flat).strip(" .")
+    if action:
+        # Lead with action; drop duplicate VISUAL ACTION block from rest
+        rest = re.sub(
+            r"(?i)VISUAL\s*ACTION\s*:\s*.+?(?=\.\s*[A-Z]|\Z)", "", flat
+        )
+        rest = re.sub(r"\s{2,}", " ", rest).strip(" .")
+        lead = action if not title else f"{action}. {title}"
+        return f"{lead}. {rest}".strip(" .")
+    return flat
+
+
 def _run_generation(
     pipe,
     prompt,
@@ -599,14 +639,15 @@ def _run_generation(
     """
     Run SDXL-Turbo img2img (txt2img-like when strength≈1).
 
-    Turbo must use guidance_scale=0 and 1–4 steps. Higher CFG/step counts
-    cause duplicated limbs and mushy anatomy.
+    Turbo: guidance_scale=0 and 1–4 steps. Still use Compel for long *positive*
+    prompts so script VISUAL ACTION is not CLIP-trimmed away.
     """
     steps = int(steps or SCENE_GEN_STEPS)
     steps = max(1, min(steps, 8))  # hard cap — Turbo quality collapses past ~4–8
     guidance = float(TURBO_GUIDANCE if guidance is None else guidance)
     turbo_mode = guidance <= 0.0
     neg = negative_prompt or SCENE_NEGATIVE_PROMPT
+    prompt = _action_first_prompt(prompt)
     if max_prompt_words and max_prompt_words > 0:
         prompt = _trim_prompt(prompt, max_words=max_prompt_words)
 
@@ -629,19 +670,18 @@ def _run_generation(
         f"   [debug:5928f0] gen settings "
         f'{{"steps":{steps},"guidance":{guidance},"strength":{use_strength},'
         f'"size":[{gen_w},{gen_h}],"turbo":{str(turbo_mode).lower()},'
-        f'"words":{len(str(prompt).split())}}}'
+        f'"words":{len(str(prompt).split())},'
+        f'"promptHead":{json.dumps(str(prompt)[:160])}}}'
     )
     # #endregion
 
     embeds = None
-    # Turbo ignores CFG/negatives — skip Compel dual embeds (saves VRAM, avoids 154-pad)
-    use_compel = (
-        USE_COMPEL
-        and not turbo_mode
-        and not (max_prompt_words and max_prompt_words > 0)
-    )
+    # Turbo: CFG off, but Compel still encodes the full positive (script fidelity).
+    # Use empty/short neg so we stay on a single 77-chunk when possible.
+    use_compel = USE_COMPEL and not (max_prompt_words and max_prompt_words > 0)
     if use_compel:
-        embeds = encode_sdxl_prompts(pipe, prompt, neg)
+        neg_for_encode = "" if turbo_mode else neg
+        embeds = encode_sdxl_prompts(pipe, prompt, neg_for_encode)
         if embeds:
             seq = int(embeds["prompt_embeds"].shape[1])
             print(
@@ -651,17 +691,14 @@ def _run_generation(
                 f"shape={tuple(embeds['prompt_embeds'].shape)} "
                 f"{'(2-chunk)' if seq > 80 else '(1-chunk)'}"
             )
-            if seq > 80:
-                print(
-                    f"   ⚠️  Compel seq={seq} (>77) — trimming neg and re-encoding"
-                )
-                embeds = encode_sdxl_prompts(
-                    pipe, prompt, _clip_trim(neg, pipe=pipe, max_tokens=68)
-                )
+            if seq > 160:
+                # Cap runaway chunking — keep action-first head via CLIP path
+                print(f"   ⚠️  Compel seq={seq} too long — falling back to action-first trim")
+                embeds = None
 
     try:
         with torch.inference_mode():
-            if embeds and not turbo_mode:
+            if embeds:
                 out = pipe(
                     prompt_embeds=embeds["prompt_embeds"],
                     pooled_prompt_embeds=embeds["pooled_prompt_embeds"],
@@ -672,12 +709,13 @@ def _run_generation(
                     image=init,
                     strength=use_strength,
                     num_inference_steps=steps,
-                    guidance_scale=guidance,
+                    guidance_scale=0.0 if turbo_mode else guidance,
                     generator=generator,
                 )
             else:
-                # Turbo path: plain prompt, CFG off, no negative (official)
+                # Fallback: action-first then CLIP trim (keeps story beat)
                 prompt_t = _clip_trim(prompt, pipe=pipe, max_tokens=70)
+                print(f"   CLIP trim head: {prompt_t[:140]}")
                 kwargs = dict(
                     prompt=prompt_t,
                     image=init,
