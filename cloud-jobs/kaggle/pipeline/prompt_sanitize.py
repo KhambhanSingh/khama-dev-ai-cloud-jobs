@@ -164,32 +164,46 @@ def format_scene_character_labels(chars, max_len=180):
     return ". ".join(labels)[:max_len]
 
 
+def _portrait_anatomy(subject: str) -> str:
+    """Species-aware anatomy — never force four legs on humans/bipeds."""
+    s = str(subject or "").strip().lower()
+    human = {
+        "human", "boy", "girl", "man", "woman", "child", "kid", "person",
+        "baby", "lady", "gentleman", "prince", "princess", "king", "queen",
+        "hero", "heroine", "elderly",
+    }
+    insect = {"ant", "bee", "insect", "spider"}
+    avian = {"bird", "crow", "eagle", "butterfly"}
+    no_quad = insect | avian | {
+        "fish", "snake", "worm",
+    }
+    if s in human:
+        return "two arms, two legs, expressive face, correct anatomy"
+    if s in insect:
+        return "six legs, correct anatomy"
+    if s in avian:
+        return "two legs, wings, correct anatomy"
+    if s in no_quad or s in ("character", ""):
+        return "correct anatomy"
+    return "four legs, one tail, correct anatomy"
+
+
 def build_reference_portrait_prompt(char, video_style="3D pixar"):
-    """Short Turbo-safe portrait. Anatomy cues reduce extra-limb mush."""
+    """Portrait prompt with enough appearance words for color/outfit/face detail."""
     species = str(char.get("species") or char.get("type") or "").strip().lower()
     name = str(char.get("name") or "").strip()
     subject = species if species and species != "character" else (name or "character")
     # Prefer English subject token; drop Devanagari names from the positive prompt
     if any("\u0900" <= ch <= "\u097F" for ch in subject):
         subject = species if species and species != "character" else "character"
-    appearance = str(char.get("appearance") or "").strip()
+    appearance = str(char.get("appearance") or char.get("description") or "").strip()
     appearance = re.sub(r"[\u0900-\u097F]+", " ", appearance)
-    appearance = " ".join(appearance.split()[:8])
+    # Keep detailing (colors, clothes, face) — Compel handles length on Kaggle
+    appearance = " ".join(appearance.split()[:32])
     style = str(video_style or "3D pixar").strip().split(",")[0].strip()
     if style.lower() in ("2d cartoon", "cartoon", "2d"):
         style = "3D pixar style"
-    no_quad = {
-        "ant", "bee", "bird", "crow", "eagle", "fish", "snake",
-        "worm", "butterfly", "spider", "insect",
-    }
-    if subject in ("ant", "bee", "insect", "spider"):
-        anatomy = "six legs, correct anatomy"
-    elif subject in ("bird", "crow", "eagle", "butterfly"):
-        anatomy = "two legs, wings, correct anatomy"
-    elif subject in no_quad:
-        anatomy = "correct anatomy"
-    else:
-        anatomy = "four legs, one tail, correct anatomy"
+    anatomy = _portrait_anatomy(subject)
     bits = [
         f"one {subject}",
         "solo",
@@ -198,7 +212,7 @@ def build_reference_portrait_prompt(char, video_style="3D pixar"):
         anatomy,
         "white background",
         style,
-        "clean simple design",
+        "detailed design, sharp features",
     ]
     if appearance:
         bits.append(appearance)
