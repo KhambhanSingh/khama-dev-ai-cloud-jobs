@@ -447,11 +447,12 @@ def process_pipeline_image_job(job_data):
             if not core or core in stop:
                 continue
             traits.append(w.strip(".,;:!\"'()[]{}"))
-        traits = traits[:24]
+        traits = traits[:16]
         appearance = " ".join(traits)
+        # Turbo works best with short, non-conflicting prompts (no 2D+3D clash)
         ref_prompt = (
-            f"exactly one {subject}, solo, centered, full body, "
-            f"white background, cartoon"
+            f"one {subject}, solo, centered, full body, four legs, "
+            f"one tail, white background, 3D pixar style, clean design"
         )
         if appearance:
             ref_prompt = f"{ref_prompt}, {appearance}"
@@ -462,14 +463,14 @@ def process_pipeline_image_job(job_data):
             "species": subject,
             "appearance": appearance or f"stylized {subject}",
             "referencePrompt": ref_prompt,
-            "videoStyle": "2D cartoon",
+            "videoStyle": "3D pixar",
         }
-        gen_w = gen_h = 1024
+        # Native Turbo size; generate_reference_image upscales to width/height
+        gen_w = gen_h = 512
         seed = sum(ord(c) for c in str(record_id)) % 100000
-        # Dark animals (crow) create many similar high-edge cells — raise sheet bar
-        # Uniform-colour animals (elephant/ant) trip edge-cell clone heuristics
+        # Uniform-colour animals trip edge-cell clone heuristics
         animal_qa = {"min_face_cells": 20, "min_clone_matches": 16}
-        print(f"🖼️  Character portrait via generate_reference_image ({gen_w}x{gen_h})")
+        print(f"🖼️  Character portrait via generate_reference_image ({gen_w}x{gen_h}→upscale)")
         print(f"   prompt: {ref_prompt}  (words={len(ref_prompt.split())})")
         try:
             generate_reference_image(
@@ -477,10 +478,10 @@ def process_pipeline_image_job(job_data):
                 char,
                 gen_w,
                 gen_h,
-                width or gen_w,
-                height or gen_h,
+                width or 1024,
+                height or 1024,
                 out,
-                video_style="2D cartoon",
+                video_style="3D pixar",
                 negative_prompt=REFERENCE_NEGATIVE_PROMPT,
                 seed=seed,
                 validate_kwargs=animal_qa,
@@ -522,14 +523,14 @@ def process_pipeline_image_job(job_data):
     gen_h = max(512, (gen_h // 8) * 8)
 
     init_image = None
-    strength = 0.85
+    strength = 1.0  # Turbo txt2img-like
     if ref_urls:
         ref_path = os.path.join(work, "ref0.png")
         print(f"⬇️  Downloading reference: {ref_urls[0][:120]}")
         urllib.request.urlretrieve(ref_urls[0], ref_path)
         if os.path.isfile(ref_path) and os.path.getsize(ref_path) > 500:
             init_image = Image.open(ref_path).convert("RGB")
-            strength = 0.55
+            strength = 0.5  # Turbo img2img: steps*strength >= 1
 
     print(f"🖼️  Generating scene_still ({gen_w}x{gen_h})…")
     print(f"   prompt head: {prompt[:160]}")
@@ -540,8 +541,8 @@ def process_pipeline_image_job(job_data):
         gen_h,
         init_image=init_image,
         strength=strength,
-        steps=6,
-        guidance=1.5,
+        steps=4,
+        guidance=0.0,  # SDXL-Turbo official: CFG off
         negative_prompt=SCENE_NEGATIVE_PROMPT,
     )
     if width != gen_w or height != gen_h:
