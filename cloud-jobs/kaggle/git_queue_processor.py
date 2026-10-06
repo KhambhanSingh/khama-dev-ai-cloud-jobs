@@ -830,26 +830,61 @@ def process_pipeline_image_batch_job(job_data):
 
                 init_image = None
                 strength = 1.0
-                ref_urls = list(item.get("character_ref_urls") or [])
+                ref_urls = [
+                    u
+                    for u in list(item.get("character_ref_urls") or [])
+                    if str(u).startswith("http")
+                ]
                 use_prev = bool(item.get("use_previous_scene", True))
+                species_bits = []
+                for sp in list(item.get("character_species") or []):
+                    if isinstance(sp, dict):
+                        s = str(sp.get("species") or "").strip().lower()
+                        n = str(sp.get("name") or "").strip()
+                        if s:
+                            species_bits.append(
+                                f"{s} named {n}" if n else s
+                            )
+                if species_bits and "CAST:" not in prompt:
+                    prompt = f"CAST: {', '.join(species_bits)}. {prompt}"
 
-                if use_prev and prev_scene_path and os.path.isfile(prev_scene_path):
-                    init_image = Image.open(prev_scene_path).convert("RGB")
-                    strength = 0.55
-                elif ref_urls:
+                # Identity lock: character portrait refs (uploaded as https)
+                char_init = None
+                if ref_urls:
                     ref_path = os.path.join(work, f"ref_{idx}.png")
-                    urllib.request.urlretrieve(ref_urls[0], ref_path)
-                    if os.path.isfile(ref_path) and os.path.getsize(ref_path) > 500:
-                        init_image = Image.open(ref_path).convert("RGB")
-                        strength = 0.5
+                    try:
+                        urllib.request.urlretrieve(ref_urls[0], ref_path)
+                        if os.path.isfile(ref_path) and os.path.getsize(ref_path) > 500:
+                            char_init = Image.open(ref_path).convert("RGB")
+                    except Exception as ref_err:
+                        print(f"   ⚠️  char ref download failed: {ref_err}")
+
+                if char_init is not None and (
+                    not use_prev
+                    or not prev_scene_path
+                    or not os.path.isfile(prev_scene_path)
+                ):
+                    # Scene 1 / no continuity: reshape portrait → scene
+                    init_image = char_init
+                    strength = 0.72
+                elif use_prev and prev_scene_path and os.path.isfile(prev_scene_path):
+                    # Continuity from prior scene; higher denoise so action can change
+                    init_image = Image.open(prev_scene_path).convert("RGB")
+                    strength = 0.68
+                elif char_init is not None:
+                    init_image = char_init
+                    strength = 0.72
 
                 # #region agent log
                 print(
                     f'   [debug:5928f0] batch_scene_gen '
-                    f'{{"hypothesisId":"H3","scene":{item.get("scene_number")},'
-                    f'"words":{len(prompt.split())},'
+                    f'{{"hypothesisId":"H-local-refs","scene":{item.get("scene_number")},'
+                    f'"words":{len(prompt.split())},"refCount":{len(ref_urls)},'
+                    f'"usedCharRef":{str(char_init is not None and init_image is char_init).lower()},'
+                    f'"usedPrev":{str(bool(prev_scene_path and init_image is not None and char_init is not init_image)).lower()},'
+                    f'"strength":{strength},'
                     f'"hasLoc":{str("location" in prompt.lower() or bool(item.get("location"))).lower()},'
-                    f'"hasAction":{str(bool(item.get("key_action")) or "visual action" in prompt.lower()).lower()},'
+                    f'"hasAction":{str(bool(item.get("key_action")) or "key action" in prompt.lower()).lower()},'
                     f'"head":{json.dumps(prompt[:160])}}}'
                 )
                 # #endregion
