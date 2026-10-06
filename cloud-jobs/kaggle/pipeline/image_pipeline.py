@@ -20,6 +20,7 @@ from .prompt_sanitize import (
     is_english_prompt_text,
     contains_devanagari,
 )
+from .compel_encode import USE_COMPEL, encode_sdxl_prompts
 
 # One img2img pipeline in VRAM (built from txt2img components once).
 _IMG2IMG_PIPE = None
@@ -384,7 +385,12 @@ def _build_scene_prompt_for_attempt(
     attempt=1,
     pipe=None,
 ):
-    """Story event → action → characters → environment → camera. Rebuilt each retry."""
+    """
+    CHARACTER + ACTION + ENVIRONMENT + CAMERA + STYLE.
+
+    With Compel (default), keep full segments — do not CLIP-trim to 77 tokens.
+    Without Compel, fall back to short clipped assembly.
+    """
     chars = list(render_chars or [])[:2]
     if attempt >= 2:
         chars = chars[:1]
@@ -395,8 +401,16 @@ def _build_scene_prompt_for_attempt(
     identity = _sanitize_prompt_part(_scene_identity_block(chars, beat=beat))
     solo = _solo_composition_hint(len(chars))
 
-    env_short = _sanitize_prompt_part(str(environment or "")[:50])
-    cam = _sanitize_prompt_part(str(camera_kw or "medium shot")[:25])
+    long_mode = USE_COMPEL
+    env_lim = 120 if long_mode else 50
+    cam_lim = 60 if long_mode else 25
+    event_lim = 200 if long_mode else (80 if attempt >= 2 else 100)
+    action_lim = 120 if long_mode else 60
+    identity_lim = 180 if long_mode else 90
+    props_lim = 80 if long_mode else 40
+
+    env_short = _sanitize_prompt_part(str(environment or "")[:env_lim])
+    cam = _sanitize_prompt_part(str(camera_kw or "medium shot")[:cam_lim])
     props = ", ".join(
         _sanitize_prompt_part(p)
         for p in (props_in_frame or [])[:2]
@@ -419,25 +433,25 @@ def _build_scene_prompt_for_attempt(
     if attempt >= 2:
         parts.append("simple composition, one clear subject")
 
-    parts.append(_sanitize_prompt_part(style))
-    parts.append(event_lead[:80] if attempt >= 2 else event_lead[:100])
-
+    # Ordered for embedding priority: subject/action first, style last
+    parts.append(event_lead[:event_lim])
     if action_bit and attempt == 1:
-        parts.append(action_bit[:60])
-
+        parts.append(action_bit[:action_lim])
     if identity and attempt == 1:
-        parts.append(identity[:90])
-
+        parts.append(identity[:identity_lim])
     if env_short:
         parts.append(f"in {env_short}")
-
     if props and attempt == 1:
-        parts.append(f"with {props[:40]}")
-
+        parts.append(f"with {props[:props_lim]}")
+    if visual and long_mode and attempt == 1:
+        parts.append(visual[:160])
     parts.append(solo)
     parts.append(cam)
+    parts.append(_sanitize_prompt_part(style))
 
     raw = ", ".join(p for p in parts if p)
+    if long_mode:
+        return raw
     return _clip_trim(raw, pipe=pipe)
 
 
@@ -579,32 +593,61 @@ def _run_generation(
     seed=None,
     max_prompt_words=0,
 ):
+    """
+    Run SDXL img2img. Prefer Compel long-prompt embeddings so CLIP's 77-token
+    hard truncate does not drop character / action / environment / camera.
+    """
     steps = steps or SCENE_GEN_STEPS
+    neg = negative_prompt or SCENE_NEGATIVE_PROMPT
     if max_prompt_words and max_prompt_words > 0:
         prompt = _trim_prompt(prompt, max_words=max_prompt_words)
-    else:
-        prompt = _clip_trim(prompt, pipe=pipe)
-    neg = _clip_trim(negative_prompt or SCENE_NEGATIVE_PROMPT, pipe=pipe)
+
     generator = _make_generator(seed)
+    init = None
+    use_strength = strength
+    if init_image is not None:
+        init = init_image.convert("RGB").resize((gen_w, gen_h))
+    else:
+        init = _noise_init(gen_w, gen_h)
+        use_strength = 0.85
+
+    embeds = None
+    if USE_COMPEL and not (max_prompt_words and max_prompt_words > 0):
+        embeds = encode_sdxl_prompts(pipe, prompt, neg)
+        if embeds:
+            print(
+                f"   Compel embeds: words={embeds['prompt_len_words']} "
+                f"clip_tokens≈{embeds['token_est']} (no 77-trim)"
+            )
+
     with torch.inference_mode():
-        if init_image is not None:
-            init = init_image.convert("RGB").resize((gen_w, gen_h))
+        if embeds:
             out = pipe(
-                prompt=prompt,
-                negative_prompt=neg,
+                prompt_embeds=embeds["prompt_embeds"],
+                pooled_prompt_embeds=embeds["pooled_prompt_embeds"],
+                negative_prompt_embeds=embeds["negative_prompt_embeds"],
+                negative_pooled_prompt_embeds=embeds["negative_pooled_prompt_embeds"],
                 image=init,
-                strength=strength,
+                strength=use_strength,
                 num_inference_steps=steps,
                 guidance_scale=guidance,
                 generator=generator,
             )
         else:
-            init = _noise_init(gen_w, gen_h)
+            # Legacy fallback: CLIP-trim to 77 tokens
+            prompt_t = _clip_trim(prompt, pipe=pipe)
+            neg_t = _clip_trim(neg, pipe=pipe)
+            tok_n = _clip_token_count(prompt, pipe=pipe)
+            if tok_n > CLIP_MAX_TOKENS:
+                print(
+                    f"   ⚠️  CLIP trim fallback: {tok_n}→≤{CLIP_MAX_TOKENS} tokens "
+                    f"(install compel to keep full prompt)"
+                )
             out = pipe(
-                prompt=prompt,
-                negative_prompt=neg,
+                prompt=prompt_t,
+                negative_prompt=neg_t,
                 image=init,
-                strength=0.85,
+                strength=use_strength,
                 num_inference_steps=steps,
                 guidance_scale=guidance,
                 generator=generator,
@@ -709,14 +752,18 @@ def generate_reference_image(
     qa = dict(validate_kwargs or {})
     last_err = None
     for attempt in range(1, 4):
-        # Attempt 3: ultra-minimal prompt under CLIP 77 for stubborn clone sheets
+        # Attempt 3: ultra-minimal prompt for stubborn clone sheets
         if attempt == 3:
             species = str(char.get("species") or char.get("name") or "character").strip()
             if any("\u0900" <= ch <= "\u097F" for ch in species):
                 species = "character"
             base = f"exactly one {species}, solo, white background, cartoon"
         tail = recovery_tails[min(attempt - 1, len(recovery_tails) - 1)]
-        ref_prompt = _clip_trim(f"{base}{tail}", pipe=pipe, max_tokens=70)
+        # Compel path keeps full text; legacy still trims
+        if USE_COMPEL:
+            ref_prompt = f"{base}{tail}".strip()
+        else:
+            ref_prompt = _clip_trim(f"{base}{tail}", pipe=pipe, max_tokens=70)
         try:
             steps = SCENE_GEN_STEPS if attempt == 1 else SCENE_GEN_STEPS_RETRY
             attempt_seed = (seed + attempt * 7919) if seed is not None else None
