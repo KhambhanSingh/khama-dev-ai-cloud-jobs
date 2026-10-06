@@ -105,11 +105,55 @@ def strip_notebook_magic(text):
         return "\n".join(lines[1:]) + ("\n" if text.endswith("\n") else "")
     return text
 
-def install_workers_from_repo():
-    """Copy cloud-jobs/kaggle/*.py and pipeline/ to runtime dir (strip %%writefile)."""
+_LAST_INSTALLED_HEAD = None
+_DEPS_READY = False
+_VG_MODULE = None
+
+
+def _git_head():
+    r = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        capture_output=True,
+        text=True,
+    )
+    if r.returncode != 0:
+        return None
+    return (r.stdout or "").strip() or None
+
+
+def _write_if_changed(dest, body):
+    """Write file only when content differs — avoids needless churn."""
+    try:
+        if os.path.isfile(dest):
+            with open(dest, "r", encoding="utf-8") as f:
+                if f.read() == body:
+                    return False
+    except OSError:
+        pass
+    with open(dest, "w", encoding="utf-8") as f:
+        f.write(body)
+    return True
+
+
+def install_workers_from_repo(force=False):
+    """Copy cloud-jobs/kaggle/*.py and pipeline/ to runtime (skip if HEAD unchanged)."""
+    global _LAST_INSTALLED_HEAD
     runtime = worker_runtime_dir()
     os.makedirs(runtime, exist_ok=True)
+    head = _git_head()
+    if (
+        not force
+        and head
+        and head == _LAST_INSTALLED_HEAD
+        and os.path.isfile(os.path.join(runtime, "git_queue_processor.py"))
+    ):
+        print("📥 Workers unchanged (same HEAD) — skip copy")
+        if runtime not in sys.path:
+            sys.path.insert(0, runtime)
+        return 0
+
     installed = 0
+    changed = 0
 
     for name in WORKER_NAMES + WORKER_DATA_FILES:
         src = os.path.join(WORKER_REPO_DIR, name)
@@ -120,10 +164,10 @@ def install_workers_from_repo():
             raw = f.read()
         body = strip_notebook_magic(raw) if name.endswith(".py") else raw
         dest = os.path.join(runtime, name)
-        with open(dest, "w", encoding="utf-8") as f:
-            f.write(body)
+        if _write_if_changed(dest, body):
+            changed += 1
+            print(f"📥 Installed worker → {dest}")
         installed += 1
-        print(f"📥 Installed worker → {dest}")
 
     pipeline_src = os.path.join(WORKER_REPO_DIR, "pipeline")
     pipeline_dest = os.path.join(runtime, "pipeline")
@@ -141,14 +185,24 @@ def install_workers_from_repo():
                 raw = f.read()
             body = strip_notebook_magic(raw)
             dest = os.path.join(pipeline_dest, fname)
-            with open(dest, "w", encoding="utf-8") as f:
-                f.write(body)
+            if _write_if_changed(dest, body):
+                changed += 1
+                print(f"📥 Installed pipeline → {dest}")
             installed += 1
-            print(f"📥 Installed pipeline → {dest}")
 
     if runtime not in sys.path:
         sys.path.insert(0, runtime)
-    return installed > 0
+    if head:
+        _LAST_INSTALLED_HEAD = head
+    if changed == 0:
+        print("📥 Workers already up to date")
+    else:
+        # Hot-reload pipeline code only when files actually changed
+        for name in list(sys.modules):
+            if name == "pipeline" or name.startswith("pipeline."):
+                del sys.modules[name]
+        print(f"🔄 Reloaded pipeline modules ({changed} file(s) updated)")
+    return changed
 
 # ==================== DEPENDENCIES (before video_generator import) ====================
 def _setup_kaggle_import_path():
@@ -158,21 +212,31 @@ def _setup_kaggle_import_path():
         if p and os.path.isdir(p) and p not in sys.path:
             sys.path.insert(0, p)
 
-def _purge_import_caches():
-    roots = (
-        "diffusers", "accelerate", "video_generator_v2", "kaggle_deps", "pipeline",
-    )
+def _purge_import_caches(heavy=False):
+    """Drop import caches only after pip install. Never drop pipeline while GPU pipe is warm."""
+    roots = ("kaggle_deps",)
+    if heavy:
+        # After real pip changes — reload ML stack. Keep pipeline warm otherwise.
+        roots = ("diffusers", "accelerate", "video_generator_v2", "kaggle_deps")
     for name in list(sys.modules):
         if name.split(".")[0] in roots:
             del sys.modules[name]
 
+
 def ensure_deps_before_import():
-    """Pin ML stack before importing video_generator_v2 (skip if already correct)."""
+    """Pin ML stack once per session (skip repeated SDXL import checks)."""
+    global _DEPS_READY
+    if _DEPS_READY:
+        print("✅ deps cached (skip re-check)")
+        return True
+
     _setup_kaggle_import_path()
     from kaggle_deps import ensure_pinned_deps
 
     if ensure_pinned_deps(force=False):
-        _purge_import_caches()
+        # Do NOT purge pipeline/image_pipeline — that forces SDXL reload every poll.
+        _purge_import_caches(heavy=False)
+        _DEPS_READY = True
         return True
 
     print(
@@ -225,26 +289,54 @@ def git_init_or_clone():
         return False
 
 def git_pull():
+    """Fetch + hard reset only when remote moved (avoids empty-poll thrash)."""
     print("\n🔄 Git pull...")
+    t0 = time.time()
     try:
-        _run(['git', 'fetch', 'origin', GIT_BRANCH])
-        _run(['git', 'reset', '--hard', f'origin/{GIT_BRANCH}'])
+        before = _git_head()
+        _run(["git", "fetch", "origin", GIT_BRANCH, "--prune"])
+        r = subprocess.run(
+            ["git", "rev-parse", f"origin/{GIT_BRANCH}"],
+            capture_output=True,
+            text=True,
+        )
+        remote = (r.stdout or "").strip() if r.returncode == 0 else None
+        if before and remote and before == remote:
+            for _d in [QUEUE_DIR, VIDEO_DIR, RESULT_DIR, BACKUP_DIR]:
+                os.makedirs(_d, exist_ok=True)
+            print(f"✅ Already up to date ({time.time() - t0:.1f}s)")
+            return False  # no changes
+
+        _run(["git", "reset", "--hard", f"origin/{GIT_BRANCH}"])
         for _d in [QUEUE_DIR, VIDEO_DIR, RESULT_DIR, BACKUP_DIR]:
             os.makedirs(_d, exist_ok=True)
-        print("✅ Pull successful!")
-        return True
+        print(f"✅ Pull successful ({time.time() - t0:.1f}s)")
+        return True  # HEAD changed
     except subprocess.CalledProcessError as e:
         print(f"❌ Pull failed: {e.stderr}")
         return False
 
+
 def git_push(message):
+    """Commit only queue/result/images/failed — skip work/backup bloat."""
     print(f"\n📤 Git push: {message}")
+    t0 = time.time()
     try:
-        _run(['git', 'add', BASE_DIR])
+        # Stage only what Next.js needs — not work/ or local_backup/
+        for rel in (
+            QUEUE_DIR,
+            RESULT_DIR,
+            os.path.join(BASE_DIR, "images"),
+            VIDEO_DIR,
+            os.path.join(BASE_DIR, "failed"),
+        ):
+            if os.path.isdir(rel):
+                _run(["git", "add", "-A", "--", rel], check=False)
 
         r = subprocess.run(
-            ['git', 'commit', '-m', message],
-            capture_output=True, text=True
+            ["git", "commit", "-m", message],
+            capture_output=True,
+            text=True,
         )
         if r.returncode != 0:
             if "nothing to commit" in (r.stdout + r.stderr):
@@ -252,17 +344,17 @@ def git_push(message):
                 return True
             print(f"⚠️  Commit: {r.stderr[:100]}")
 
-        # ✅ Explicit auth URL + branch name
         auth_url = get_auth_url()
         push_r = subprocess.run(
-            ['git', 'push', auth_url, f'HEAD:refs/heads/{GIT_BRANCH}'],
-            capture_output=True, text=True
+            ["git", "push", auth_url, f"HEAD:refs/heads/{GIT_BRANCH}"],
+            capture_output=True,
+            text=True,
         )
         if push_r.returncode != 0:
             print(f"❌ Push failed: {push_r.stderr[:300]}")
             return False
 
-        print("✅ Push successful!")
+        print(f"✅ Push successful ({time.time() - t0:.1f}s)")
         return True
     except subprocess.CalledProcessError as e:
         print(f"❌ Push error: {e.stderr[:200]}")
@@ -449,10 +541,24 @@ def process_pipeline_image_job(job_data):
             traits.append(w.strip(".,;:!\"'()[]{}"))
         traits = traits[:16]
         appearance = " ".join(traits)
+        # Anatomy cue by species — "four legs" on ants/birds makes Turbo mush limbs
+        no_quad = {
+            "ant", "bee", "bird", "crow", "eagle", "fish", "snake",
+            "worm", "butterfly", "spider", "insect",
+        }
+        anatomy = (
+            "six legs, correct anatomy"
+            if subject in no_quad and subject in ("ant", "bee", "insect", "spider")
+            else (
+                "two legs, wings, correct anatomy"
+                if subject in ("bird", "crow", "eagle", "butterfly")
+                else "four legs, one tail, correct anatomy"
+            )
+        )
         # Turbo works best with short, non-conflicting prompts (no 2D+3D clash)
         ref_prompt = (
-            f"one {subject}, solo, centered, full body, four legs, "
-            f"one tail, white background, 3D pixar style, clean design"
+            f"one {subject}, solo, centered, full body, {anatomy}, "
+            f"white background, 3D pixar style, clean design"
         )
         if appearance:
             ref_prompt = f"{ref_prompt}, {appearance}"
@@ -557,12 +663,20 @@ def process_pipeline_image_job(job_data):
 _vg_import_ok = False
 
 def process_queue_once():
-    global _vg_import_ok
-    _vg_import_ok = False
+    global _vg_import_ok, _VG_MODULE, _LAST_INSTALLED_HEAD
 
-    git_pull()
-    install_workers_from_repo()
+    pull_changed = bool(git_pull())
+    # Copy workers only on first run or when remote HEAD moved
+    install_workers_from_repo(
+        force=pull_changed or _LAST_INSTALLED_HEAD is None
+    )
 
+    pending = get_pending_jobs()
+    if not pending:
+        print("📭 Queue empty")
+        return
+
+    # Heavy path only when there is work (skip deps/SDXL on empty polls)
     runtime = worker_runtime_dir()
     if runtime not in sys.path:
         sys.path.insert(0, runtime)
@@ -571,23 +685,23 @@ def process_queue_once():
         print("❌ No jobs processed — fix dependencies first.\n")
         return
 
-    vg = None
-    try:
-        import video_generator_v2 as vg
+    vg = _VG_MODULE
+    if vg is None:
+        try:
+            import video_generator_v2 as vg
+            _VG_MODULE = vg
+            _vg_import_ok = True
+            print("✅ video_generator_v2 imported\n")
+        except ImportError as e:
+            print(f"⚠️  video_generator_v2 import failed: {e}")
+            print("   pipeline_image / scene_video still run; full_video skipped.")
+        except SystemExit as e:
+            msg = str(e) or ""
+            print(f"⚠️  video_generator_v2: {msg}")
+            print("   pipeline_image / scene_video still run; full_video skipped.")
+    else:
         _vg_import_ok = True
-        print("✅ video_generator_v2 imported\n")
-    except ImportError as e:
-        print(f"⚠️  video_generator_v2 import failed: {e}")
-        print("   pipeline_image / scene_video still run; full_video skipped.")
-    except SystemExit as e:
-        msg = str(e) or ""
-        print(f"⚠️  video_generator_v2: {msg}")
-        print("   pipeline_image / scene_video still run; full_video skipped.")
-
-    pending = get_pending_jobs()
-    if not pending:
-        print("📭 Queue empty")
-        return
+        print("✅ video_generator_v2 cached\n")
 
     print(f"\n📦 {len(pending)} job(s) मिली")
     print("="*60 + "\n")
@@ -688,22 +802,28 @@ def run_once():
     print("   python cloud-jobs/kaggle/git_queue_processor.py continuous 20")
 
 def run_continuous(interval=20):
+    # Empty-queue polls are cheap now; 15s default is fine. Cap stays 300.
     print("\n" + "="*60)
     print(f"🚀 ALWAYS-ON WORKER — polls every {interval}s")
     print("   Leave this cell RUNNING. Do not re-run manually.")
     print("   Stop: interrupt/stop the notebook cell.")
+    print("   Fast path: empty queue skips deps/SDXL reload.")
     print("="*60 + "\n")
     i = 0
     try:
         while True:
             i += 1
             print(f"\n{'='*60}\n🔄 #{i} — {datetime.now().strftime('%H:%M:%S')}\n{'='*60}")
+            t0 = time.time()
             try:
                 process_queue_once()
             except Exception as e:
                 # Keep the loop alive — next poll retries after pull
                 print(f"⚠️  Poll error (will retry): {e}")
-            print(f"\n⏳ Next poll in {interval}s… (cell stays alive)")
+            print(
+                f"\n⏳ Next poll in {interval}s… "
+                f"(last cycle {time.time() - t0:.1f}s, cell stays alive)"
+            )
             time.sleep(interval)
     except KeyboardInterrupt:
         print("\n⏹️  Stopped.")
