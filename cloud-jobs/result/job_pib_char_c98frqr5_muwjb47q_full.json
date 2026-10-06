@@ -1,0 +1,30 @@
+{
+  "status": "DONE",
+  "recordId": "pib_char_c98frqr5_muwjb47q",
+  "results": [
+    {
+      "id": "js7cbrzekpf1kwwvvvdrp5wszh8fs62p",
+      "name": "हाथी",
+      "status": "done",
+      "imageUrl": "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/images/pib_char_c98frqr5_muwjb47q_char_js7cbrzekpf1kwwvvvdrp5wszh8fs62p.png"
+    },
+    {
+      "id": "js72ymbq5ey4w8685xrg61fhjx8frx3b",
+      "name": "चींटी",
+      "status": "done",
+      "imageUrl": "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/images/pib_char_c98frqr5_muwjb47q_char_js72ymbq5ey4w8685xrg61fhjx8frx3b.png"
+    },
+    {
+      "id": "js771c96hzxeq6ppck7bk06acd8fswtg",
+      "name": "हाथी",
+      "status": "done",
+      "imageUrl": "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/images/pib_char_c98frqr5_muwjb47q_char_js771c96hzxeq6ppck7bk06acd8fswtg.png"
+    },
+    {
+      "id": "js7cz982ch20q850d2cxh3zjc98frnf2",
+      "name": "हाथी",
+      "status": "done",
+      "imageUrl": "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/images/pib_char_c98frqr5_muwjb47q_char_js7cz982ch20q850d2cxh3zjc98frnf2.png"
+    }
+  ]
+}
