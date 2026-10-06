@@ -513,63 +513,65 @@ def process_pipeline_image_job(job_data):
         client = strip_forbidden_prompt_words(prompt)
         client = re.sub(r"[\u0900-\u097F]+", " ", client)
         client = re.sub(r"\b(no|not|without)\s+\w+", " ", client, flags=re.I)
-        stop = {
-            "exactly",
-            "one",
-            "solo",
-            "centered",
-            "full",
-            "body",
-            "white",
-            "background",
-            "studio",
-            "portrait",
-            "single",
-            "subject",
-            "only",
-            "front",
-            "view",
-            "cartoon",
-            "3d",
-            "pixar",
-            subject,
-        }
-        # Strip punctuation so "centered," / "background," still match stop words
-        traits = []
-        for w in client.split():
-            core = re.sub(r"[^\w\-]", "", w).lower()
-            if not core or core in stop:
-                continue
-            traits.append(w.strip(".,;:!\"'()[]{}"))
-        traits = traits[:16]
-        appearance = " ".join(traits)
-        # Anatomy cue by species — "four legs" on ants/birds makes Turbo mush limbs
-        no_quad = {
-            "ant", "bee", "bird", "crow", "eagle", "fish", "snake",
-            "worm", "butterfly", "spider", "insect",
-        }
-        anatomy = (
-            "six legs, correct anatomy"
-            if subject in no_quad and subject in ("ant", "bee", "insect", "spider")
-            else (
-                "two legs, wings, correct anatomy"
-                if subject in ("bird", "crow", "eagle", "butterfly")
-                else "four legs, one tail, correct anatomy"
-            )
-        )
-        # Turbo works best with short, non-conflicting prompts (no 2D+3D clash)
-        ref_prompt = (
+        client = re.sub(r"\s+", " ", client).strip()
+        description = str(job_data.get("description") or "").strip()
+        description = re.sub(r"[\u0900-\u097F]+", " ", description)
+        description = re.sub(r"\s+", " ", description).strip()
+
+        try:
+            from pipeline.prompt_sanitize import _portrait_anatomy
+
+            anatomy = _portrait_anatomy(subject)
+        except Exception:
+            anatomy = "correct anatomy"
+
+        # Keep detailing: use full cleaned client prompt (was traits[:16] — lost colors/outfit)
+        # Cap ~75 words — Compel still encodes; Turbo quality collapses past ~90
+        words = client.split()
+        if len(words) > 75:
+            client = " ".join(words[:75])
+        ref_prompt = client or (
             f"one {subject}, solo, centered, full body, {anatomy}, "
-            f"white background, 3D pixar style, clean design"
+            f"white background, 3D pixar style, detailed design"
         )
-        if appearance:
-            ref_prompt = f"{ref_prompt}, {appearance}"
+        if anatomy and anatomy.split(",")[0].strip().lower() not in ref_prompt.lower():
+            ref_prompt = f"{ref_prompt}, {anatomy}"
+        if description:
+            # Append description traits not already present
+            extra = []
+            for w in description.split()[:28]:
+                if w.lower() not in ref_prompt.lower():
+                    extra.append(w)
+            if extra:
+                ref_prompt = f"{ref_prompt}, {' '.join(extra)}"
+                ref_prompt = " ".join(ref_prompt.split()[:85])
+
+        appearance = description or " ".join(
+            w
+            for w in client.split()
+            if w.lower()
+            not in {
+                "exactly",
+                "one",
+                "solo",
+                "centered",
+                "full",
+                "body",
+                "white",
+                "background",
+                "3d",
+                "pixar",
+                "style",
+                subject,
+            }
+        )[:200]
 
         char = {
             "id": str(record_id),
-            "name": subject,
+            "name": str(job_data.get("name") or subject),
             "species": subject,
             "appearance": appearance or f"stylized {subject}",
+            "description": description,
             "referencePrompt": ref_prompt,
             "videoStyle": "3D pixar",
         }
@@ -580,6 +582,15 @@ def process_pipeline_image_job(job_data):
         animal_qa = {"min_face_cells": 20, "min_clone_matches": 16}
         print(f"🖼️  Character portrait via generate_reference_image ({gen_w}x{gen_h}→upscale)")
         print(f"   prompt: {ref_prompt}  (words={len(ref_prompt.split())})")
+        # #region agent log
+        print(
+            f'   [debug:5928f0] char_detail '
+            f'{{"hypothesisId":"H-strip","subject":{json.dumps(subject)},'
+            f'"clientWords":{len(client.split())},"refWords":{len(ref_prompt.split())},'
+            f'"descWords":{len(description.split())},"anatomy":{json.dumps(anatomy)},'
+            f'"head":{json.dumps(ref_prompt[:200])}}}'
+        )
+        # #endregion
         try:
             generate_reference_image(
                 pipe,
@@ -780,6 +791,8 @@ def process_pipeline_image_batch_job(job_data):
                     "kind": "character_sheet",
                     "prompt": item.get("prompt") or "",
                     "species": item.get("species") or "",
+                    "name": item.get("name") or "",
+                    "description": item.get("description") or "",
                     "width": int(item.get("width") or 1024),
                     "height": int(item.get("height") or 1024),
                     "referenceUrls": [],
