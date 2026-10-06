@@ -253,11 +253,36 @@ def _encode_with_dual(compel_pair, pos, neg):
     }
 
 
+def _token_len(pipe, text):
+    tok = getattr(pipe, "tokenizer", None)
+    if tok is None:
+        return len(str(text or "").split())
+    return len(tok.encode(str(text or ""), truncation=False))
+
+
+def _trim_to_tokens(pipe, text, max_tokens=70):
+    """Hard-trim text to ≤max_tokens (keeps Compel on a single 77-token chunk)."""
+    t = str(text or "").strip()
+    if not t:
+        return t
+    tok = getattr(pipe, "tokenizer", None)
+    if tok is None:
+        return " ".join(t.split()[:max_tokens])
+    ids = tok.encode(t, truncation=False)
+    # CLIP specials: bos/eos usually included — leave headroom
+    budget = max(8, int(max_tokens) - 2)
+    if len(ids) <= budget + 2:
+        return t
+    trimmed = tok.decode(ids[1 : budget + 1], skip_special_tokens=True)
+    return sanitize_for_compel(trimmed)
+
+
 def encode_sdxl_prompts(pipe, prompt, negative_prompt=""):
     """
     Returns dict of prompt_embeds / pooled / negative embeds, or None on failure.
 
-    Chunks prompts longer than 77 tokens via CompelForSDXL (or dual Compel).
+    Chunks long *positive* prompts via CompelForSDXL. Negatives are hard-trimmed
+    to ≤70 tokens so a long neg cannot force a 154-length pad (VRAM / OOM).
     """
     compel = get_compel(pipe)
     if compel is None:
@@ -267,6 +292,17 @@ def encode_sdxl_prompts(pipe, prompt, negative_prompt=""):
     neg = sanitize_for_compel(negative_prompt or "")
     if not pos:
         return None
+
+    # Long negatives pad BOTH sides to N×77 — trim neg, keep full positive.
+    neg_raw_tokens = _token_len(pipe, neg)
+    if neg_raw_tokens > 70:
+        neg = _trim_to_tokens(pipe, neg, max_tokens=68)
+        _debug_log(
+            "H-neg-trim",
+            "compel_encode.encode_sdxl_prompts",
+            "trimmed long negative prompt",
+            {"before": neg_raw_tokens, "after": _token_len(pipe, neg)},
+        )
 
     try:
         if _COMPEL_MODE == "CompelForSDXL":
@@ -283,11 +319,10 @@ def encode_sdxl_prompts(pipe, prompt, negative_prompt=""):
         else:
             result = _encode_with_dual(compel, pos, neg)
 
-        tok = getattr(pipe, "tokenizer", None)
-        token_est = (
-            len(tok.encode(pos, truncation=False)) if tok is not None else len(pos.split())
-        )
+        token_est = _token_len(pipe, pos)
+        neg_token_est = _token_len(pipe, neg)
         result["token_est"] = token_est
+        result["neg_token_est"] = neg_token_est
         result["prompt_len_words"] = len(pos.split())
         result["mode"] = _COMPEL_MODE
 
@@ -299,6 +334,7 @@ def encode_sdxl_prompts(pipe, prompt, negative_prompt=""):
                 "mode": _COMPEL_MODE,
                 "words": result["prompt_len_words"],
                 "token_est": token_est,
+                "neg_token_est": neg_token_est,
                 "embed_shape": list(result["prompt_embeds"].shape),
                 "neg_shape": list(result["negative_prompt_embeds"].shape),
                 "pooled_shape": list(result["pooled_prompt_embeds"].shape)
