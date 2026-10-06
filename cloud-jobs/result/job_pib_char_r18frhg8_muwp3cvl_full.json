@@ -1,0 +1,18 @@
+{
+  "status": "DONE",
+  "recordId": "pib_char_r18frhg8_muwp3cvl",
+  "results": [
+    {
+      "id": "js70cyp8m304z1zq96t5j4s7nn8fsrmj",
+      "name": "शेर",
+      "status": "done",
+      "imageUrl": "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/images/pib_char_r18frhg8_muwp3cvl_char_js70cyp8m304z1zq96t5j4s7nn8fsrmj.png"
+    },
+    {
+      "id": "js76cd3srd6cvkfhnynqzmjjgx8frr9q",
+      "name": "चूहा",
+      "status": "done",
+      "imageUrl": "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/images/pib_char_r18frhg8_muwp3cvl_char_js76cd3srd6cvkfhnynqzmjjgx8frr9q.png"
+    }
+  ]
+}
