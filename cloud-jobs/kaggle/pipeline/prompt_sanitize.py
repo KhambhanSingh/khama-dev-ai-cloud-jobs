@@ -178,12 +178,24 @@ def build_reference_portrait_prompt(char, video_style="3D pixar"):
     style = str(video_style or "3D pixar").strip().split(",")[0].strip()
     if style.lower() in ("2d cartoon", "cartoon", "2d"):
         style = "3D pixar style"
+    no_quad = {
+        "ant", "bee", "bird", "crow", "eagle", "fish", "snake",
+        "worm", "butterfly", "spider", "insect",
+    }
+    if subject in ("ant", "bee", "insect", "spider"):
+        anatomy = "six legs, correct anatomy"
+    elif subject in ("bird", "crow", "eagle", "butterfly"):
+        anatomy = "two legs, wings, correct anatomy"
+    elif subject in no_quad:
+        anatomy = "correct anatomy"
+    else:
+        anatomy = "four legs, one tail, correct anatomy"
     bits = [
         f"one {subject}",
         "solo",
         "centered",
         "full body",
-        "four legs" if subject not in ("bird", "crow", "snake", "fish") else "correct anatomy",
+        anatomy,
         "white background",
         style,
         "clean simple design",
