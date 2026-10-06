@@ -1,0 +1,18 @@
+{
+  "type": "pipeline_image",
+  "version": 1,
+  "recordId": "pim_nnxh8fsyzv_scene_6_muwll7ss",
+  "index": "full",
+  "kind": "scene_still",
+  "scriptId": "k17aa6yn9qpmz21q7hgwhsnnxh8fsyzv",
+  "prompt": "KEY ACTION: Chinku examining Sheru's paw.. LOCATION: Forest Floor next to Sheru. BACKGROUND: Sheru's large paw, Small pebbles, Dry twigs. TIME: Mid-morning. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: चूहा, mouse, mouse: Small grey fur, tiny body, pink nose, cu, ACTION: Peering closely, touching paw gently, HOLDING: Nothing. CHARACTER: शेर, lion, lion: Golden-brown fur, majestic mane, large body, ACTION: Holding paw still, HOLDING: Injured paw. STYLE: 3D Pixar style, bright soft lighting. SHOT: Close-up on Chinku and Sheru's paw, ANGLE: Low angle, CAMERA: Static. CONTINUITY: Highlights the size difference. EMPHASIZE MISSING ELEMENTS: action: Chinku examining Sheru's paw; story element: Sheru's paw is injured; location: Forest Floor. Show full location background and the key action clearly.",
+  "species": "",
+  "name": "scene_6",
+  "description": "",
+  "width": 1280,
+  "height": 720,
+  "referenceUrls": [
+    "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pim_nnxh8fsyzv_scene_6_muwll7ss_ref1.png",
+    "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pim_nnxh8fsyzv_scene_6_muwll7ss_ref2.png"
+  ]
+}
