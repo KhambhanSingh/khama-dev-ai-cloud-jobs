@@ -40,19 +40,16 @@ SCENE_TXT2IMG_STRENGTH = float(os.environ.get("KAGGLE_SCENE_TXT2IMG_STRENGTH", "
 # SDXL CLIP text encoder hard limit — longer prompts are silently truncated.
 CLIP_MAX_TOKENS = int(os.environ.get("KAGGLE_CLIP_MAX_TOKENS", "77"))
 
-# Compact negatives that fit inside the CLIP 77-token window.
+# Must stay ≤~70 CLIP tokens. Longer negatives force Compel to 2×77 (=154)
+# sequence length for BOTH pos and neg → VRAM spike / OOM on 15GB GPUs.
 SCENE_NEGATIVE_PROMPT = (
-    "duplicate characters, crowd, character sheet, clones, model sheet, sprite sheet, "
-    "multiple poses, white background, bad anatomy, deformed hands, extra limbs, "
-    "blurry, watermark, text, disney, frozen"
+    "crowd, character sheet, clones, model sheet, multiple poses, "
+    "extra limbs, bad anatomy, blurry, watermark, text, disney"
 )
 
 REFERENCE_NEGATIVE_PROMPT = (
-    "two animals, pair, duo, couple, second character, duplicate characters, "
-    "crowd, character sheet, model sheet, turnaround sheet, multiple poses, "
-    "sprite sheet, lineup, group, border, ornate frame, foliage, leaves, flowers, "
-    "wreath, branch, perched, tree, decorative border, clones, "
-    "bad anatomy, deformed hands, extra limbs, blurry, watermark, text"
+    "crowd, character sheet, clones, multiple animals, group, "
+    "model sheet, border, foliage, extra limbs, blurry, watermark, text"
 )
 
 DEFAULT_NEGATIVE_PROMPT = SCENE_NEGATIVE_PROMPT
@@ -615,46 +612,86 @@ def _run_generation(
     if USE_COMPEL and not (max_prompt_words and max_prompt_words > 0):
         embeds = encode_sdxl_prompts(pipe, prompt, neg)
         if embeds:
+            seq = int(embeds["prompt_embeds"].shape[1])
             print(
                 f"   Compel embeds ({embeds.get('mode', '?')}): "
                 f"words={embeds['prompt_len_words']} "
-                f"clip_tokens≈{embeds['token_est']} "
-                f"shape={tuple(embeds['prompt_embeds'].shape)} (no 77-trim)"
+                f"pos≈{embeds['token_est']} neg≈{embeds.get('neg_token_est', '?')} "
+                f"shape={tuple(embeds['prompt_embeds'].shape)} "
+                f"{'(2-chunk)' if seq > 80 else '(1-chunk)'}"
             )
-
-    with torch.inference_mode():
-        if embeds:
-            out = pipe(
-                prompt_embeds=embeds["prompt_embeds"],
-                pooled_prompt_embeds=embeds["pooled_prompt_embeds"],
-                negative_prompt_embeds=embeds["negative_prompt_embeds"],
-                negative_pooled_prompt_embeds=embeds["negative_pooled_prompt_embeds"],
-                image=init,
-                strength=use_strength,
-                num_inference_steps=steps,
-                guidance_scale=guidance,
-                generator=generator,
-            )
-        else:
-            # Legacy fallback: CLIP-trim to 77 tokens
-            prompt_t = _clip_trim(prompt, pipe=pipe)
-            neg_t = _clip_trim(neg, pipe=pipe)
-            tok_n = _clip_token_count(prompt, pipe=pipe)
-            if tok_n > CLIP_MAX_TOKENS:
+            # 154-length embeds double UNet cross-attn VRAM on 15GB cards
+            if seq > 80:
                 print(
-                    f"   ⚠️  CLIP trim fallback: {tok_n}→≤{CLIP_MAX_TOKENS} tokens "
-                    f"(install compel to keep full prompt)"
+                    f"   ⚠️  Compel seq={seq} (>77) — trimming neg and re-encoding"
                 )
+                embeds = encode_sdxl_prompts(
+                    pipe, prompt, _clip_trim(neg, pipe=pipe, max_tokens=68)
+                )
+
+    try:
+        with torch.inference_mode():
+            if embeds:
+                out = pipe(
+                    prompt_embeds=embeds["prompt_embeds"],
+                    pooled_prompt_embeds=embeds["pooled_prompt_embeds"],
+                    negative_prompt_embeds=embeds["negative_prompt_embeds"],
+                    negative_pooled_prompt_embeds=embeds[
+                        "negative_pooled_prompt_embeds"
+                    ],
+                    image=init,
+                    strength=use_strength,
+                    num_inference_steps=steps,
+                    guidance_scale=guidance,
+                    generator=generator,
+                )
+            else:
+                # Legacy fallback: CLIP-trim to 77 tokens
+                prompt_t = _clip_trim(prompt, pipe=pipe)
+                neg_t = _clip_trim(neg, pipe=pipe)
+                tok_n = _clip_token_count(prompt, pipe=pipe)
+                if tok_n > CLIP_MAX_TOKENS:
+                    print(
+                        f"   ⚠️  CLIP trim fallback: {tok_n}→≤{CLIP_MAX_TOKENS} tokens "
+                        f"(install compel to keep full prompt)"
+                    )
+                out = pipe(
+                    prompt=prompt_t,
+                    negative_prompt=neg_t,
+                    image=init,
+                    strength=use_strength,
+                    num_inference_steps=steps,
+                    guidance_scale=guidance,
+                    generator=generator,
+                )
+            image = out.images[0]
+    except torch.cuda.OutOfMemoryError:
+        clear_gpu_memory()
+        print("   ⚠️  CUDA OOM — retry with CLIP-trim (no long embeds)")
+        with torch.inference_mode():
             out = pipe(
-                prompt=prompt_t,
-                negative_prompt=neg_t,
+                prompt=_clip_trim(prompt, pipe=pipe, max_tokens=70),
+                negative_prompt=_clip_trim(neg, pipe=pipe, max_tokens=68),
                 image=init,
                 strength=use_strength,
-                num_inference_steps=steps,
+                num_inference_steps=max(2, int(steps or SCENE_GEN_STEPS)),
                 guidance_scale=guidance,
                 generator=generator,
             )
-        return out.images[0]
+            image = out.images[0]
+    finally:
+        # Drop embed tensors so the next portrait/job does not OOM
+        if embeds:
+            for k in (
+                "prompt_embeds",
+                "pooled_prompt_embeds",
+                "negative_prompt_embeds",
+                "negative_pooled_prompt_embeds",
+            ):
+                embeds[k] = None
+        embeds = None
+        clear_gpu_memory()
+    return image
 
 
 # Reference = ONE character portrait on a plain backdrop for identity locking in
@@ -791,6 +828,7 @@ def generate_reference_image(
             return out_path
         except Exception as e:
             last_err = e
+            clear_gpu_memory()
             # Keep final attempt file for relaxed QA fallback in the caller
             if attempt < 3 and os.path.isfile(out_path):
                 try:
@@ -802,6 +840,7 @@ def generate_reference_image(
                 message=f"ref gen attempt {attempt} failed: {e}",
                 level="ERROR",
             )
+    clear_gpu_memory()
     raise last_err
 
 
