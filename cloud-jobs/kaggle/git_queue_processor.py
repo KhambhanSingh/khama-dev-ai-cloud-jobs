@@ -619,9 +619,16 @@ def process_pipeline_image_job(job_data):
         return {"recordId": record_id, "image": out}
 
     # ——— Scene stills ———
+    # Keep VISUAL ACTION; only strip Devanagari (Hindi) tokens, not the whole beat
     prompt = strip_forbidden_prompt_words(prompt)
     prompt = re.sub(r"[\u0900-\u097F]+", " ", prompt)
     prompt = re.sub(r"\s+", " ", prompt).strip()
+    try:
+        from pipeline.image_pipeline import _action_first_prompt
+
+        prompt = _action_first_prompt(prompt)
+    except Exception:
+        pass
 
     gen_w = min(1280, max(768, width))
     gen_h = min(720, max(512, height))
@@ -639,7 +646,15 @@ def process_pipeline_image_job(job_data):
             strength = 0.5  # Turbo img2img: steps*strength >= 1
 
     print(f"🖼️  Generating scene_still ({gen_w}x{gen_h})…")
-    print(f"   prompt head: {prompt[:160]}")
+    print(f"   prompt head (action-first): {prompt[:200]}")
+    # #region agent log
+    print(
+        f'   [debug:5928f0] scene prompt '
+        f'{{"words":{len(prompt.split())},"hasVisualAction":'
+        f'{str("visual action" in prompt.lower()).lower()},'
+        f'"head":{json.dumps(prompt[:180])}}}'
+    )
+    # #endregion
     image = _run_generation(
         pipe,
         prompt,
