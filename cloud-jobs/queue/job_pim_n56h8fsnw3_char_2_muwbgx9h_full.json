@@ -1,0 +1,13 @@
+{
+  "type": "pipeline_image",
+  "version": 1,
+  "recordId": "pim_n56h8fsnw3_char_2_muwbgx9h",
+  "index": "full",
+  "kind": "character_sheet",
+  "scriptId": "k17ewevvw854wj65bbes85n56h8fsnw3",
+  "prompt": "exactly one ant, solo, centered, full body, white background, 3D pixar, Tiny red , diligent and quick, with small antennae and a determined expression.",
+  "species": "ant",
+  "width": 1024,
+  "height": 1024,
+  "referenceUrls": []
+}
