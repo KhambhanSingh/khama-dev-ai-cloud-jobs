@@ -1,0 +1,13 @@
+{
+  "type": "pipeline_image",
+  "version": 1,
+  "recordId": "pim_n56h8fsnw3_char_1_muwaqxdr",
+  "index": "full",
+  "kind": "character_sheet",
+  "scriptId": "k17ewevvw854wj65bbes85n56h8fsnw3",
+  "prompt": "exactly one elephant, solo, centered, full body, white background, 3D pixar, Large grey , with a friendly face, big ears, and a small red vest.",
+  "species": "elephant",
+  "width": 1024,
+  "height": 1024,
+  "referenceUrls": []
+}
