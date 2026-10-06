@@ -368,12 +368,14 @@ def github_raw_url(rel_path):
     rel = rel_path.lstrip("/").replace("\\", "/")
     return f"https://raw.githubusercontent.com/{owner}/{name}/{GIT_BRANCH}/{rel}"
 
-def write_result(record_id, status, video_url=None, image_url=None, error=None):
+def write_result(record_id, status, video_url=None, image_url=None, error=None, results=None):
     os.makedirs(RESULT_DIR, exist_ok=True)
     payload = {"status": status, "recordId": str(record_id)}
     if video_url: payload["videoUrl"] = video_url
     if image_url: payload["imageUrl"] = image_url
     if error:     payload["error"]    = str(error)[:4000]
+    if results is not None:
+        payload["results"] = results
     path = os.path.join(RESULT_DIR, f"job_{record_id}_full.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2, ensure_ascii=False)
@@ -674,6 +676,260 @@ def process_pipeline_image_job(job_data):
     return {"recordId": record_id, "image": out}
 
 
+def _load_batch_payload(job_data):
+    """Load characters/scenes batch JSON from repo path or URL."""
+    import urllib.request
+
+    path = str(job_data.get("batchJsonPath") or "").strip()
+    if path and os.path.isfile(path):
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    url = str(job_data.get("batchJsonUrl") or "").strip()
+    if url:
+        dest = os.path.join(
+            "cloud-jobs", "work", str(job_data.get("recordId") or "batch"), "batch.json"
+        )
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        urllib.request.urlretrieve(url, dest)
+        with open(dest, "r", encoding="utf-8") as f:
+            return json.load(f)
+    raise RuntimeError("pipeline_image_batch missing batchJsonPath/batchJsonUrl")
+
+
+def process_pipeline_image_batch_job(job_data):
+    """
+    ONE Kaggle run for all characters OR all scenes (type=pipeline_image_batch).
+    Loads batch JSON, keeps SDXL pipe warm, writes per-item images + results[].
+    """
+    import re
+    import urllib.request
+    from PIL import Image
+
+    record_id = job_data["recordId"]
+    kind = str(job_data.get("kind") or "").strip().lower()
+    payload = _load_batch_payload(job_data)
+    items = list(payload.get("items") or [])
+    if kind not in ("characters", "scenes"):
+        kind = str(payload.get("kind") or "scenes").strip().lower()
+
+    work = os.path.join("cloud-jobs", "work", str(record_id))
+    os.makedirs(work, exist_ok=True)
+    img_dir = os.path.join(BASE_DIR, "images")
+    os.makedirs(img_dir, exist_ok=True)
+
+    runtime = worker_runtime_dir()
+    if runtime not in sys.path:
+        sys.path.insert(0, runtime)
+    try:
+        from pipeline.image_pipeline import (
+            SCENE_NEGATIVE_PROMPT,
+            load_img2img_model,
+            _run_generation,
+            clear_gpu_memory,
+        )
+        from pipeline.prompt_sanitize import strip_forbidden_prompt_words
+    except Exception as e:
+        raise RuntimeError(f"pipeline.image_pipeline import failed: {e}") from e
+
+    try:
+        from pipeline.image_pipeline import _action_first_prompt
+    except Exception:
+        _action_first_prompt = None
+
+    print(f"📦 Batch {kind}: {len(items)} item(s) record={record_id}")
+    # #region agent log
+    print(
+        f'   [debug:5928f0] batch_start '
+        f'{{"hypothesisId":"H5","kind":{json.dumps(kind)},'
+        f'"count":{len(items)},"recordId":{json.dumps(str(record_id))}}}'
+    )
+    # #endregion
+
+    pipe = load_img2img_model()
+    results = []
+    prev_scene_path = None
+    ok_n = fail_n = skip_n = 0
+
+    # Scenes: order by scene_number for continuity
+    if kind == "scenes":
+        items = sorted(
+            items,
+            key=lambda it: int(it.get("scene_number") or it.get("order") or 0),
+        )
+
+    for idx, item in enumerate(items):
+        if item.get("skip"):
+            skip_n += 1
+            results.append(
+                {
+                    "id": item.get("id"),
+                    "scene_number": item.get("scene_number"),
+                    "skip": True,
+                    "status": "skipped",
+                    "imageUrl": item.get("imageUrl") or "",
+                }
+            )
+            continue
+
+        try:
+            if kind == "characters":
+                # Reuse single-job character path via synthetic job
+                sub_id = f"{record_id}_c{idx}_{str(item.get('id') or idx)[:12]}"
+                sub_job = {
+                    "recordId": sub_id,
+                    "kind": "character_sheet",
+                    "prompt": item.get("prompt") or "",
+                    "species": item.get("species") or "",
+                    "width": int(item.get("width") or 1024),
+                    "height": int(item.get("height") or 1024),
+                    "referenceUrls": [],
+                }
+                out_info = process_pipeline_image_job(sub_job)
+                src = out_info["image"]
+                stable_name = f"{record_id}_char_{str(item.get('id') or idx)}.png"
+                stable = os.path.join(img_dir, stable_name)
+                shutil.copy2(src, stable)
+                raw_url = github_raw_url(f"cloud-jobs/images/{stable_name}")
+                if not raw_url:
+                    raise RuntimeError("NEXT_GITHUB_REPO secret missing!")
+                results.append(
+                    {
+                        "id": item.get("id"),
+                        "name": item.get("name"),
+                        "status": "done",
+                        "imageUrl": raw_url,
+                    }
+                )
+                ok_n += 1
+                # #region agent log
+                print(
+                    f'   [debug:5928f0] batch_char_ok '
+                    f'{{"hypothesisId":"H2","id":{json.dumps(str(item.get("id")))},'
+                    f'"idx":{idx}}}'
+                )
+                # #endregion
+            else:
+                prompt = str(
+                    item.get("final_prompt") or item.get("prompt") or ""
+                ).strip()
+                neg = str(
+                    item.get("negative_prompt") or SCENE_NEGATIVE_PROMPT
+                )
+                width = int(item.get("width") or 1280)
+                height = int(item.get("height") or 720)
+                seed = int(item.get("seed") or (idx * 9973) % 100000)
+
+                prompt = strip_forbidden_prompt_words(prompt)
+                prompt = re.sub(r"[\u0900-\u097F]+", " ", prompt)
+                prompt = re.sub(r"\s+", " ", prompt).strip()
+                if _action_first_prompt:
+                    try:
+                        prompt = _action_first_prompt(prompt)
+                    except Exception:
+                        pass
+
+                gen_w = min(1280, max(768, width))
+                gen_h = min(720, max(512, height))
+                gen_w = max(512, (gen_w // 8) * 8)
+                gen_h = max(512, (gen_h // 8) * 8)
+
+                init_image = None
+                strength = 1.0
+                ref_urls = list(item.get("character_ref_urls") or [])
+                use_prev = bool(item.get("use_previous_scene", True))
+
+                if use_prev and prev_scene_path and os.path.isfile(prev_scene_path):
+                    init_image = Image.open(prev_scene_path).convert("RGB")
+                    strength = 0.55
+                elif ref_urls:
+                    ref_path = os.path.join(work, f"ref_{idx}.png")
+                    urllib.request.urlretrieve(ref_urls[0], ref_path)
+                    if os.path.isfile(ref_path) and os.path.getsize(ref_path) > 500:
+                        init_image = Image.open(ref_path).convert("RGB")
+                        strength = 0.5
+
+                # #region agent log
+                print(
+                    f'   [debug:5928f0] batch_scene_gen '
+                    f'{{"hypothesisId":"H3","scene":{item.get("scene_number")},'
+                    f'"words":{len(prompt.split())},'
+                    f'"hasLoc":{str("location" in prompt.lower() or bool(item.get("location"))).lower()},'
+                    f'"hasAction":{str(bool(item.get("key_action")) or "visual action" in prompt.lower()).lower()},'
+                    f'"head":{json.dumps(prompt[:160])}}}'
+                )
+                # #endregion
+
+                image = _run_generation(
+                    pipe,
+                    prompt,
+                    gen_w,
+                    gen_h,
+                    init_image=init_image,
+                    strength=strength,
+                    steps=4,
+                    guidance=0.0,
+                    negative_prompt=neg,
+                    seed=seed,
+                )
+                if width != gen_w or height != gen_h:
+                    image = image.resize((width, height), Image.Resampling.LANCZOS)
+
+                sn = int(item.get("scene_number") or idx + 1)
+                stable_name = f"{record_id}_scene_{sn:02d}.png"
+                stable = os.path.join(img_dir, stable_name)
+                image.save(stable, format="PNG")
+                if not os.path.isfile(stable) or os.path.getsize(stable) < 1000:
+                    raise RuntimeError("batch scene output empty")
+
+                prev_scene_path = stable
+                raw_url = github_raw_url(f"cloud-jobs/images/{stable_name}")
+                if not raw_url:
+                    raise RuntimeError("NEXT_GITHUB_REPO secret missing!")
+                results.append(
+                    {
+                        "id": item.get("id"),
+                        "scene_number": sn,
+                        "status": "done",
+                        "imageUrl": raw_url,
+                    }
+                )
+                ok_n += 1
+        except Exception as item_err:
+            fail_n += 1
+            print(f"   ⚠️  batch item {idx} failed: {item_err}")
+            results.append(
+                {
+                    "id": item.get("id"),
+                    "scene_number": item.get("scene_number"),
+                    "status": "failed",
+                    "error": str(item_err)[:300],
+                    "imageUrl": "",
+                }
+            )
+
+    try:
+        clear_gpu_memory()
+    except Exception:
+        pass
+
+    status = "DONE" if fail_n == 0 else ("PARTIAL" if ok_n else "FAILED")
+    # #region agent log
+    print(
+        f'   [debug:5928f0] batch_done '
+        f'{{"hypothesisId":"H2","status":{json.dumps(status)},'
+        f'"ok":{ok_n},"failed":{fail_n},"skipped":{skip_n}}}'
+    )
+    # #endregion
+    return {
+        "recordId": record_id,
+        "status": status,
+        "results": results,
+        "ok": ok_n,
+        "failed": fail_n,
+        "skipped": skip_n,
+    }
+
+
 # ==================== MAIN LOOP ====================
 _vg_import_ok = False
 
@@ -733,7 +989,12 @@ def process_queue_once():
                 job_data = json.load(f)
 
             job_type = job_data.get("type")
-            if job_type not in ("full_video", "scene_video", "pipeline_image"):
+            if job_type not in (
+                "full_video",
+                "scene_video",
+                "pipeline_image",
+                "pipeline_image_batch",
+            ):
                 print(f"⏭️  Skip: {job_file}")
                 continue
 
@@ -753,6 +1014,18 @@ def process_queue_once():
                 if not raw_url:
                     raise RuntimeError("NEXT_GITHUB_REPO secret missing!")
                 write_result(record_id, "DONE", video_url=raw_url)
+            elif job_type == "pipeline_image_batch":
+                result = process_pipeline_image_batch_job(job_data)
+                write_result(
+                    record_id,
+                    result.get("status") or "DONE",
+                    results=result.get("results") or [],
+                    error=(
+                        f"{result.get('failed', 0)} item(s) failed"
+                        if result.get("failed")
+                        else None
+                    ),
+                )
             elif job_type == "pipeline_image":
                 result = process_pipeline_image_job(job_data)
                 img_dir = os.path.join(BASE_DIR, "images")
