@@ -435,10 +435,19 @@ def process_pipeline_image_job(job_data):
             "only",
             "front",
             "view",
+            "cartoon",
+            "3d",
+            "pixar",
             subject,
         }
-        # Compel can encode past 77 tokens — keep richer English appearance
-        traits = [w for w in client.split() if w.lower() not in stop][:40]
+        # Strip punctuation so "centered," / "background," still match stop words
+        traits = []
+        for w in client.split():
+            core = re.sub(r"[^\w\-]", "", w).lower()
+            if not core or core in stop:
+                continue
+            traits.append(w.strip(".,;:!\"'()[]{}"))
+        traits = traits[:24]
         appearance = " ".join(traits)
         ref_prompt = (
             f"exactly one {subject}, solo, centered, full body, "
@@ -458,7 +467,8 @@ def process_pipeline_image_job(job_data):
         gen_w = gen_h = 1024
         seed = sum(ord(c) for c in str(record_id)) % 100000
         # Dark animals (crow) create many similar high-edge cells — raise sheet bar
-        animal_qa = {"min_face_cells": 18, "min_clone_matches": 14}
+        # Uniform-colour animals (elephant/ant) trip edge-cell clone heuristics
+        animal_qa = {"min_face_cells": 20, "min_clone_matches": 16}
         print(f"🖼️  Character portrait via generate_reference_image ({gen_w}x{gen_h})")
         print(f"   prompt: {ref_prompt}  (words={len(ref_prompt.split())})")
         try:
@@ -493,6 +503,12 @@ def process_pipeline_image_job(job_data):
 
         if not os.path.isfile(out) or os.path.getsize(out) < 1000:
             raise RuntimeError("pipeline_image character output empty")
+        try:
+            from pipeline.image_pipeline import clear_gpu_memory
+
+            clear_gpu_memory()
+        except Exception:
+            pass
         return {"recordId": record_id, "image": out}
 
     # ——— Scene stills ———
