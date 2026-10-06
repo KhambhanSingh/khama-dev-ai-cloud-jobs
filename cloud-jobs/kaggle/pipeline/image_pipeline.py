@@ -616,8 +616,10 @@ def _run_generation(
         embeds = encode_sdxl_prompts(pipe, prompt, neg)
         if embeds:
             print(
-                f"   Compel embeds: words={embeds['prompt_len_words']} "
-                f"clip_tokens≈{embeds['token_est']} (no 77-trim)"
+                f"   Compel embeds ({embeds.get('mode', '?')}): "
+                f"words={embeds['prompt_len_words']} "
+                f"clip_tokens≈{embeds['token_est']} "
+                f"shape={tuple(embeds['prompt_embeds'].shape)} (no 77-trim)"
             )
 
     with torch.inference_mode():
