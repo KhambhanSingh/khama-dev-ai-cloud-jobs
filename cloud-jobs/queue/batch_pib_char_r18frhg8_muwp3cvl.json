@@ -1,0 +1,28 @@
+{
+  "type": "pipeline_image_batch",
+  "kind": "characters",
+  "version": 1,
+  "scriptId": "k178p994nv85g0vbh30m4sacr18frhg8",
+  "items": [
+    {
+      "id": "js70cyp8m304z1zq96t5j4s7nn8fsrmj",
+      "name": "शेर",
+      "species": "lion",
+      "description": "Large, majestic lion with golden-brown fur, a thick, dark brown mane, and a powerful build. His face is broad with expressive eyes.",
+      "prompt": "exactly one lion, solo, centered, full body standing pose, empty hands, no props, no objects, no food, no plants, pure seamless white studio background, no ground texture, no environment, no text, no letters, no watermark, no logo, 3D pixar, detailed fur or skin texture, clear expressive face, correct anatomy, Large, majestic with golden-brown fur, a thick, dark brown mane, and a powerful build. His face is broad with expressive eyes.",
+      "skip": false,
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "id": "js76cd3srd6cvkfhnynqzmjjgx8frr9q",
+      "name": "चूहा",
+      "species": "mouse",
+      "description": "Tiny, agile mouse with soft grey fur, small round ears, a long thin tail, and a curious, whiskered face.",
+      "prompt": "exactly one mouse, solo, centered, full body standing pose, empty hands, no props, no objects, no food, no plants, pure seamless white studio background, no ground texture, no environment, no text, no letters, no watermark, no logo, 3D pixar, detailed fur or skin texture, clear expressive face, correct anatomy, Tiny, agile with soft grey fur, small round ears, a long thin tail, and a curious, whiskered face.",
+      "skip": false,
+      "width": 1024,
+      "height": 1024
+    }
+  ]
+}
