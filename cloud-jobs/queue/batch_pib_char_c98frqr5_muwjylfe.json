@@ -1,0 +1,48 @@
+{
+  "type": "pipeline_image_batch",
+  "kind": "characters",
+  "version": 1,
+  "scriptId": "k17cvgsda40qazyy22dsvjyqc98frqr5",
+  "items": [
+    {
+      "id": "js7cbrzekpf1kwwvvvdrp5wszh8fs62p",
+      "name": "हाथी",
+      "species": "elephant",
+      "description": "A large, grey elephant with friendly, expressive eyes, long tusks, and a gentle demeanor. Wears a small, colorful flower behind his ear.",
+      "prompt": "exactly one elephant, solo, centered, full body standing pose, empty hands, no props, no objects, no food, no plants, pure seamless white studio background, no ground texture, no environment, no text, no letters, no watermark, no logo, 3D pixar, detailed fur or skin texture, clear expressive face, correct anatomy, A large, grey with friendly, expressive eyes, long tusks, and a gentle demeanor. , .",
+      "skip": false,
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "id": "js72ymbq5ey4w8685xrg61fhjx8frx3b",
+      "name": "चींटी",
+      "species": "ant",
+      "description": "A tiny, reddish-brown ant with six delicate legs, two long antennae, and a determined expression. Always carries a tiny green leaf on her back.",
+      "prompt": "exactly one ant, solo, centered, full body standing pose, empty hands, no props, no objects, no food, no plants, pure seamless white studio background, no ground texture, no environment, no text, no letters, no watermark, no logo, 3D pixar, detailed fur or skin texture, clear expressive face, correct anatomy, A tiny, reddish-brown with six delicate legs, two long antennae, and a determined expression. Always .",
+      "skip": false,
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "id": "js771c96hzxeq6ppck7bk06acd8fswtg",
+      "name": "हाथी",
+      "species": "lion",
+      "description": "A majestic golden-brown lion with a thick, flowing mane, strong paws, and noble features. Wears a small, woven leaf crown.",
+      "prompt": "exactly one lion, solo, centered, full body standing pose, empty hands, no props, no objects, no food, no plants, pure seamless white studio background, no ground texture, no environment, no text, no letters, no watermark, no logo, 3D pixar, detailed fur or skin texture, clear expressive face, correct anatomy, A majestic golden-brown , flowing mane, strong paws, and noble features. , woven .",
+      "skip": false,
+      "width": 1024,
+      "height": 1024
+    },
+    {
+      "id": "js7cz982ch20q850d2cxh3zjc98frnf2",
+      "name": "हाथी",
+      "species": "monkey",
+      "description": "A nimble brown monkey with a long, prehensile tail, bright curious eyes, and a playful grin. Carries a half-eaten banana.",
+      "prompt": "exactly one monkey, solo, centered, full body standing pose, empty hands, no props, no objects, no food, no plants, pure seamless white studio background, no ground texture, no environment, no text, no letters, no watermark, no logo, 3D pixar, detailed fur or skin texture, clear expressive face, correct anatomy, A nimble brown , prehensile tail, bright curious eyes, and a playful grin. .",
+      "skip": false,
+      "width": 1024,
+      "height": 1024
+    }
+  ]
+}
