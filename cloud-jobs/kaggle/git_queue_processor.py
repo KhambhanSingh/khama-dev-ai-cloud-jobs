@@ -514,57 +514,38 @@ def process_pipeline_image_job(job_data):
         client = re.sub(r"[\u0900-\u097F]+", " ", client)
         client = re.sub(r"\b(no|not|without)\s+\w+", " ", client, flags=re.I)
         client = re.sub(r"\s+", " ", client).strip()
-        description = str(job_data.get("description") or "").strip()
-        description = re.sub(r"[\u0900-\u097F]+", " ", description)
-        description = re.sub(r"\s+", " ", description).strip()
-
         try:
-            from pipeline.prompt_sanitize import _portrait_anatomy
+            from pipeline.prompt_sanitize import (
+                _portrait_anatomy,
+                sanitize_plain_character_appearance,
+            )
 
             anatomy = _portrait_anatomy(subject)
+            description = sanitize_plain_character_appearance(
+                job_data.get("description") or "", subject
+            )
+            client = sanitize_plain_character_appearance(client, subject)
         except Exception:
             anatomy = "correct anatomy"
+            description = re.sub(r"\s+", " ", str(job_data.get("description") or "")).strip()
 
-        # Keep detailing: use full cleaned client prompt (was traits[:16] — lost colors/outfit)
-        # Cap ~75 words — Compel still encodes; Turbo quality collapses past ~90
-        words = client.split()
-        if len(words) > 75:
-            client = " ".join(words[:75])
-        ref_prompt = client or (
-            f"one {subject}, solo, centered, full body, {anatomy}, "
-            f"white background, 3D pixar style, detailed design"
+        # PLAIN studio reference only — props/action/env belong in scene jobs
+        plain_suffix = (
+            "empty hands, no props, no objects, no food, no plants, "
+            "pure seamless white studio background, no environment, "
+            "no text, no logo, correct anatomy, clear face"
         )
-        if anatomy and anatomy.split(",")[0].strip().lower() not in ref_prompt.lower():
-            ref_prompt = f"{ref_prompt}, {anatomy}"
+        ref_prompt = (
+            f"exactly one {subject}, solo, centered, full body standing, "
+            f"{anatomy}, 3D pixar style, {plain_suffix}"
+        )
         if description:
-            # Append description traits not already present
-            extra = []
-            for w in description.split()[:28]:
-                if w.lower() not in ref_prompt.lower():
-                    extra.append(w)
-            if extra:
-                ref_prompt = f"{ref_prompt}, {' '.join(extra)}"
-                ref_prompt = " ".join(ref_prompt.split()[:85])
-
-        appearance = description or " ".join(
-            w
-            for w in client.split()
-            if w.lower()
-            not in {
-                "exactly",
-                "one",
-                "solo",
-                "centered",
-                "full",
-                "body",
-                "white",
-                "background",
-                "3d",
-                "pixar",
-                "style",
-                subject,
-            }
-        )[:200]
+            ref_prompt = f"{ref_prompt}, {description}"
+        elif client:
+            # Keep color/face words from client prompt only
+            ref_prompt = f"{ref_prompt}, {client}"
+        ref_prompt = " ".join(ref_prompt.split()[:70])
+        appearance = description or f"stylized {subject}"
 
         char = {
             "id": str(record_id),
@@ -584,11 +565,12 @@ def process_pipeline_image_job(job_data):
         print(f"   prompt: {ref_prompt}  (words={len(ref_prompt.split())})")
         # #region agent log
         print(
-            f'   [debug:5928f0] char_detail '
-            f'{{"hypothesisId":"H-strip","subject":{json.dumps(subject)},'
-            f'"clientWords":{len(client.split())},"refWords":{len(ref_prompt.split())},'
-            f'"descWords":{len(description.split())},"anatomy":{json.dumps(anatomy)},'
-            f'"head":{json.dumps(ref_prompt[:200])}}}'
+            f'   [debug:5928f0] char_plain '
+            f'{{"hypothesisId":"H-props-in-desc","subject":{json.dumps(subject)},'
+            f'"refWords":{len(ref_prompt.split())},'
+            f'"propLeak":{str(bool(re.search(r"carries|holds|banana|wears|flower|sand", ref_prompt, re.I))).lower()},'
+            f'"emptyHands":{str("empty hands" in ref_prompt.lower()).lower()},'
+            f'"head":{json.dumps(ref_prompt[:220])}}}'
         )
         # #endregion
         try:
