@@ -1,0 +1,18 @@
+{
+  "type": "pipeline_image",
+  "version": 1,
+  "recordId": "pim_yqc98frqr5_scene_1_muwkibkf",
+  "index": "full",
+  "kind": "scene_still",
+  "scriptId": "k17cvgsda40qazyy22dsvjyqc98frqr5",
+  "prompt": "KEY ACTION: Hathi stops and laughs loudly at Cheenti. LOCATION: Lush Jungle Path. BACKGROUND: Tall green trees, Colorful jungle flowers, Sun-dappled path. TIME: Morning. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: हाथी, monkey, A nimble brown monkey with a long, prehensile , ACTION: Walking slowly, then stopping to look down, HOLDING: None. CHARACTER: चींटी, ant, A tiny, reddish-brown ant with six delicate legs, ACTION: Walking diligently along the path, HOLDING: Tiny green leaf on back. STYLE: 3D Pixar style, bright soft lighting. SHOT: Medium shot, ANGLE: Eye-level, then slightly. EMPHASIZE MISSING ELEMENTS: character: Hathi (elephant); character: Cheenti (ant); action: Hathi stops and laughs loudly at Cheenti. Show full location background and the key action clearly.",
+  "species": "",
+  "name": "scene_1",
+  "description": "",
+  "width": 1280,
+  "height": 720,
+  "referenceUrls": [
+    "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pim_yqc98frqr5_scene_1_muwkibkf_ref1.png",
+    "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pim_yqc98frqr5_scene_1_muwkibkf_ref2.png"
+  ]
+}
