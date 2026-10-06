@@ -1,0 +1,395 @@
+{
+  "type": "pipeline_image_batch",
+  "kind": "scenes",
+  "version": 1,
+  "scriptId": "k17aa6yn9qpmz21q7hgwhsnnxh8fsyzv",
+  "items": [
+    {
+      "scene_number": 1,
+      "id": "jx7agz5v81wwm1z6xt6a4qdd1h8fscgn",
+      "final_prompt": "CAST: lion named शेर. KEY ACTION: Sheru walking through the jungle.. LOCATION: Dense Jungle Path. BACKGROUND: Tall green trees, Thick bushes, Dappled sunlight on the path. TIME: Mid-morning. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: शेर, lion, lion: Golden-brown fur, majestic mane, large body, ACTION: Walking slowly, HOLDING: Nothing. STYLE: 3D Pixar style, bright soft lighting. SHOT: Medium shot, ANGLE: Eye-level, CAMERA: Tracking shot following Sheru. CONTINUITY: Establishes Sheru and the jungle setting.. match reference character look, show action and full environment",
+      "negative_prompt": "blank background, plain studio background, white void, empty backdrop, standing still with no action, character sheet, text, watermark, subtitles, logo, deformed anatomy, extra limbs, human, person, people, child, man, woman",
+      "character_ids": [
+        "js7fadv0ectf9m7764cfsmy4ax8frgbd"
+      ],
+      "character_species": [
+        {
+          "id": "js7fadv0ectf9m7764cfsmy4ax8frgbd",
+          "name": "शेर",
+          "species": "lion"
+        }
+      ],
+      "character_ref_urls": [
+        "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pib_scen_xh8fsyzv_muwmp73b_s1_r0.png"
+      ],
+      "use_previous_scene": true,
+      "seed": 9973,
+      "aspect_ratio": "16:9",
+      "width": 1280,
+      "height": 720,
+      "skip": false,
+      "story_summary": "Sheru the lion walks majestically through the dense jungle.",
+      "key_action": "Sheru walking through the jungle.",
+      "location": "Dense Jungle Path"
+    },
+    {
+      "scene_number": 2,
+      "id": "jx786hkqvwhptfz06mcn8458ts8frbzh",
+      "final_prompt": "CAST: lion named शेर. KEY ACTION: Sheru reacting to stepping on a thorn.. LOCATION: Jungle Floor. BACKGROUND: Fallen leaves, Small rocks, Roots of a large tree. TIME: Mid-morning. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: शेर, lion, lion: Golden-brown fur, majestic mane, large body, ACTION: Yelping, lifting one paw, HOLDING: Nothing. STYLE: 3D Pixar style, bright soft lighting. SHOT: Close-up on paw, then pull back to mediu, ANGLE: Low angle, CAMERA: Quick pan to paw. CONTINUITY: Shows the cause of Sheru's distress.. match reference character look, show action and full environment",
+      "negative_prompt": "blank background, plain studio background, white void, empty backdrop, standing still with no action, character sheet, text, watermark, subtitles, logo, deformed anatomy, extra limbs, human, person, people, child, man, woman",
+      "character_ids": [
+        "js7fadv0ectf9m7764cfsmy4ax8frgbd"
+      ],
+      "character_species": [
+        {
+          "id": "js7fadv0ectf9m7764cfsmy4ax8frgbd",
+          "name": "शेर",
+          "species": "lion"
+        }
+      ],
+      "character_ref_urls": [
+        "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pib_scen_xh8fsyzv_muwmp73b_s2_r0.png"
+      ],
+      "use_previous_scene": true,
+      "seed": 19946,
+      "aspect_ratio": "16:9",
+      "width": 1280,
+      "height": 720,
+      "skip": false,
+      "story_summary": "Sheru accidentally steps on a sharp thorn, causing him pain.",
+      "key_action": "Sheru reacting to stepping on a thorn.",
+      "location": "Jungle Floor"
+    },
+    {
+      "scene_number": 3,
+      "id": "jx7b6z52xn5rggp1afpnrpsmr58fsccf",
+      "final_prompt": "CAST: lion named शेर. KEY ACTION: Sheru showing clear signs of pain and discomfort.. LOCATION: Under a Large Banyan Tree. BACKGROUND: Large tree trunk, Mossy rocks, Ferns, Sunlight filtering through leaves. TIME: Mid-morning. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: शेर, lion, lion: Golden-brown fur, majestic mane, large body, ACTION: Sitting, cradling his paw, HOLDING: Injured paw. STYLE: 3D Pixar style, bright soft lighting. SHOT: Medium shot, ANGLE: Eye-level, CAMERA: Static. CONTINUITY: Emphasizes Sheru's predicament.. match reference character look, show action and full environment",
+      "negative_prompt": "blank background, plain studio background, white void, empty backdrop, standing still with no action, character sheet, text, watermark, subtitles, logo, deformed anatomy, extra limbs, human, person, people, child, man, woman",
+      "character_ids": [
+        "js7fadv0ectf9m7764cfsmy4ax8frgbd"
+      ],
+      "character_species": [
+        {
+          "id": "js7fadv0ectf9m7764cfsmy4ax8frgbd",
+          "name": "शेर",
+          "species": "lion"
+        }
+      ],
+      "character_ref_urls": [
+        "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pib_scen_xh8fsyzv_muwmp73b_s3_r0.png"
+      ],
+      "use_previous_scene": true,
+      "seed": 29919,
+      "aspect_ratio": "16:9",
+      "width": 1280,
+      "height": 720,
+      "skip": false,
+      "story_summary": "Sheru sits down, holding his injured paw, looking very uncomfortable.",
+      "key_action": "Sheru showing clear signs of pain and discomfort.",
+      "location": "Under a Large Banyan Tree"
+    },
+    {
+      "scene_number": 4,
+      "id": "jx7af7zz5c89j9pwveehhzapwh8fr4vx",
+      "final_prompt": "CAST: mouse named चूहा. KEY ACTION: Chinku observing Sheru from a distance.. LOCATION: Edge of a Bush. BACKGROUND: Green leafy bush, Small wildflowers, Forest floor. TIME: Mid-morning. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: चूहा, mouse, mouse: Small grey fur, tiny body, pink nose, cu, ACTION: Peeking out, twitching nose, HOLDING: Nothing. STYLE: 3D Pixar style, bright soft lighting. SHOT: Close-up on Chinku, ANGLE: Low angle, CAMERA: Dolly in slightly. CONTINUITY: Introduces Chinku and his awareness of Sheru.. match reference character look, show action and full environment",
+      "negative_prompt": "blank background, plain studio background, white void, empty backdrop, standing still with no action, character sheet, text, watermark, subtitles, logo, deformed anatomy, extra limbs, human, person, people, child, man, woman",
+      "character_ids": [
+        "js7af6r475a2hdpg49tr2amhc98fssmh"
+      ],
+      "character_species": [
+        {
+          "id": "js7af6r475a2hdpg49tr2amhc98fssmh",
+          "name": "चूहा",
+          "species": "mouse"
+        }
+      ],
+      "character_ref_urls": [
+        "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pib_scen_xh8fsyzv_muwmp73b_s4_r0.png"
+      ],
+      "use_previous_scene": true,
+      "seed": 39892,
+      "aspect_ratio": "16:9",
+      "width": 1280,
+      "height": 720,
+      "skip": false,
+      "story_summary": "Chinku the mouse peeks out from a bush, noticing the distressed lion.",
+      "key_action": "Chinku observing Sheru from a distance.",
+      "location": "Edge of a Bush"
+    },
+    {
+      "scene_number": 5,
+      "id": "jx7bqd9jq3t1brqfqk5nt16wzn8fr9kf",
+      "final_prompt": "CAST: lion named शेर, mouse named चूहा. KEY ACTION: Chinku moving closer to Sheru.. LOCATION: Open Forest Clearing. BACKGROUND: Scattered leaves, Tree roots, Sunlight patches on the ground. TIME: Mid-morning. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: चूहा, mouse, mouse: Small grey fur, tiny body, pink nose, cu, ACTION: Scampering cautiously, HOLDING: Nothing. CHARACTER: शेर, lion, lion: Golden-brown fur, majestic mane, large body, ACTION: Still cradling paw, HOLDING: Injured paw. STYLE: 3D Pixar style, bright soft lighting. SHOT: Medium shot, ANGLE: Eye-level, CAMERA: Tracking Chinku. CONTINUITY: Shows Chinku's decision to help.. match reference character look, show",
+      "negative_prompt": "blank background, plain studio background, white void, empty backdrop, standing still with no action, character sheet, text, watermark, subtitles, logo, deformed anatomy, extra limbs, human, person, people, child, man, woman",
+      "character_ids": [
+        "js7fadv0ectf9m7764cfsmy4ax8frgbd",
+        "js7af6r475a2hdpg49tr2amhc98fssmh"
+      ],
+      "character_species": [
+        {
+          "id": "js7fadv0ectf9m7764cfsmy4ax8frgbd",
+          "name": "शेर",
+          "species": "lion"
+        },
+        {
+          "id": "js7af6r475a2hdpg49tr2amhc98fssmh",
+          "name": "चूहा",
+          "species": "mouse"
+        }
+      ],
+      "character_ref_urls": [
+        "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pib_scen_xh8fsyzv_muwmp73b_s5_r0.png",
+        "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pib_scen_xh8fsyzv_muwmp73b_s5_r1.png"
+      ],
+      "use_previous_scene": true,
+      "seed": 49865,
+      "aspect_ratio": "16:9",
+      "width": 1280,
+      "height": 720,
+      "skip": false,
+      "story_summary": "Chinku, despite Sheru's size, bravely approaches the injured lion.",
+      "key_action": "Chinku moving closer to Sheru.",
+      "location": "Open Forest Clearing"
+    },
+    {
+      "scene_number": 6,
+      "id": "jx78qvta6xxaqsxgwy45sncp6h8frmkc",
+      "final_prompt": "CAST: lion named शेर, mouse named चूहा. KEY ACTION: Chinku examining Sheru's paw.. LOCATION: Forest Floor next to Sheru. BACKGROUND: Sheru's large paw, Small pebbles, Dry twigs. TIME: Mid-morning. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: चूहा, mouse, mouse: Small grey fur, tiny body, pink nose, cu, ACTION: Peering closely, touching paw gently, HOLDING: Nothing. CHARACTER: शेर, lion, lion: Golden-brown fur, majestic mane, large body, ACTION: Holding paw still, HOLDING: Injured paw. STYLE: 3D Pixar style, bright soft lighting. SHOT: Close-up on Chinku and Sheru's paw, ANGLE: Low angle, CAMERA: Static. CONTINUITY: Highlights the size difference",
+      "negative_prompt": "blank background, plain studio background, white void, empty backdrop, standing still with no action, character sheet, text, watermark, subtitles, logo, deformed anatomy, extra limbs, human, person, people, child, man, woman",
+      "character_ids": [
+        "js7fadv0ectf9m7764cfsmy4ax8frgbd",
+        "js7af6r475a2hdpg49tr2amhc98fssmh"
+      ],
+      "character_species": [
+        {
+          "id": "js7fadv0ectf9m7764cfsmy4ax8frgbd",
+          "name": "शेर",
+          "species": "lion"
+        },
+        {
+          "id": "js7af6r475a2hdpg49tr2amhc98fssmh",
+          "name": "चूहा",
+          "species": "mouse"
+        }
+      ],
+      "character_ref_urls": [
+        "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pib_scen_xh8fsyzv_muwmp73b_s6_r0.png",
+        "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pib_scen_xh8fsyzv_muwmp73b_s6_r1.png"
+      ],
+      "use_previous_scene": true,
+      "seed": 59838,
+      "aspect_ratio": "16:9",
+      "width": 1280,
+      "height": 720,
+      "skip": false,
+      "story_summary": "Chinku carefully inspects Sheru's large, injured paw, looking for the thorn.",
+      "key_action": "Chinku examining Sheru's paw.",
+      "location": "Forest Floor next to Sheru"
+    },
+    {
+      "scene_number": 7,
+      "id": "jx73y7ph0k3n8nd87dag2y2fv58fsb1p",
+      "final_prompt": "CAST: lion named शेर, mouse named चूहा. KEY ACTION: Chinku successfully removing the thorn.. LOCATION: Forest Floor next to Sheru. BACKGROUND: Sheru's paw, A small, sharp thorn, Forest debris. TIME: Mid-morning. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: चूहा, mouse, mouse: Small grey fur, tiny body, pink nose, cu, ACTION: Pulling the thorn, HOLDING: Thorn in mouth (briefly). CHARACTER: शेर, lion, lion: Golden-brown fur, majestic mane, large body, ACTION: Flinching slightly, then relaxing, HOLDING: Paw still. STYLE: 3D Pixar style, bright soft lighting. SHOT: Extreme close-up on thorn removal, then , ANGLE: Eye-level, CAMERA: Quick zoom",
+      "negative_prompt": "blank background, plain studio background, white void, empty backdrop, standing still with no action, character sheet, text, watermark, subtitles, logo, deformed anatomy, extra limbs, human, person, people, child, man, woman",
+      "character_ids": [
+        "js7fadv0ectf9m7764cfsmy4ax8frgbd",
+        "js7af6r475a2hdpg49tr2amhc98fssmh"
+      ],
+      "character_species": [
+        {
+          "id": "js7fadv0ectf9m7764cfsmy4ax8frgbd",
+          "name": "शेर",
+          "species": "lion"
+        },
+        {
+          "id": "js7af6r475a2hdpg49tr2amhc98fssmh",
+          "name": "चूहा",
+          "species": "mouse"
+        }
+      ],
+      "character_ref_urls": [
+        "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pib_scen_xh8fsyzv_muwmp73b_s7_r0.png",
+        "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pib_scen_xh8fsyzv_muwmp73b_s7_r1.png"
+      ],
+      "use_previous_scene": true,
+      "seed": 69811,
+      "aspect_ratio": "16:9",
+      "width": 1280,
+      "height": 720,
+      "skip": false,
+      "story_summary": "With a quick, precise movement, Chinku pulls the thorn out of Sheru's paw.",
+      "key_action": "Chinku successfully removing the thorn.",
+      "location": "Forest Floor next to Sheru"
+    },
+    {
+      "scene_number": 8,
+      "id": "jx7da1vgj3dxt71dd6mcm238c18fsec5",
+      "final_prompt": "CAST: lion named शेर. KEY ACTION: Sheru visibly relaxing after the thorn is removed.. LOCATION: Forest Clearing. BACKGROUND: Soft moss, Sunlight filtering through leaves, A fallen log. TIME: Mid-morning. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: शेर, lion, lion: Golden-brown fur, majestic mane, large body, ACTION: Lowering his paw, sighing, HOLDING: Nothing. STYLE: 3D Pixar style, bright soft lighting. SHOT: Close-up on Sheru's face, ANGLE: Eye-level, CAMERA: Slow zoom out. CONTINUITY: Shows the immediate positive impact of Chinku's action.. match reference character look, show action and full environment",
+      "negative_prompt": "blank background, plain studio background, white void, empty backdrop, standing still with no action, character sheet, text, watermark, subtitles, logo, deformed anatomy, extra limbs, human, person, people, child, man, woman",
+      "character_ids": [
+        "js7fadv0ectf9m7764cfsmy4ax8frgbd"
+      ],
+      "character_species": [
+        {
+          "id": "js7fadv0ectf9m7764cfsmy4ax8frgbd",
+          "name": "शेर",
+          "species": "lion"
+        }
+      ],
+      "character_ref_urls": [
+        "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pib_scen_xh8fsyzv_muwmp73b_s8_r0.png"
+      ],
+      "use_previous_scene": true,
+      "seed": 79784,
+      "aspect_ratio": "16:9",
+      "width": 1280,
+      "height": 720,
+      "skip": false,
+      "story_summary": "Sheru's pain immediately subsides, and he feels a wave of relief.",
+      "key_action": "Sheru visibly relaxing after the thorn is removed.",
+      "location": "Forest Clearing"
+    },
+    {
+      "scene_number": 9,
+      "id": "jx73b8j9esj16vcs95tcw8sjth8fsy4h",
+      "final_prompt": "CAST: lion named शेर, mouse named चूहा. KEY ACTION: Sheru acknowledging Chinku's help.. LOCATION: Forest Clearing. BACKGROUND: Sheru's large paw, Forest floor, Dappled light. TIME: Mid-morning. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: शेर, lion, lion: Golden-brown fur, majestic mane, large body, ACTION: Looking down, HOLDING: Nothing. CHARACTER: चूहा, mouse, mouse: Small grey fur, tiny body, pink nose, cu, ACTION: Looking up, HOLDING: Nothing. STYLE: 3D Pixar style, bright soft lighting. SHOT: Medium shot, showing both characters, ANGLE: Low angle from Chinku's perspective, CAMERA: Static. CONTINUITY: Sets up Sheru's dialogue.. match reference character look, show action",
+      "negative_prompt": "blank background, plain studio background, white void, empty backdrop, standing still with no action, character sheet, text, watermark, subtitles, logo, deformed anatomy, extra limbs, human, person, people, child, man, woman",
+      "character_ids": [
+        "js7fadv0ectf9m7764cfsmy4ax8frgbd",
+        "js7af6r475a2hdpg49tr2amhc98fssmh"
+      ],
+      "character_species": [
+        {
+          "id": "js7fadv0ectf9m7764cfsmy4ax8frgbd",
+          "name": "शेर",
+          "species": "lion"
+        },
+        {
+          "id": "js7af6r475a2hdpg49tr2amhc98fssmh",
+          "name": "चूहा",
+          "species": "mouse"
+        }
+      ],
+      "character_ref_urls": [
+        "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pib_scen_xh8fsyzv_muwmp73b_s9_r0.png",
+        "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pib_scen_xh8fsyzv_muwmp73b_s9_r1.png"
+      ],
+      "use_previous_scene": true,
+      "seed": 89757,
+      "aspect_ratio": "16:9",
+      "width": 1280,
+      "height": 720,
+      "skip": false,
+      "story_summary": "Sheru looks down at the tiny Chinku with immense gratitude and surprise.",
+      "key_action": "Sheru acknowledging Chinku's help.",
+      "location": "Forest Clearing"
+    },
+    {
+      "scene_number": 10,
+      "id": "jx71s1gqr6s01xnetcnfqs153s8fr815",
+      "final_prompt": "CAST: lion named शेर, mouse named चूहा. KEY ACTION: Sheru beginning to praise Chinku.. LOCATION: Forest Clearing. BACKGROUND: Green foliage, Sunlight, A few scattered flowers. TIME: Mid-morning. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: शेर, lion, lion: Golden-brown fur, majestic mane, large body, ACTION: Speaking gently, HOLDING: Nothing. CHARACTER: चूहा, mouse, mouse: Small grey fur, tiny body, pink nose, cu, ACTION: Listening attentively, HOLDING: Nothing. STYLE: 3D Pixar style, bright soft lighting. SHOT: Close-up on Sheru's face, ANGLE: Eye-level, CAMERA: Static. CONTINUITY: First part of Sheru's important line.. match reference character look, show action and full",
+      "negative_prompt": "blank background, plain studio background, white void, empty backdrop, standing still with no action, character sheet, text, watermark, subtitles, logo, deformed anatomy, extra limbs, human, person, people, child, man, woman",
+      "character_ids": [
+        "js7fadv0ectf9m7764cfsmy4ax8frgbd",
+        "js7af6r475a2hdpg49tr2amhc98fssmh"
+      ],
+      "character_species": [
+        {
+          "id": "js7fadv0ectf9m7764cfsmy4ax8frgbd",
+          "name": "शेर",
+          "species": "lion"
+        },
+        {
+          "id": "js7af6r475a2hdpg49tr2amhc98fssmh",
+          "name": "चूहा",
+          "species": "mouse"
+        }
+      ],
+      "character_ref_urls": [
+        "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pib_scen_xh8fsyzv_muwmp73b_s10_r0.png",
+        "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pib_scen_xh8fsyzv_muwmp73b_s10_r1.png"
+      ],
+      "use_previous_scene": true,
+      "seed": 99730,
+      "aspect_ratio": "16:9",
+      "width": 1280,
+      "height": 720,
+      "skip": false,
+      "story_summary": "Sheru speaks to Chinku, acknowledging his small size but great deed.",
+      "key_action": "Sheru beginning to praise Chinku.",
+      "location": "Forest Clearing"
+    },
+    {
+      "scene_number": 11,
+      "id": "jx7a3tx2gxyxr748bedjyw91wd8frzdn",
+      "final_prompt": "CAST: lion named शेर, mouse named चूहा. KEY ACTION: Sheru completing his praise for Chinku.. LOCATION: Forest Clearing. BACKGROUND: Forest trees, Soft ground, Dappled light. TIME: Mid-morning. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: शेर, lion, lion: Golden-brown fur, majestic mane, large body, ACTION: Finishing his sentence, nodding slightly, HOLDING: Nothing. CHARACTER: चूहा, mouse, mouse: Small grey fur, tiny body, pink nose, cu, ACTION: Puffing out chest slightly, HOLDING: Nothing. STYLE: 3D Pixar style, bright soft lighting. SHOT: Medium shot, showing both characters, ANGLE: Eye-level, CAMERA: Static. CONTINUITY: Completes Sheru's dialogue and shows Chinku's reaction.. match",
+      "negative_prompt": "blank background, plain studio background, white void, empty backdrop, standing still with no action, character sheet, text, watermark, subtitles, logo, deformed anatomy, extra limbs, human, person, people, child, man, woman",
+      "character_ids": [
+        "js7fadv0ectf9m7764cfsmy4ax8frgbd",
+        "js7af6r475a2hdpg49tr2amhc98fssmh"
+      ],
+      "character_species": [
+        {
+          "id": "js7fadv0ectf9m7764cfsmy4ax8frgbd",
+          "name": "शेर",
+          "species": "lion"
+        },
+        {
+          "id": "js7af6r475a2hdpg49tr2amhc98fssmh",
+          "name": "चूहा",
+          "species": "mouse"
+        }
+      ],
+      "character_ref_urls": [
+        "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pib_scen_xh8fsyzv_muwmp73b_s11_r0.png",
+        "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pib_scen_xh8fsyzv_muwmp73b_s11_r1.png"
+      ],
+      "use_previous_scene": true,
+      "seed": 9703,
+      "aspect_ratio": "16:9",
+      "width": 1280,
+      "height": 720,
+      "skip": false,
+      "story_summary": "Sheru finishes his sentence, emphasizing that Chinku's actions were significant.",
+      "key_action": "Sheru completing his praise for Chinku.",
+      "location": "Forest Clearing"
+    },
+    {
+      "scene_number": 12,
+      "id": "jx7fc0zngkh89rxy3czkg1g5qs8fr19c",
+      "final_prompt": "CAST: lion named शेर, mouse named चूहा. KEY ACTION: Sheru and Chinku sitting together as friends.. LOCATION: Sunny Forest Glade. BACKGROUND: Wildflowers, Tall grass, Sunlight streaming through trees, A gentle stream. TIME: Mid-morning. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: शेर, lion, lion: Golden-brown fur, majestic mane, large body, ACTION: Smiling gently, resting paw near Chinku, HOLDING: Nothing. CHARACTER: चूहा, mouse, mouse: Small grey fur, tiny body, pink nose, cu, ACTION: Sitting comfortably near Sheru, HOLDING: Nothing. STYLE: 3D Pixar style, bright soft lighting. SHOT: Wide shot, ANGLE: Eye-level, CAMERA: Slow pan across the scene. CONTINUITY:",
+      "negative_prompt": "blank background, plain studio background, white void, empty backdrop, standing still with no action, character sheet, text, watermark, subtitles, logo, deformed anatomy, extra limbs, human, person, people, child, man, woman",
+      "character_ids": [
+        "js7fadv0ectf9m7764cfsmy4ax8frgbd",
+        "js7af6r475a2hdpg49tr2amhc98fssmh"
+      ],
+      "character_species": [
+        {
+          "id": "js7fadv0ectf9m7764cfsmy4ax8frgbd",
+          "name": "शेर",
+          "species": "lion"
+        },
+        {
+          "id": "js7af6r475a2hdpg49tr2amhc98fssmh",
+          "name": "चूहा",
+          "species": "mouse"
+        }
+      ],
+      "character_ref_urls": [
+        "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pib_scen_xh8fsyzv_muwmp73b_s12_r0.png",
+        "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pib_scen_xh8fsyzv_muwmp73b_s12_r1.png"
+      ],
+      "use_previous_scene": true,
+      "seed": 19676,
+      "aspect_ratio": "16:9",
+      "width": 1280,
+      "height": 720,
+      "skip": false,
+      "story_summary": "Sheru and Chinku share a moment, cementing their newfound friendship.",
+      "key_action": "Sheru and Chinku sitting together as friends.",
+      "location": "Sunny Forest Glade"
+    }
+  ],
+  "chunkIndex": 0,
+  "chunkTotal": 2
+}
