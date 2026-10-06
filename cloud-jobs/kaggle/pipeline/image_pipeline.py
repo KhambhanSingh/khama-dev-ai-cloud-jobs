@@ -590,18 +590,26 @@ def _noise_init(gen_w, gen_h):
 
 def _action_first_prompt(text):
     """
-    Put script VISUAL ACTION / Scene line first so CLIP 77-trim (or Turbo
-    truncation) cannot drop the story beat behind STYLE/BIBLE headers.
+    Put KEY ACTION / VISUAL ACTION first so CLIP 77-trim (or Turbo
+    truncation) cannot drop the story beat behind STYLE headers.
     """
     t = str(text or "").strip()
     if not t:
         return t
     action = ""
     m = re.search(
-        r"VISUAL\s*ACTION\s*:\s*(.+?)(?:\n|$)", t, flags=re.I | re.S
+        r"(?:KEY\s*ACTION|VISUAL\s*ACTION)\s*:\s*(.+?)(?:\.|$|\n)",
+        t,
+        flags=re.I | re.S,
     )
     if m:
-        action = " ".join(m.group(1).split())
+        action = " ".join(m.group(1).split())[:120]
+    location = ""
+    m_loc = re.search(
+        r"LOCATION\s*:\s*(.+?)(?:\.|$|\n)", t, flags=re.I | re.S
+    )
+    if m_loc:
+        location = " ".join(m_loc.group(1).split())[:80]
     title = ""
     m2 = re.search(r"Scene\s+\d+\s*:\s*(.+?)(?:\n|$)", t, flags=re.I)
     if m2:
@@ -616,12 +624,18 @@ def _action_first_prompt(text):
     flat = re.sub(r"\s*\n+\s*", ". ", flat)
     flat = re.sub(r"\s{2,}", " ", flat).strip(" .")
     if action:
-        # Lead with action; drop duplicate VISUAL ACTION block from rest
         rest = re.sub(
-            r"(?i)VISUAL\s*ACTION\s*:\s*.+?(?=\.\s*[A-Z]|\Z)", "", flat
+            r"(?i)(?:KEY\s*ACTION|VISUAL\s*ACTION)\s*:\s*.+?(?=\.\s*[A-Z]|\Z)",
+            "",
+            flat,
         )
         rest = re.sub(r"\s{2,}", " ", rest).strip(" .")
-        lead = action if not title else f"{action}. {title}"
+        lead_parts = [action]
+        if location:
+            lead_parts.append(location)
+        if title:
+            lead_parts.append(title)
+        lead = ". ".join(lead_parts)
         return f"{lead}. {rest}".strip(" .")
     return flat
 
