@@ -29,6 +29,7 @@ OPTIONAL_PACKAGES = [
     "moviepy",
     "Pillow",
     "safetensors",
+    "compel",
 ]
 
 OPTIONAL_PIP_NAMES = {
