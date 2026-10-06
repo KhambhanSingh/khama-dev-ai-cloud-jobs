@@ -56,8 +56,11 @@ SCENE_NEGATIVE_PROMPT = (
 
 REFERENCE_NEGATIVE_PROMPT = (
     "extra legs, extra feet, extra tails, multiple tusks, fused limbs, "
+    "second head, extra trunk, duplicate animal, floating parts, "
+    "props, banana, fruit, food, flowers, plants, leaf, sand, grass, "
+    "garden, forest, outdoor background, ground texture, "
     "crowd, character sheet, clones, multiple animals, bad anatomy, "
-    "blurry, watermark, text"
+    "blurry, watermark, text, letters, logo, caption"
 )
 
 DEFAULT_NEGATIVE_PROMPT = SCENE_NEGATIVE_PROMPT
@@ -885,7 +888,8 @@ def generate_reference_image(
             if any("\u0900" <= ch <= "\u097F" for ch in species):
                 species = "character"
             base = (
-                f"one {species}, solo, full body, white background, "
+                f"one {species}, solo, full body standing, empty hands, "
+                f"no props, pure white studio background, no text, "
                 f"3D pixar style, correct anatomy, clean design"
             )
         tail = recovery_tails[min(attempt - 1, len(recovery_tails) - 1)]
