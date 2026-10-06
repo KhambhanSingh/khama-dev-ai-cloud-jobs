@@ -841,15 +841,27 @@ def generate_reference_image(
     validate_kwargs=None,
 ):
     custom = str(char.get("referencePrompt") or "").strip()
+    used_custom = False
+    # Compel encodes long positives — allow rich appearance (was 45 → lost detailing)
     if (
         custom
         and is_english_prompt_text(custom)
         and "character sheet" not in custom.lower()
-        and len(custom.split()) <= 45
+        and len(custom.split()) <= 90
     ):
         base = strip_forbidden_prompt_words(custom)
+        used_custom = True
     else:
         base = build_reference_portrait_prompt(char, video_style)
+    # #region agent log
+    print(
+        f'   [debug:5928f0] ref_prompt_choice '
+        f'{{"hypothesisId":"H-strip","customWords":{len(custom.split())},'
+        f'"usedCustom":{str(used_custom).lower()},'
+        f'"baseWords":{len(str(base).split())},'
+        f'"head":{json.dumps(str(base)[:180])}}}'
+    )
+    # #endregion
 
     # Turbo prefers 512 native; caller may pass 1024 — clamp for quality
     native = max(512, min(int(REF_GEN_SIZE), 768))
