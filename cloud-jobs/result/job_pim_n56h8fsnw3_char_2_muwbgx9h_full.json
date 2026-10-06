@@ -1,0 +1,5 @@
+{
+  "status": "FAILED",
+  "recordId": "pim_n56h8fsnw3_char_2_muwbgx9h",
+  "error": "pipeline_image character failed: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 0 has a total capacity of 14.56 GiB of which 264.81 MiB is free. Including non-PyTorch memory, this process has 14.30 GiB memory in use. Of the allocated memory 14.13 GiB is allocated by PyTorch, and 45.83 MiB is reserved by PyTorch but unallocated."
+}
