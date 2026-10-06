@@ -413,38 +413,32 @@ def process_pipeline_image_job(job_data):
 
     pipe = load_img2img_model()
 
-    # ——— Character portraits: proven reference path (20 steps, CLIP trim ≤70) ———
+    # ——— Character portraits: generate_reference_image + Compel long embeds ———
     if kind == "character_sheet":
         subject = species if species and species != "character" else "character"
-        # Rebuild ultra-short English prompt — ignore bloated client text
         client = strip_forbidden_prompt_words(prompt)
         client = re.sub(r"[\u0900-\u097F]+", " ", client)
-        client = re.sub(
-            r"\b(no|not|without)\s+\w+", " ", client, flags=re.I
-        )  # drop positive negations
-        traits = " ".join(
-            w
-            for w in client.split()
-            if w.lower()
-            not in {
-                "exactly",
-                "one",
-                "solo",
-                "centered",
-                "full",
-                "body",
-                "white",
-                "background",
-                "studio",
-                "portrait",
-                "single",
-                "subject",
-                "only",
-                "front",
-                "view",
-                subject,
-            }
-        ).split()[:6]
+        client = re.sub(r"\b(no|not|without)\s+\w+", " ", client, flags=re.I)
+        stop = {
+            "exactly",
+            "one",
+            "solo",
+            "centered",
+            "full",
+            "body",
+            "white",
+            "background",
+            "studio",
+            "portrait",
+            "single",
+            "subject",
+            "only",
+            "front",
+            "view",
+            subject,
+        }
+        # Compel can encode past 77 tokens — keep richer English appearance
+        traits = [w for w in client.split() if w.lower() not in stop][:40]
         appearance = " ".join(traits)
         ref_prompt = (
             f"exactly one {subject}, solo, centered, full body, "
@@ -452,9 +446,6 @@ def process_pipeline_image_job(job_data):
         )
         if appearance:
             ref_prompt = f"{ref_prompt}, {appearance}"
-        words = ref_prompt.split()
-        if len(words) > 22:
-            ref_prompt = " ".join(words[:22])
 
         char = {
             "id": str(record_id),
