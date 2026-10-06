@@ -164,8 +164,8 @@ def format_scene_character_labels(chars, max_len=180):
     return ". ".join(labels)[:max_len]
 
 
-def build_reference_portrait_prompt(char, video_style="2D cartoon"):
-    """Ultra-short CLIP-safe portrait (≪77 tokens). Anti-clone is in negative prompt."""
+def build_reference_portrait_prompt(char, video_style="3D pixar"):
+    """Short Turbo-safe portrait. Anatomy cues reduce extra-limb mush."""
     species = str(char.get("species") or char.get("type") or "").strip().lower()
     name = str(char.get("name") or "").strip()
     subject = species if species and species != "character" else (name or "character")
@@ -174,15 +174,19 @@ def build_reference_portrait_prompt(char, video_style="2D cartoon"):
         subject = species if species and species != "character" else "character"
     appearance = str(char.get("appearance") or "").strip()
     appearance = re.sub(r"[\u0900-\u097F]+", " ", appearance)
-    appearance = " ".join(appearance.split()[:6])
-    style = str(video_style or "2D cartoon").strip().split(",")[0].strip()
+    appearance = " ".join(appearance.split()[:8])
+    style = str(video_style or "3D pixar").strip().split(",")[0].strip()
+    if style.lower() in ("2d cartoon", "cartoon", "2d"):
+        style = "3D pixar style"
     bits = [
-        f"exactly one {subject}",
+        f"one {subject}",
         "solo",
         "centered",
         "full body",
+        "four legs" if subject not in ("bird", "crow", "snake", "fish") else "correct anatomy",
         "white background",
         style,
+        "clean simple design",
     ]
     if appearance:
         bits.append(appearance)
