@@ -164,6 +164,42 @@ def format_scene_character_labels(chars, max_len=180):
     return ". ".join(labels)[:max_len]
 
 
+def sanitize_plain_character_appearance(text, species=""):
+    """Keep colors/face/body only — strip props, held objects, environments."""
+    t = str(text or "")
+    t = re.sub(r"[\u0900-\u097F]+", " ", t)
+    if species:
+        t = re.sub(rf"\b{re.escape(str(species))}\b:?", " ", t, flags=re.I)
+    t = re.sub(
+        r"\b(carries|carrying|holds|holding|clutching|wielding|eating|"
+        r"playing with|with a|holding a|carries a)\b[^.,;!]*",
+        " ",
+        t,
+        flags=re.I,
+    )
+    t = re.sub(
+        r"\b(wears|wearing|adorned with|decorated with|crowned with|garland|"
+        r"flower crown|crown of|jewelry|beads)\b[^.,;!]*",
+        " ",
+        t,
+        flags=re.I,
+    )
+    t = re.sub(
+        r"\b(banana|fruit|mango|leaf|leaves|plant|rose|flower|flowers|sand|"
+        r"garden|forest|jungle|bokeh|soil|pebble|outdoor|landscape)\b",
+        " ",
+        t,
+        flags=re.I,
+    )
+    t = re.sub(
+        r"\b(always busy|busy collecting|collecting crumbs|crumbs)\b[^.,;!]*",
+        " ",
+        t,
+        flags=re.I,
+    )
+    return " ".join(t.split())[:280]
+
+
 def _portrait_anatomy(subject: str) -> str:
     """Species-aware anatomy — never force four legs on humans/bipeds."""
     s = str(subject or "").strip().lower()
@@ -196,9 +232,10 @@ def build_reference_portrait_prompt(char, video_style="3D pixar"):
     # Prefer English subject token; drop Devanagari names from the positive prompt
     if any("\u0900" <= ch <= "\u097F" for ch in subject):
         subject = species if species and species != "character" else "character"
-    appearance = str(char.get("appearance") or char.get("description") or "").strip()
-    appearance = re.sub(r"[\u0900-\u097F]+", " ", appearance)
-    # Keep detailing (colors, clothes, face) — Compel handles length on Kaggle
+    appearance = sanitize_plain_character_appearance(
+        char.get("appearance") or char.get("description") or "",
+        subject,
+    )
     appearance = " ".join(appearance.split()[:32])
     style = str(video_style or "3D pixar").strip().split(",")[0].strip()
     if style.lower() in ("2d cartoon", "cartoon", "2d"):
@@ -208,11 +245,16 @@ def build_reference_portrait_prompt(char, video_style="3D pixar"):
         f"one {subject}",
         "solo",
         "centered",
-        "full body",
+        "full body standing",
+        "empty hands",
+        "no props",
+        "no objects",
         anatomy,
-        "white background",
+        "pure seamless white studio background",
+        "no environment",
+        "no text",
         style,
-        "detailed design, sharp features",
+        "detailed design, sharp features, clear face",
     ]
     if appearance:
         bits.append(appearance)
