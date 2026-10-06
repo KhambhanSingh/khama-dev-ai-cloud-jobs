@@ -1,0 +1,13 @@
+{
+  "type": "pipeline_image",
+  "version": 1,
+  "recordId": "pim_j0sd8frb8k_char_2_muwcjjfl",
+  "index": "full",
+  "kind": "character_sheet",
+  "scriptId": "k170w9fsnt9qz7atmzf24sj0sd8frb8k",
+  "prompt": "exactly one ant, solo, centered, full body, white background, 3D pixar, A tiny, diligent red with six legs and antennae, always observant and quick.",
+  "species": "ant",
+  "width": 1024,
+  "height": 1024,
+  "referenceUrls": []
+}
