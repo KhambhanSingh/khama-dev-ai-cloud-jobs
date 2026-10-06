@@ -821,7 +821,7 @@ def generate_reference_image(
     run_h = _round8(run_h)
 
     recovery_tails = (
-        ", four legs, one tail, correct anatomy",
+        ", correct anatomy, clean design",
         ", simple clean design, centered",
         "",
     )
@@ -836,7 +836,7 @@ def generate_reference_image(
                 species = "character"
             base = (
                 f"one {species}, solo, full body, white background, "
-                f"3D pixar style, four legs, correct anatomy"
+                f"3D pixar style, correct anatomy, clean design"
             )
         tail = recovery_tails[min(attempt - 1, len(recovery_tails) - 1)]
         ref_prompt = f"{base}{tail}".strip()
