@@ -1,0 +1,17 @@
+{
+  "type": "pipeline_image",
+  "version": 1,
+  "recordId": "pim_acr18frhg8_scene_1_muy4dlxy",
+  "index": "full",
+  "kind": "scene_still",
+  "scriptId": "k178p994nv85g0vbh30m4sacr18frhg8",
+  "prompt": "KEY ACTION: Shera steps on a thorn and reacts with pain.. LOCATION: Lush jungle path. BACKGROUND: Tall green trees, Sun-dappled ground, Flowering bushes, Twisted vines. TIME: Mid-day. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: शेर, lion, Large, majestic lion with golden-brown fur, a thi, ACTION: Walking, then suddenly limping. STYLE: 3D Pixar style, bright soft lighting. SHOT: Medium shot, ANGLE: Eye-level, CAMERA: Tracking Shera as he walks. CONTINUITY: The thorn is now visible in Shera's paw.. match reference character look, show action and full environment. EMPHASIZE MISSING ELEMENTS: location: Lush jungle path; action: stepping on a thorn; action: reacting with pain. Show full location background and the key action clearly.",
+  "species": "",
+  "name": "scene_1",
+  "description": "",
+  "width": 1280,
+  "height": 720,
+  "referenceUrls": [
+    "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pim_acr18frhg8_scene_1_muy4dlxy_ref1.png"
+  ]
+}
