@@ -1,0 +1,18 @@
+{
+  "type": "pipeline_image",
+  "version": 1,
+  "recordId": "pim_acr18frhg8_scene_5_muy4m6y8",
+  "index": "full",
+  "kind": "scene_still",
+  "scriptId": "k178p994nv85g0vbh30m4sacr18frhg8",
+  "prompt": "KEY ACTION: Shera expresses profound relief as his pain subsides.. LOCATION: Under the banyan tree. BACKGROUND: Banyan tree trunk, Soft mossy ground, Dappled sunlight, Distant jungle sounds. TIME: Mid-day. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: शेर, lion, Large, majestic lion with golden-brown fur, a thi, ACTION: Sighing deeply, stretching his paw. CHARACTER: चूहा, mouse, Tiny, agile mouse with soft grey fur, small rou, ACTION: Watching Shera, slightly proud. STYLE: 3D Pixar style, bright soft lighting. SHOT: Medium shot, ANGLE: Eye-level, CAMERA: Slow zoom out. CONTINUITY: Shera's paw looks. EMPHASIZE MISSING ELEMENTS: character: चूहा; location: Under the banyan tree; action: Shera expresses profound relief as his pain subsides; story element: indication of a thorn removed or an injured paw. Show full location background and the key action clearly.",
+  "species": "",
+  "name": "scene_5",
+  "description": "",
+  "width": 1280,
+  "height": 720,
+  "referenceUrls": [
+    "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pim_acr18frhg8_scene_5_muy4m6y8_ref1.png",
+    "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pim_acr18frhg8_scene_5_muy4m6y8_ref2.png"
+  ]
+}
