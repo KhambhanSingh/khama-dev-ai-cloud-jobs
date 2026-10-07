@@ -1,0 +1,18 @@
+{
+  "type": "pipeline_image",
+  "version": 1,
+  "recordId": "pim_acr18frhg8_scene_4_muy51uab",
+  "index": "full",
+  "kind": "scene_still",
+  "scriptId": "k178p994nv85g0vbh30m4sacr18frhg8",
+  "prompt": "CAST: one lion, one mouse. KEY ACTION: Chintu pulls the thorn out of Shera's paw.. LOCATION: Close to Shera's paw. BACKGROUND: Shera's large paw, Small leaves, Tiny blades of grass, Sunlight on the ground. TIME: Mid-day. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: lion, Large, majestic lion with golden-brown fur, a thick, d, ACTION: Lifting his paw slightly. CHARACTER: mouse, Tiny, agile mouse with soft grey fur, small round ear, ACTION: Carefully pulling the thorn with his teeth. STYLE: 3D Pixar style, bright soft lighting. SHOT: Extreme close-up, ANGLE: Eye-level, CAMERA: Static. CONTINUITY: The. EMPHASIZE MISSING ELEMENTS: character: चूहा (Chintu); action: Chintu pulls the thorn out of Shera's paw; object: thorn in Shera's paw; location: close to Shera's paw. Show full location background and the key action clearly.. Must show: one lion, one mouse",
+  "species": "",
+  "name": "scene_4",
+  "description": "",
+  "width": 1280,
+  "height": 720,
+  "referenceUrls": [
+    "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pim_acr18frhg8_scene_4_muy51uab_ref1.png",
+    "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pim_acr18frhg8_scene_4_muy51uab_ref2.png"
+  ]
+}
