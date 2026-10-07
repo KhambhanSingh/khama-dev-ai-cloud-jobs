@@ -1,0 +1,18 @@
+{
+  "type": "pipeline_image",
+  "version": 1,
+  "recordId": "pim_acr18frhg8_scene_6_muy4nues",
+  "index": "full",
+  "kind": "scene_still",
+  "scriptId": "k178p994nv85g0vbh30m4sacr18frhg8",
+  "prompt": "KEY ACTION: Shera thanks Chintu with a heartfelt compliment.. LOCATION: Under the banyan tree. BACKGROUND: Large tree roots, Green ferns, Sunlight filtering through leaves, Clear blue sky visible through canopy. TIME: Mid-day. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: शेर, lion, Large, majestic lion with golden-brown fur, a thi, ACTION: Smiling warmly at Chintu. CHARACTER: चूहा, mouse, Tiny, agile mouse with soft grey fur, small rou, ACTION: Puffing out his chest slightly. STYLE: 3D Pixar style, bright soft lighting. SHOT: Two-shot, ANGLE: Slightly low angle, CAMERA: Static. CONTINUITY: The. EMPHASIZE MISSING ELEMENTS: character: Chintu (mouse); location: Under the banyan tree; action: Shera thanks Chintu with a heartfelt compliment. Show full location background and the key action clearly.",
+  "species": "",
+  "name": "scene_6",
+  "description": "",
+  "width": 1280,
+  "height": 720,
+  "referenceUrls": [
+    "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pim_acr18frhg8_scene_6_muy4nues_ref1.png",
+    "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pim_acr18frhg8_scene_6_muy4nues_ref2.png"
+  ]
+}
