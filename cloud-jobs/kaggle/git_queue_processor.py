@@ -913,11 +913,12 @@ def process_pipeline_image_batch_job(job_data):
                             species_bits.append(
                                 f"one {s}" + (f" ({n})" if n and n.isascii() else "")
                             )
-                if species_bits:
+                if species_bits and not re.match(
+                    r"(?i)^(close-up|exactly)\b", prompt
+                ):
                     cast_line = ", ".join(species_bits)
                     if "CAST:" not in prompt.upper():
                         prompt = f"CAST: {cast_line}. {prompt}"
-                    # Reinforce species after KEY ACTION so CLIP trim keeps animals
                     prompt = f"{prompt}. Must show: {cast_line}"
 
                 # Identity lock: character portrait refs (uploaded as https)
