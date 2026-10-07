@@ -1,0 +1,18 @@
+{
+  "type": "pipeline_image",
+  "version": 1,
+  "recordId": "pim_acr18frhg8_scene_3_muy4hj0j",
+  "index": "full",
+  "kind": "scene_still",
+  "scriptId": "k178p994nv85g0vbh30m4sacr18frhg8",
+  "prompt": "KEY ACTION: Chintu the mouse cautiously approaches the pained lion.. LOCATION: Forest floor near the banyan tree. BACKGROUND: Small pebbles, Dry twigs, Green moss patches, Sunlight filtering through leaves. TIME: Mid-day. LIGHTING: Bright soft lighting. full environment visible, not a blank studio background. CHARACTER: शेर, lion, Large, majestic lion with golden-brown fur, a thi, ACTION: Lying still, eyes closed. CHARACTER: चूहा, mouse, Tiny, agile mouse with soft grey fur, small rou, ACTION: Creeping forward, sniffing the air. STYLE: 3D Pixar style, bright soft lighting. SHOT: Wide shot, ANGLE: Low angle, CAMERA: Dolly in towards Chintu.. EMPHASIZE MISSING ELEMENTS: character: चूहा (Chintu the mouse); action: Chintu the mouse cautiously approaches; character: Shera is suffering/pained; location: Forest floor near the banyan tree. Show full location background and the key action clearly.",
+  "species": "",
+  "name": "scene_3",
+  "description": "",
+  "width": 1280,
+  "height": 720,
+  "referenceUrls": [
+    "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pim_acr18frhg8_scene_3_muy4hj0j_ref1.png",
+    "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/inputs/pim_acr18frhg8_scene_3_muy4hj0j_ref2.png"
+  ]
+}
