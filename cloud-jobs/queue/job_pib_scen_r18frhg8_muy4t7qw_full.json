@@ -1,0 +1,10 @@
+{
+  "type": "pipeline_image_batch",
+  "version": 1,
+  "recordId": "pib_scen_r18frhg8_muy4t7qw",
+  "index": "full",
+  "kind": "scenes",
+  "scriptId": "k178p994nv85g0vbh30m4sacr18frhg8",
+  "batchJsonPath": "cloud-jobs/queue/batch_pib_scen_r18frhg8_muy4t7qw.json",
+  "batchJsonUrl": "https://raw.githubusercontent.com/KhambhanSingh/khama-dev-ai-cloud-jobs/main/cloud-jobs/queue/batch_pib_scen_r18frhg8_muy4t7qw.json"
+}
