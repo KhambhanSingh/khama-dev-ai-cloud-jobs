@@ -899,14 +899,26 @@ def process_pipeline_image_batch_job(job_data):
                 species_bits = []
                 for sp in list(item.get("character_species") or []):
                     if isinstance(sp, dict):
-                        s = str(sp.get("species") or "").strip().lower()
-                        n = str(sp.get("name") or "").strip()
+                        s = re.sub(
+                            r"[\u0900-\u097F]+",
+                            "",
+                            str(sp.get("species") or ""),
+                        ).strip().lower()
+                        n = re.sub(
+                            r"[\u0900-\u097F]+",
+                            "",
+                            str(sp.get("name") or ""),
+                        ).strip()
                         if s:
                             species_bits.append(
-                                f"{s} named {n}" if n else s
+                                f"one {s}" + (f" ({n})" if n and n.isascii() else "")
                             )
-                if species_bits and "CAST:" not in prompt:
-                    prompt = f"CAST: {', '.join(species_bits)}. {prompt}"
+                if species_bits:
+                    cast_line = ", ".join(species_bits)
+                    if "CAST:" not in prompt.upper():
+                        prompt = f"CAST: {cast_line}. {prompt}"
+                    # Reinforce species after KEY ACTION so CLIP trim keeps animals
+                    prompt = f"{prompt}. Must show: {cast_line}"
 
                 # Identity lock: character portrait refs (uploaded as https)
                 char_init = None
@@ -919,21 +931,21 @@ def process_pipeline_image_batch_job(job_data):
                     except Exception as ref_err:
                         print(f"   ⚠️  char ref download failed: {ref_err}")
 
+                # Prefer character ref for identity; prev-scene only for light continuity
                 if char_init is not None and (
                     not use_prev
                     or not prev_scene_path
                     or not os.path.isfile(prev_scene_path)
                 ):
-                    # Scene 1 / no continuity: reshape portrait → scene
                     init_image = char_init
-                    strength = 0.72
+                    strength = 0.78  # portrait → scene action
                 elif use_prev and prev_scene_path and os.path.isfile(prev_scene_path):
-                    # Continuity from prior scene; higher denoise so action can change
                     init_image = Image.open(prev_scene_path).convert("RGB")
-                    strength = 0.68
+                    # High denoise so KEY ACTION / CAST can override locked wrong cast
+                    strength = 0.82
                 elif char_init is not None:
                     init_image = char_init
-                    strength = 0.72
+                    strength = 0.78
 
                 # #region agent log
                 print(
