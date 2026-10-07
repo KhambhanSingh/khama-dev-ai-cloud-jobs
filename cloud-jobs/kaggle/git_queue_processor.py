@@ -418,6 +418,46 @@ def clear_batch_input(job_data):
         except Exception as e:
             print(f"⚠️  Clear batch: {e}")
 
+
+def purge_orphan_queue_files():
+    """
+    After a poll cycle: remove leftover batch_*.json with no matching job_*_full.json,
+    and any stray job/batch JSON if queue should be empty.
+    """
+    if not os.path.isdir(QUEUE_DIR):
+        return
+    pending_jobs = set(get_pending_jobs())
+    removed = []
+    for name in os.listdir(QUEUE_DIR):
+        if not name.endswith(".json"):
+            continue
+        path = os.path.join(QUEUE_DIR, name)
+        if not os.path.isfile(path):
+            continue
+        if name.startswith("batch_"):
+            # batch_pib_xxx.json → job_pib_xxx_full.json
+            rid = name[len("batch_") : -len(".json")]
+            job_name = f"job_{rid}_full.json"
+            if job_name not in pending_jobs:
+                try:
+                    os.remove(path)
+                    removed.append(name)
+                except Exception:
+                    pass
+        elif name.startswith("job_") and "_full.json" in name and name not in pending_jobs:
+            # Should not happen (get_pending_jobs lists these); skip
+            pass
+    if removed:
+        print(f"🗑️  Purged orphan queue files: {removed}")
+        # #region agent log
+        print(
+            f'   [debug:5928f0] queue_orphan_purge '
+            f'{{"hypothesisId":"H-queue-clean","removed":{json.dumps(removed)}}}'
+        )
+        # #endregion
+        return True
+    return False
+
 def cleanup_work_dir(record_id):
     work = os.path.join("cloud-jobs", "work", str(record_id))
     if os.path.isdir(work):
@@ -1131,6 +1171,9 @@ def process_queue_once():
     print("="*60)
     print(f"📊 ✅ {ok} done   ❌ {fail} failed   📦 {len(pending)} total")
     print("="*60 + "\n")
+
+    if purge_orphan_queue_files():
+        need_push = True
 
     if need_push:
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
